@@ -755,6 +755,16 @@ td.amount {
 
 .profile-card {
   width: min(420px, 100%);
+  text-align: center;
+}
+
+.app-logo {
+  display: block;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 12px;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(11, 18, 32, 0.12);
 }
 
 .profile-card h2 {
