@@ -1,7 +1,18 @@
+import {
+  initSync,
+  signUp,
+  signIn,
+  signOutUser,
+  fetchCloudBudget,
+  pushCloudBudget,
+  friendlyAuthError,
+} from "./sync.js";
+
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
 const THEME_KEY = "budget-studio-theme";
 const PROFILES_KEY = "budget-studio-profiles";
+const CLOUD_DIRTY_KEY = "budget-studio-cloud-dirty";
 
 const groupChartColors = {
   Needs: ["#2563eb", "#0ea5e9", "#0284c7", "#0891b2"],
@@ -387,13 +398,24 @@ const elements = {
   editDescriptionInput: document.querySelector("#editDescriptionInput"),
   editAmountInput: document.querySelector("#editAmountInput"),
   appTitle: document.querySelector("#appTitle"),
-  profileGate: document.querySelector("#profileGate"),
-  profileForm: document.querySelector("#profileForm"),
-  profileNameInput: document.querySelector("#profileNameInput"),
+  authGate: document.querySelector("#authGate"),
+  authTitle: document.querySelector("#authTitle"),
+  authForm: document.querySelector("#authForm"),
+  authNameLabel: document.querySelector("#authNameLabel"),
+  authNameInput: document.querySelector("#authNameInput"),
+  authEmailInput: document.querySelector("#authEmailInput"),
+  authPasswordInput: document.querySelector("#authPasswordInput"),
+  authSubmitBtn: document.querySelector("#authSubmitBtn"),
+  authModeToggleBtn: document.querySelector("#authModeToggleBtn"),
+  authMessage: document.querySelector("#authMessage"),
+  signOutBtn: document.querySelector("#signOutBtn"),
 };
 
-let profiles = loadProfilesRegistry();
-let state = profiles ? loadState() : createEmptyState();
+let currentUser = null;
+let localOnlyMode = false;
+let authMode = "signin";
+let cloudSaveTimer = null;
+let state = createEmptyState();
 let wizard = createWizardDraft(false);
 let editingTransactionId = null;
 
@@ -408,11 +430,65 @@ function init() {
   populateCategorySelect();
   attachEvents();
   installGlobalKeyboard();
-  renderProfileUI();
   render();
-  if (!profiles) {
-    openProfileGate();
-  } else if (!state.setupComplete) {
+  initSync(handleUserChanged).catch(() => handleUserChanged(null, { unavailable: true }));
+  window.addEventListener("online", flushDirtyCloudSave);
+}
+
+async function handleUserChanged(user, info) {
+  if (info?.unavailable) {
+    // No cloud configured: behave like the previous local-only app
+    localOnlyMode = true;
+    currentUser = { uid: "local", displayName: legacyProfileName() || "" };
+    state = loadState();
+    populateCategorySelect();
+    renderIdentityUI();
+    render();
+    if (!state.setupComplete) openWizard(false);
+    return;
+  }
+
+  currentUser = user;
+  if (!user) {
+    state = createEmptyState();
+    renderIdentityUI();
+    render();
+    openAuthGate();
+    return;
+  }
+
+  closeAuthGate();
+  state = loadState();
+  populateCategorySelect();
+  renderIdentityUI();
+  render();
+
+  try {
+    const cloud = await fetchCloudBudget(user.uid);
+    const local = readCachePayload(user.uid);
+    if (cloud && (!local || (cloud.updatedAt || 0) > (local.updatedAt || 0))) {
+      state = normalizeState(cloud.state);
+      writeCachePayload(user.uid, { state, updatedAt: cloud.updatedAt || Date.now() });
+      populateCategorySelect();
+      render();
+    } else if (!cloud && local) {
+      await pushCloudBudget(user.uid, { state: local.state, updatedAt: local.updatedAt || Date.now(), name: user.displayName || "" });
+    } else if (!cloud && !local) {
+      const legacy = readLegacyState();
+      if (legacy) {
+        state = normalizeState(legacy);
+        saveState();
+        populateCategorySelect();
+        render();
+      }
+    }
+    flushDirtyCloudSave();
+  } catch {
+    showToast("Working offline — changes will sync when you're back online.", "error");
+    localStorage.setItem(CLOUD_DIRTY_KEY, "1");
+  }
+
+  if (!state.setupComplete) {
     openWizard(false);
   }
 }
@@ -572,9 +648,13 @@ function attachEvents() {
   elements.exportJsonBtn.addEventListener("click", exportJson);
   elements.importJsonInput.addEventListener("change", importJson);
 
-  elements.profileForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    createProfile(elements.profileNameInput.value);
+  elements.authForm.addEventListener("submit", handleAuthSubmit);
+  elements.authModeToggleBtn.addEventListener("click", () => {
+    setAuthMode(authMode === "signin" ? "signup" : "signin");
+  });
+  elements.signOutBtn.addEventListener("click", async () => {
+    await signOutUser();
+    showToast("Signed out.");
   });
 
   elements.themeToggleBtn.addEventListener("click", toggleTheme);
@@ -1289,93 +1369,170 @@ function normalizeSetupProfile(profile) {
   };
 }
 
-function loadProfilesRegistry() {
+function cacheKey(uid) {
+  return `${STORAGE_KEY}:uid:${uid}`;
+}
+
+function readCachePayload(uid) {
   try {
-    const stored = JSON.parse(localStorage.getItem(PROFILES_KEY));
-    if (stored && Array.isArray(stored.names) && stored.names.length && stored.names.includes(stored.active)) {
-      return stored;
-    }
+    const stored = JSON.parse(localStorage.getItem(cacheKey(uid)));
+    if (stored?.state?.categories?.length && Array.isArray(stored.state.transactions)) return stored;
   } catch {
-    localStorage.removeItem(PROFILES_KEY);
+    localStorage.removeItem(cacheKey(uid));
   }
   return null;
 }
 
-function saveProfilesRegistry() {
-  localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
-}
-
-function profileStorageKey(name) {
-  return `${STORAGE_KEY}:${name.toLowerCase()}`;
+function writeCachePayload(uid, payload) {
+  try {
+    localStorage.setItem(cacheKey(uid), JSON.stringify(payload));
+  } catch {
+    showToast("Storage full — export a backup and clear old data.", "error");
+  }
 }
 
 function cleanProfileName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, 20);
 }
 
-function openProfileGate() {
-  elements.profileNameInput.value = "";
-  elements.profileGate.hidden = false;
-  document.body.classList.add("wizard-open");
-  elements.profileNameInput.focus();
+function legacyProfileName() {
+  try {
+    const registry = JSON.parse(localStorage.getItem(PROFILES_KEY));
+    return registry?.active || "";
+  } catch {
+    return "";
+  }
 }
 
-function createProfile(rawName) {
-  const name = cleanProfileName(rawName);
-  if (!name) {
-    showToast("Type a name first.", "error");
+// Pre-sync data from earlier versions of the app (device-locked or original)
+function readLegacyState() {
+  const name = legacyProfileName();
+  const keys = [name ? `${STORAGE_KEY}:${name.toLowerCase()}` : null, STORAGE_KEY].filter(Boolean);
+  for (const key of keys) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(key));
+      if (stored?.categories?.length && Array.isArray(stored.transactions)) return stored;
+    } catch {
+      // ignore corrupted legacy data
+    }
+  }
+  return null;
+}
+
+function normalizeState(raw) {
+  return {
+    ...raw,
+    setupComplete: raw.setupComplete ?? true,
+    setupProfile: raw.setupProfile ? normalizeSetupProfile(raw.setupProfile) : null,
+  };
+}
+
+function openAuthGate() {
+  setAuthMode("signin");
+  elements.authGate.hidden = false;
+  document.body.classList.add("wizard-open");
+  elements.authEmailInput.focus();
+}
+
+function closeAuthGate() {
+  elements.authGate.hidden = true;
+  if (elements.setupWizard.hidden && elements.editDialog.hidden) {
+    document.body.classList.remove("wizard-open");
+  }
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const signup = mode === "signup";
+  elements.authTitle.textContent = signup ? "Create your account" : "Welcome back";
+  elements.authNameLabel.hidden = !signup;
+  elements.authNameInput.required = signup;
+  elements.authSubmitBtn.textContent = signup ? "Create account" : "Sign in";
+  elements.authModeToggleBtn.textContent = signup ? "Already have an account? Sign in" : "New here? Create an account";
+  elements.authPasswordInput.autocomplete = signup ? "new-password" : "current-password";
+  setAuthMessage("");
+}
+
+function setAuthMessage(message, isError = false) {
+  elements.authMessage.textContent = message;
+  elements.authMessage.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+  const email = elements.authEmailInput.value.trim();
+  const password = elements.authPasswordInput.value;
+  const name = cleanProfileName(elements.authNameInput.value);
+
+  if (authMode === "signup" && !name) {
+    setAuthMessage("Type your name first.", true);
     return;
   }
 
-  profiles = { active: name, names: [name] };
-  // Adopt any pre-profile data so an existing budget isn't lost
-  const legacy = localStorage.getItem(STORAGE_KEY);
-  if (legacy && !localStorage.getItem(profileStorageKey(name))) {
-    localStorage.setItem(profileStorageKey(name), legacy);
-  }
-  saveProfilesRegistry();
-
-  state = loadState();
-  elements.profileGate.hidden = true;
-  populateCategorySelect();
-  renderProfileUI();
-  render();
-  if (!state.setupComplete) {
-    openWizard(false);
-  } else {
-    document.body.classList.remove("wizard-open");
-    showToast(`Welcome, ${name}.`);
+  elements.authSubmitBtn.disabled = true;
+  setAuthMessage(authMode === "signup" ? "Creating your account..." : "Signing in...");
+  try {
+    if (authMode === "signup") {
+      await signUp(name, email, password);
+    } else {
+      await signIn(email, password);
+    }
+    elements.authPasswordInput.value = "";
+    // onAuthStateChanged drives the rest
+  } catch (error) {
+    setAuthMessage(friendlyAuthError(error), true);
+  } finally {
+    elements.authSubmitBtn.disabled = false;
   }
 }
 
-function renderProfileUI() {
-  elements.appTitle.textContent = profiles ? `${profiles.active}'s budget` : "Command center";
+function renderIdentityUI() {
+  const name = currentUser?.displayName ? cleanProfileName(currentUser.displayName) : "";
+  elements.appTitle.textContent = name ? `${name}'s budget` : "Command center";
+  elements.signOutBtn.hidden = localOnlyMode || !currentUser;
+}
+
+function flushDirtyCloudSave() {
+  if (localOnlyMode || !currentUser || !localStorage.getItem(CLOUD_DIRTY_KEY)) return;
+  const payload = readCachePayload(currentUser.uid);
+  if (!payload) {
+    localStorage.removeItem(CLOUD_DIRTY_KEY);
+    return;
+  }
+  pushCloudBudget(currentUser.uid, { ...payload, name: currentUser.displayName || "" })
+    .then(() => localStorage.removeItem(CLOUD_DIRTY_KEY))
+    .catch(() => {});
 }
 
 function loadState() {
-  if (!profiles) return createEmptyState();
-  try {
-    const stored = JSON.parse(localStorage.getItem(profileStorageKey(profiles.active)));
-    if (stored?.categories?.length && Array.isArray(stored.transactions)) {
-      return {
-        ...stored,
-        setupComplete: stored.setupComplete ?? true,
-        setupProfile: normalizeSetupProfile(stored.setupProfile),
-      };
-    }
-  } catch {
-    localStorage.removeItem(profileStorageKey(profiles.active));
+  if (!currentUser) return createEmptyState();
+  if (localOnlyMode) {
+    const legacy = readLegacyState();
+    return legacy ? normalizeState(legacy) : createEmptyState();
   }
-  return createEmptyState();
+  const payload = readCachePayload(currentUser.uid);
+  return payload ? normalizeState(payload.state) : createEmptyState();
 }
 
 function saveState() {
-  if (!profiles) return;
-  try {
-    localStorage.setItem(profileStorageKey(profiles.active), JSON.stringify(state));
-  } catch {
-    showToast("Storage full — export a backup and clear old data.", "error");
+  if (!currentUser) return;
+  if (localOnlyMode) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      showToast("Storage full — export a backup and clear old data.", "error");
+    }
+    return;
   }
+
+  const payload = { state, updatedAt: Date.now(), name: currentUser.displayName || "" };
+  writeCachePayload(currentUser.uid, payload);
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(() => {
+    pushCloudBudget(currentUser.uid, payload)
+      .then(() => localStorage.removeItem(CLOUD_DIRTY_KEY))
+      .catch(() => localStorage.setItem(CLOUD_DIRTY_KEY, "1"));
+  }, 700);
 }
 
 function transaction(date, type, category, description, account, amount) {

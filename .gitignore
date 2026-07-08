@@ -4,3 +4,4 @@ outputs/
 *.backup-*.xlsx
 node_modules/
 .DS_Store
+supabase/

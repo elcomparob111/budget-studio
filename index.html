@@ -26,6 +26,7 @@
             <input id="monthInput" type="month" />
           </label>
           <button id="themeToggleBtn" class="icon-button" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">◐</button>
+          <button id="signOutBtn" class="secondary-button" type="button" hidden>Sign out</button>
           <button id="exportCsvBtn" class="secondary-button" type="button">Export CSV</button>
           <button id="exportJsonBtn" class="secondary-button" type="button">Backup</button>
           <label class="secondary-button file-button">
@@ -344,17 +345,29 @@
 
     <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-    <section id="profileGate" class="wizard-overlay" aria-label="Choose who is budgeting" aria-modal="true" role="dialog" hidden>
+    <section id="authGate" class="wizard-overlay" aria-label="Sign in to Budget Studio" aria-modal="true" role="dialog" hidden>
       <div class="edit-card profile-card">
         <p class="eyebrow">Budget Studio</p>
-        <h2 id="profileGateTitle">Who's budgeting?</h2>
-        <p class="wizard-copy">This device becomes your private budget. Type your name to start.</p>
-        <form id="profileForm" class="profile-form">
-          <label>
+        <h2 id="authTitle">Welcome back</h2>
+        <p class="wizard-copy">
+          Sign in and your budget follows you on every device — private to your account only.
+        </p>
+        <form id="authForm" class="profile-form">
+          <label id="authNameLabel" hidden>
             <span>Your name</span>
-            <input id="profileNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="off" required />
+            <input id="authNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="name" />
           </label>
-          <button class="primary-button" type="submit">Start budgeting</button>
+          <label>
+            <span>Email</span>
+            <input id="authEmailInput" type="email" placeholder="you@example.com" autocomplete="email" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="authPasswordInput" type="password" minlength="6" placeholder="At least 6 characters" autocomplete="current-password" required />
+          </label>
+          <button id="authSubmitBtn" class="primary-button" type="submit">Sign in</button>
+          <button id="authModeToggleBtn" class="ghost-button" type="button">New here? Create an account</button>
+          <p id="authMessage" class="form-message" role="status"></p>
         </form>
       </div>
     </section>
@@ -401,7 +414,7 @@
       </div>
     </section>
 
-    <script src="./app.js"></script>
+    <script type="module" src="./app.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js").catch(() => {});
