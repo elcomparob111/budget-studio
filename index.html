@@ -22,10 +22,6 @@
         </div>
         <div class="topbar-actions">
           <label class="month-control">
-            <span>Person</span>
-            <select id="profileSelect"></select>
-          </label>
-          <label class="month-control">
             <span>Month</span>
             <input id="monthInput" type="month" />
           </label>
@@ -352,14 +348,13 @@
       <div class="edit-card profile-card">
         <p class="eyebrow">Budget Studio</p>
         <h2 id="profileGateTitle">Who's budgeting?</h2>
-        <p class="wizard-copy">Each person gets their own private budget on this device. Type your name to start.</p>
+        <p class="wizard-copy">This device becomes your private budget. Type your name to start.</p>
         <form id="profileForm" class="profile-form">
           <label>
             <span>Your name</span>
             <input id="profileNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="off" required />
           </label>
           <button class="primary-button" type="submit">Start budgeting</button>
-          <button id="closeProfileGateBtn" class="ghost-button" type="button" hidden>Cancel</button>
         </form>
       </div>
     </section>

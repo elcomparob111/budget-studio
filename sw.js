@@ -1,4 +1,4 @@
-const CACHE = "budget-studio-v5";
+const CACHE = "budget-studio-v6";
 const ASSETS = ["./", "./index.html", "./app.js", "./styles.css", "./manifest.json", "./favicon.svg"];
 
 self.addEventListener("install", (event) => {

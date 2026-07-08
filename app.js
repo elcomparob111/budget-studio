@@ -387,11 +387,9 @@ const elements = {
   editDescriptionInput: document.querySelector("#editDescriptionInput"),
   editAmountInput: document.querySelector("#editAmountInput"),
   appTitle: document.querySelector("#appTitle"),
-  profileSelect: document.querySelector("#profileSelect"),
   profileGate: document.querySelector("#profileGate"),
   profileForm: document.querySelector("#profileForm"),
   profileNameInput: document.querySelector("#profileNameInput"),
-  closeProfileGateBtn: document.querySelector("#closeProfileGateBtn"),
 };
 
 let profiles = loadProfilesRegistry();
@@ -413,7 +411,7 @@ function init() {
   renderProfileUI();
   render();
   if (!profiles) {
-    openProfileGate(false);
+    openProfileGate();
   } else if (!state.setupComplete) {
     openWizard(false);
   }
@@ -574,20 +572,10 @@ function attachEvents() {
   elements.exportJsonBtn.addEventListener("click", exportJson);
   elements.importJsonInput.addEventListener("change", importJson);
 
-  elements.profileSelect.addEventListener("change", () => {
-    const value = elements.profileSelect.value;
-    if (value === "__add") {
-      elements.profileSelect.value = profiles?.active || "";
-      openProfileGate(true);
-      return;
-    }
-    switchProfile(value);
-  });
   elements.profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
     createProfile(elements.profileNameInput.value);
   });
-  elements.closeProfileGateBtn.addEventListener("click", closeProfileGate);
 
   elements.themeToggleBtn.addEventListener("click", toggleTheme);
   elements.closeEditBtn.addEventListener("click", closeEditDialog);
@@ -1325,20 +1313,11 @@ function cleanProfileName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, 20);
 }
 
-function openProfileGate(cancellable) {
+function openProfileGate() {
   elements.profileNameInput.value = "";
-  elements.closeProfileGateBtn.hidden = !cancellable;
   elements.profileGate.hidden = false;
   document.body.classList.add("wizard-open");
   elements.profileNameInput.focus();
-}
-
-function closeProfileGate() {
-  if (!profiles) return;
-  elements.profileGate.hidden = true;
-  if (elements.setupWizard.hidden && elements.editDialog.hidden) {
-    document.body.classList.remove("wizard-open");
-  }
 }
 
 function createProfile(rawName) {
@@ -1348,24 +1327,11 @@ function createProfile(rawName) {
     return;
   }
 
-  const existing = profiles?.names.find((n) => n.toLowerCase() === name.toLowerCase());
-  if (existing) {
-    elements.profileGate.hidden = true;
-    switchProfile(existing);
-    return;
-  }
-
-  const isFirstProfile = !profiles;
-  if (isFirstProfile) {
-    profiles = { active: name, names: [name] };
-    // Adopt any pre-profile data so an existing budget isn't lost
-    const legacy = localStorage.getItem(STORAGE_KEY);
-    if (legacy && !localStorage.getItem(profileStorageKey(name))) {
-      localStorage.setItem(profileStorageKey(name), legacy);
-    }
-  } else {
-    profiles.names.push(name);
-    profiles.active = name;
+  profiles = { active: name, names: [name] };
+  // Adopt any pre-profile data so an existing budget isn't lost
+  const legacy = localStorage.getItem(STORAGE_KEY);
+  if (legacy && !localStorage.getItem(profileStorageKey(name))) {
+    localStorage.setItem(profileStorageKey(name), legacy);
   }
   saveProfilesRegistry();
 
@@ -1382,35 +1348,8 @@ function createProfile(rawName) {
   }
 }
 
-function switchProfile(name) {
-  if (!profiles || !profiles.names.includes(name) || profiles.active === name) return;
-  profiles.active = name;
-  saveProfilesRegistry();
-  state = loadState();
-  wizard = createWizardDraft(false);
-  populateCategorySelect();
-  renderProfileUI();
-  render();
-  if (!state.setupComplete) {
-    openWizard(false);
-  } else {
-    showToast(`Switched to ${name}'s budget.`);
-  }
-}
-
 function renderProfileUI() {
-  if (!profiles) {
-    elements.profileSelect.innerHTML = `<option value="">...</option>`;
-    elements.appTitle.textContent = "Command center";
-    return;
-  }
-  elements.profileSelect.innerHTML = [
-    ...profiles.names.map(
-      (name) => `<option value="${escapeHtml(name)}" ${name === profiles.active ? "selected" : ""}>${escapeHtml(name)}</option>`,
-    ),
-    `<option value="__add">+ Add person</option>`,
-  ].join("");
-  elements.appTitle.textContent = `${profiles.active}'s budget`;
+  elements.appTitle.textContent = profiles ? `${profiles.active}'s budget` : "Command center";
 }
 
 function loadState() {
@@ -1637,11 +1576,6 @@ function installGlobalKeyboard() {
       return;
     }
     if (event.key !== "Escape") return;
-    if (!elements.profileGate.hidden && profiles) {
-      event.preventDefault();
-      closeProfileGate();
-      return;
-    }
     if (!elements.editDialog.hidden) {
       event.preventDefault();
       closeEditDialog();
