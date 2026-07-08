@@ -1,6 +1,7 @@
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
 const THEME_KEY = "budget-studio-theme";
+const PROFILES_KEY = "budget-studio-profiles";
 
 const groupChartColors = {
   Needs: ["#2563eb", "#0ea5e9", "#0284c7", "#0891b2"],
@@ -385,9 +386,16 @@ const elements = {
   editAccountInput: document.querySelector("#editAccountInput"),
   editDescriptionInput: document.querySelector("#editDescriptionInput"),
   editAmountInput: document.querySelector("#editAmountInput"),
+  appTitle: document.querySelector("#appTitle"),
+  profileSelect: document.querySelector("#profileSelect"),
+  profileGate: document.querySelector("#profileGate"),
+  profileForm: document.querySelector("#profileForm"),
+  profileNameInput: document.querySelector("#profileNameInput"),
+  closeProfileGateBtn: document.querySelector("#closeProfileGateBtn"),
 };
 
-let state = loadState();
+let profiles = loadProfilesRegistry();
+let state = profiles ? loadState() : createEmptyState();
 let wizard = createWizardDraft(false);
 let editingTransactionId = null;
 
@@ -402,8 +410,11 @@ function init() {
   populateCategorySelect();
   attachEvents();
   installGlobalKeyboard();
+  renderProfileUI();
   render();
-  if (!state.setupComplete) {
+  if (!profiles) {
+    openProfileGate(false);
+  } else if (!state.setupComplete) {
     openWizard(false);
   }
 }
@@ -562,6 +573,21 @@ function attachEvents() {
   elements.exportCsvBtn.addEventListener("click", exportCsv);
   elements.exportJsonBtn.addEventListener("click", exportJson);
   elements.importJsonInput.addEventListener("change", importJson);
+
+  elements.profileSelect.addEventListener("change", () => {
+    const value = elements.profileSelect.value;
+    if (value === "__add") {
+      elements.profileSelect.value = profiles?.active || "";
+      openProfileGate(true);
+      return;
+    }
+    switchProfile(value);
+  });
+  elements.profileForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    createProfile(elements.profileNameInput.value);
+  });
+  elements.closeProfileGateBtn.addEventListener("click", closeProfileGate);
 
   elements.themeToggleBtn.addEventListener("click", toggleTheme);
   elements.closeEditBtn.addEventListener("click", closeEditDialog);
@@ -1275,9 +1301,122 @@ function normalizeSetupProfile(profile) {
   };
 }
 
-function loadState() {
+function loadProfilesRegistry() {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const stored = JSON.parse(localStorage.getItem(PROFILES_KEY));
+    if (stored && Array.isArray(stored.names) && stored.names.length && stored.names.includes(stored.active)) {
+      return stored;
+    }
+  } catch {
+    localStorage.removeItem(PROFILES_KEY);
+  }
+  return null;
+}
+
+function saveProfilesRegistry() {
+  localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+}
+
+function profileStorageKey(name) {
+  return `${STORAGE_KEY}:${name.toLowerCase()}`;
+}
+
+function cleanProfileName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 20);
+}
+
+function openProfileGate(cancellable) {
+  elements.profileNameInput.value = "";
+  elements.closeProfileGateBtn.hidden = !cancellable;
+  elements.profileGate.hidden = false;
+  document.body.classList.add("wizard-open");
+  elements.profileNameInput.focus();
+}
+
+function closeProfileGate() {
+  if (!profiles) return;
+  elements.profileGate.hidden = true;
+  if (elements.setupWizard.hidden && elements.editDialog.hidden) {
+    document.body.classList.remove("wizard-open");
+  }
+}
+
+function createProfile(rawName) {
+  const name = cleanProfileName(rawName);
+  if (!name) {
+    showToast("Type a name first.", "error");
+    return;
+  }
+
+  const existing = profiles?.names.find((n) => n.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    elements.profileGate.hidden = true;
+    switchProfile(existing);
+    return;
+  }
+
+  const isFirstProfile = !profiles;
+  if (isFirstProfile) {
+    profiles = { active: name, names: [name] };
+    // Adopt any pre-profile data so an existing budget isn't lost
+    const legacy = localStorage.getItem(STORAGE_KEY);
+    if (legacy && !localStorage.getItem(profileStorageKey(name))) {
+      localStorage.setItem(profileStorageKey(name), legacy);
+    }
+  } else {
+    profiles.names.push(name);
+    profiles.active = name;
+  }
+  saveProfilesRegistry();
+
+  state = loadState();
+  elements.profileGate.hidden = true;
+  populateCategorySelect();
+  renderProfileUI();
+  render();
+  if (!state.setupComplete) {
+    openWizard(false);
+  } else {
+    document.body.classList.remove("wizard-open");
+    showToast(`Welcome, ${name}.`);
+  }
+}
+
+function switchProfile(name) {
+  if (!profiles || !profiles.names.includes(name) || profiles.active === name) return;
+  profiles.active = name;
+  saveProfilesRegistry();
+  state = loadState();
+  wizard = createWizardDraft(false);
+  populateCategorySelect();
+  renderProfileUI();
+  render();
+  if (!state.setupComplete) {
+    openWizard(false);
+  } else {
+    showToast(`Switched to ${name}'s budget.`);
+  }
+}
+
+function renderProfileUI() {
+  if (!profiles) {
+    elements.profileSelect.innerHTML = `<option value="">...</option>`;
+    elements.appTitle.textContent = "Command center";
+    return;
+  }
+  elements.profileSelect.innerHTML = [
+    ...profiles.names.map(
+      (name) => `<option value="${escapeHtml(name)}" ${name === profiles.active ? "selected" : ""}>${escapeHtml(name)}</option>`,
+    ),
+    `<option value="__add">+ Add person</option>`,
+  ].join("");
+  elements.appTitle.textContent = `${profiles.active}'s budget`;
+}
+
+function loadState() {
+  if (!profiles) return createEmptyState();
+  try {
+    const stored = JSON.parse(localStorage.getItem(profileStorageKey(profiles.active)));
     if (stored?.categories?.length && Array.isArray(stored.transactions)) {
       return {
         ...stored,
@@ -1286,14 +1425,15 @@ function loadState() {
       };
     }
   } catch {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(profileStorageKey(profiles.active));
   }
   return createEmptyState();
 }
 
 function saveState() {
+  if (!profiles) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(profileStorageKey(profiles.active), JSON.stringify(state));
   } catch {
     showToast("Storage full — export a backup and clear old data.", "error");
   }
@@ -1497,6 +1637,11 @@ function installGlobalKeyboard() {
       return;
     }
     if (event.key !== "Escape") return;
+    if (!elements.profileGate.hidden && profiles) {
+      event.preventDefault();
+      closeProfileGate();
+      return;
+    }
     if (!elements.editDialog.hidden) {
       event.preventDefault();
       closeEditDialog();

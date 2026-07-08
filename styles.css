@@ -132,10 +132,12 @@ body.wizard-open {
 }
 
 .month-control input,
+.month-control select,
 .table-tools input,
 .table-tools select,
 .transaction-form input,
-.transaction-form select {
+.transaction-form select,
+.profile-form input {
   height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -146,10 +148,12 @@ body.wizard-open {
 }
 
 .month-control input:focus,
+.month-control select:focus,
 .table-tools input:focus,
 .table-tools select:focus,
 .transaction-form input:focus,
-.transaction-form select:focus {
+.transaction-form select:focus,
+.profile-form input:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
@@ -749,6 +753,32 @@ td.amount {
   padding: 16px;
 }
 
+.profile-card {
+  width: min(420px, 100%);
+}
+
+.profile-card h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.profile-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.profile-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-form span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .toast-stack {
   position: fixed;
   top: 16px;
@@ -1171,6 +1201,8 @@ td.amount {
 }
 
 [data-theme="dark"] .month-control input,
+[data-theme="dark"] .month-control select,
+[data-theme="dark"] .profile-form input,
 [data-theme="dark"] .table-tools input,
 [data-theme="dark"] .table-tools select,
 [data-theme="dark"] .transaction-form input,

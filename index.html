@@ -18,9 +18,13 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Budget Studio</p>
-          <h1>Command center</h1>
+          <h1 id="appTitle">Command center</h1>
         </div>
         <div class="topbar-actions">
+          <label class="month-control">
+            <span>Person</span>
+            <select id="profileSelect"></select>
+          </label>
           <label class="month-control">
             <span>Month</span>
             <input id="monthInput" type="month" />
@@ -343,6 +347,22 @@
     </section>
 
     <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <section id="profileGate" class="wizard-overlay" aria-label="Choose who is budgeting" aria-modal="true" role="dialog" hidden>
+      <div class="edit-card profile-card">
+        <p class="eyebrow">Budget Studio</p>
+        <h2 id="profileGateTitle">Who's budgeting?</h2>
+        <p class="wizard-copy">Each person gets their own private budget on this device. Type your name to start.</p>
+        <form id="profileForm" class="profile-form">
+          <label>
+            <span>Your name</span>
+            <input id="profileNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="off" required />
+          </label>
+          <button class="primary-button" type="submit">Start budgeting</button>
+          <button id="closeProfileGateBtn" class="ghost-button" type="button" hidden>Cancel</button>
+        </form>
+      </div>
+    </section>
 
     <section id="editDialog" class="edit-overlay" aria-label="Edit transaction" aria-modal="true" role="dialog" hidden>
       <div class="edit-card">
