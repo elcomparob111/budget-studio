@@ -16,6 +16,7 @@
   </head>
   <body>
     <main class="app-shell">
+      <div id="homeView">
       <header class="topbar">
         <div>
           <p class="eyebrow">Budget Studio</p>
@@ -202,42 +203,56 @@
         </div>
       </section>
 
-      <section class="panel setup-panel">
-        <div class="panel-heading">
+      </div>
+
+      <section id="settingsView" class="settings-view" hidden>
+        <header class="topbar settings-topbar">
           <div>
-            <p class="eyebrow">Setup</p>
-            <h2>Monthly category budgets</h2>
+            <p class="eyebrow">Settings</p>
+            <h1>Budgets & setup</h1>
           </div>
-          <button id="resetBtn" class="ghost-button" type="button">Open setup wizard</button>
-        </div>
-        <div id="budgetEditor" class="budget-editor"></div>
-        <form id="categoryBuilderForm" class="category-builder">
-          <label>
-            <span>New category</span>
-            <input id="categoryBuilderNameInput" type="text" placeholder="Cell phone, pets, childcare..." autocomplete="off" />
-          </label>
-          <label>
-            <span>Group</span>
-            <select id="categoryBuilderGroupInput">
-              <option>Needs</option>
-              <option>Wants</option>
-              <option>Savings</option>
-            </select>
-          </label>
-          <label>
-            <span>Monthly budget</span>
-            <input id="categoryBuilderBudgetInput" type="number" min="0" step="10" placeholder="0" />
-          </label>
-          <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
-          <p id="categoryBuilderMessage" class="form-message" role="status"></p>
-        </form>
+          <div class="topbar-actions">
+            <button id="closeSettingsBtn" class="secondary-button" type="button">Back to budget</button>
+          </div>
+        </header>
+
+        <section class="panel setup-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Setup</p>
+              <h2>Monthly category budgets</h2>
+            </div>
+            <button id="resetBtn" class="ghost-button" type="button">Open setup wizard</button>
+          </div>
+          <div id="budgetEditor" class="budget-editor"></div>
+          <form id="categoryBuilderForm" class="category-builder">
+            <label>
+              <span>New category</span>
+              <input id="categoryBuilderNameInput" type="text" placeholder="Cell phone, pets, childcare..." autocomplete="off" />
+            </label>
+            <label>
+              <span>Group</span>
+              <select id="categoryBuilderGroupInput">
+                <option>Needs</option>
+                <option>Wants</option>
+                <option>Savings</option>
+              </select>
+            </label>
+            <label>
+              <span>Monthly budget</span>
+              <input id="categoryBuilderBudgetInput" type="number" min="0" step="10" placeholder="0" />
+            </label>
+            <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
+            <p id="categoryBuilderMessage" class="form-message" role="status"></p>
+          </form>
+        </section>
       </section>
     </main>
 
-    <nav class="bottom-dock" aria-label="Budget settings">
+    <nav id="bottomDock" class="bottom-dock" aria-label="Budget settings">
       <button id="openSetupBtn" class="bottom-settings-button" type="button">
         <span>Settings</span>
-        <strong>Setup & payday</strong>
+        <strong>Edit budgets</strong>
       </button>
     </nav>
 

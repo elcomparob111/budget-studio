@@ -362,6 +362,10 @@ const elements = {
   categoryBuilderMessage: document.querySelector("#categoryBuilderMessage"),
   resetBtn: document.querySelector("#resetBtn"),
   openSetupBtn: document.querySelector("#openSetupBtn"),
+  closeSettingsBtn: document.querySelector("#closeSettingsBtn"),
+  homeView: document.querySelector("#homeView"),
+  settingsView: document.querySelector("#settingsView"),
+  bottomDock: document.querySelector("#bottomDock"),
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
   exportJsonBtn: document.querySelector("#exportJsonBtn"),
   importJsonInput: document.querySelector("#importJsonInput"),
@@ -573,7 +577,8 @@ function attachEvents() {
   });
 
   elements.resetBtn.addEventListener("click", () => openWizard(true));
-  elements.openSetupBtn.addEventListener("click", () => openWizard(true));
+  elements.openSetupBtn.addEventListener("click", openSettingsView);
+  elements.closeSettingsBtn.addEventListener("click", closeSettingsView);
   elements.closeWizardBtn.addEventListener("click", closeWizard);
   elements.startWizardBtn.addEventListener("click", () => {
     wizard.step = 1;
@@ -664,6 +669,20 @@ function attachEvents() {
   elements.editDialog.addEventListener("click", (event) => {
     if (event.target === elements.editDialog) closeEditDialog();
   });
+}
+
+function openSettingsView() {
+  elements.homeView.hidden = true;
+  elements.settingsView.hidden = false;
+  elements.bottomDock.hidden = true;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  elements.closeSettingsBtn.focus();
+}
+
+function closeSettingsView() {
+  elements.settingsView.hidden = true;
+  elements.homeView.hidden = false;
+  elements.bottomDock.hidden = false;
 }
 
 function openWizard(useCurrentState) {
@@ -1741,6 +1760,11 @@ function installGlobalKeyboard() {
     if (!elements.setupWizard.hidden) {
       event.preventDefault();
       closeWizard();
+      return;
+    }
+    if (!elements.settingsView.hidden) {
+      event.preventDefault();
+      closeSettingsView();
     }
   });
 }

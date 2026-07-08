@@ -478,6 +478,19 @@ body.wizard-open {
   font-size: 15px;
 }
 
+.settings-view {
+  display: grid;
+  gap: 18px;
+}
+
+.settings-view[hidden] {
+  display: none !important;
+}
+
+.settings-topbar {
+  margin-bottom: 4px;
+}
+
 .status-pill,
 .money-chip {
   display: inline-flex;
