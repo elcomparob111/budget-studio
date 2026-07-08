@@ -1,0 +1,17 @@
+{
+  "name": "Budget Studio",
+  "short_name": "Budget",
+  "description": "Local-first personal budget command center",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0b1220",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

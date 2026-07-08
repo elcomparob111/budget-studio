@@ -1,0 +1,7 @@
+{
+  "name": "budget-studio",
+  "private": true,
+  "scripts": {
+    "start": "npx serve ."
+  }
+}

@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="description" content="Local-first personal budget command center" />
+    <title>Budget Studio</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Budget Studio</p>
+          <h1>Command center</h1>
+        </div>
+        <div class="topbar-actions">
+          <label class="month-control">
+            <span>Month</span>
+            <input id="monthInput" type="month" />
+          </label>
+          <button id="themeToggleBtn" class="icon-button" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">◐</button>
+          <button id="exportCsvBtn" class="secondary-button" type="button">Export CSV</button>
+          <button id="exportJsonBtn" class="secondary-button" type="button">Backup</button>
+          <label class="secondary-button file-button">
+            Restore
+            <input id="importJsonInput" type="file" accept="application/json" />
+          </label>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Budget summary">
+        <article class="metric-card">
+          <span>Income</span>
+          <strong id="incomeMetric">$0</strong>
+          <small id="incomeSubtext">This month</small>
+        </article>
+        <article class="metric-card">
+          <span>Spent</span>
+          <strong id="spentMetric">$0</strong>
+          <small id="spentSubtext">Against planned budget</small>
+        </article>
+        <article class="metric-card">
+          <span>Left to spend</span>
+          <strong id="leftMetric">$0</strong>
+          <small id="leftSubtext">Before budget limit</small>
+        </article>
+        <article class="metric-card compact">
+          <div id="budgetRing" class="budget-ring" role="img" aria-label="Budget used">
+            <span id="budgetUsedMetric">0%</span>
+          </div>
+          <div>
+            <span>Budget used</span>
+            <small id="ringSubtext">Healthy pace</small>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel paycheck-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Paycheck view</p>
+            <h2>This pay period</h2>
+          </div>
+          <span id="payPeriodBadge" class="money-chip">Set payday</span>
+        </div>
+        <div class="paycheck-grid">
+          <article>
+            <span>Period</span>
+            <strong id="payPeriodRange">Not set</strong>
+          </article>
+          <article>
+            <span>Income this check</span>
+            <strong id="paycheckIncomeMetric">$0</strong>
+          </article>
+          <article>
+            <span>Spent this check</span>
+            <strong id="paycheckSpentMetric">$0</strong>
+          </article>
+          <article>
+            <span>Left this check</span>
+            <strong id="paycheckLeftMetric">$0</strong>
+          </article>
+        </div>
+        <div id="paycheckBreakdown" class="paycheck-breakdown"></div>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel add-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Quick add</p>
+              <h2>New transaction</h2>
+            </div>
+            <button id="clearFormBtn" class="icon-button" type="button" title="Clear form">Clear</button>
+          </div>
+          <form id="transactionForm" class="transaction-form">
+            <label>
+              <span>Date</span>
+              <input id="dateInput" type="date" required />
+            </label>
+            <label>
+              <span>Type</span>
+              <select id="typeInput">
+                <option>Expense</option>
+                <option>Income</option>
+              </select>
+            </label>
+            <label>
+              <span>Category</span>
+              <select id="categoryInput"></select>
+            </label>
+            <label>
+              <span>Account</span>
+              <select id="accountInput"></select>
+            </label>
+            <label class="wide">
+              <span>Description</span>
+              <input id="descriptionInput" type="text" placeholder="Groceries, rent, paycheck..." />
+            </label>
+            <label>
+              <span>Amount</span>
+              <input id="amountInput" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+            </label>
+            <button class="primary-button wide" type="submit">Add transaction</button>
+            <p id="formMessage" class="form-message" role="status"></p>
+          </form>
+        </article>
+
+        <article class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Spending</p>
+              <h2>Category breakdown</h2>
+            </div>
+            <span id="topCategoryBadge" class="status-pill">No spending yet</span>
+          </div>
+          <div id="categoryChart" class="chart-area"></div>
+        </article>
+
+        <article class="panel progress-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Control</p>
+              <h2>Budget progress</h2>
+            </div>
+            <span id="netMetric" class="money-chip">$0 net</span>
+          </div>
+          <div id="categoryProgress" class="category-progress"></div>
+        </article>
+
+        <article class="panel trend-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Trend</p>
+              <h2>Cash flow</h2>
+            </div>
+            <span id="savingsMetric" class="money-chip">0% saved</span>
+          </div>
+          <div id="trendChart" class="chart-area trend"></div>
+        </article>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Review</p>
+            <h2>Transactions</h2>
+          </div>
+          <div class="table-tools">
+            <input id="searchInput" type="search" placeholder="Search transactions" />
+            <select id="typeFilter">
+              <option value="All">All types</option>
+              <option value="Expense">Expenses</option>
+              <option value="Income">Income</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Account</th>
+                <th>Amount</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="transactionsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel setup-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Setup</p>
+            <h2>Monthly category budgets</h2>
+          </div>
+          <button id="resetBtn" class="ghost-button" type="button">Open setup wizard</button>
+        </div>
+        <div id="budgetEditor" class="budget-editor"></div>
+        <form id="categoryBuilderForm" class="category-builder">
+          <label>
+            <span>New category</span>
+            <input id="categoryBuilderNameInput" type="text" placeholder="Cell phone, pets, childcare..." autocomplete="off" />
+          </label>
+          <label>
+            <span>Group</span>
+            <select id="categoryBuilderGroupInput">
+              <option>Needs</option>
+              <option>Wants</option>
+              <option>Savings</option>
+            </select>
+          </label>
+          <label>
+            <span>Monthly budget</span>
+            <input id="categoryBuilderBudgetInput" type="number" min="0" step="10" placeholder="0" />
+          </label>
+          <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
+          <p id="categoryBuilderMessage" class="form-message" role="status"></p>
+        </form>
+      </section>
+    </main>
+
+    <nav class="bottom-dock" aria-label="Budget settings">
+      <button id="openSetupBtn" class="bottom-settings-button" type="button">
+        <span>Settings</span>
+        <strong>Setup & payday</strong>
+      </button>
+    </nav>
+
+    <section id="setupWizard" class="wizard-overlay" aria-label="Budget setup" aria-modal="true" role="dialog" hidden>
+      <div class="wizard-card">
+        <div class="wizard-topline">
+          <span id="wizardStepLabel">Step 1 of 4</span>
+          <button id="closeWizardBtn" class="ghost-button" type="button">Close</button>
+        </div>
+        <div class="wizard-progress" aria-hidden="true">
+          <div id="wizardProgressFill"></div>
+        </div>
+
+        <section class="wizard-step" data-step="0">
+          <p class="eyebrow">Fast start</p>
+          <h2>Set up your budget in under 2 minutes.</h2>
+          <p class="wizard-copy">
+            Answer a few plain-language questions and Budget Studio will build a starting budget for you.
+            You can change every number later.
+          </p>
+          <div class="wizard-choice-grid two">
+            <button id="startWizardBtn" class="wizard-choice featured" type="button">
+              <strong>Build my budget</strong>
+              <span>Guided setup with starter budgets based on your income.</span>
+            </button>
+            <button id="demoModeBtn" class="wizard-choice" type="button">
+              <strong>Try demo mode</strong>
+              <span>Open the app with sample income and expenses already filled in.</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="wizard-step" data-step="1" hidden>
+          <p class="eyebrow">Budget style</p>
+          <h2>What should this budget feel built for?</h2>
+          <p class="wizard-copy">Pick the closest match. This only changes the starter suggestions.</p>
+          <div id="presetGrid" class="preset-grid"></div>
+        </section>
+
+        <section class="wizard-step" data-step="2" hidden>
+          <p class="eyebrow">Payday</p>
+          <h2>How do you actually get paid?</h2>
+          <p class="wizard-copy">
+            This lets Budget Studio show a current paycheck view, not just a monthly budget.
+          </p>
+          <div id="payFrequencyGrid" class="pay-frequency-grid"></div>
+          <div class="payday-input-grid">
+            <label class="big-input">
+              <span>Take-home pay per check</span>
+              <input id="wizardPayAmountInput" type="number" min="0" step="25" value="2100" />
+            </label>
+            <label class="big-input">
+              <span>Next payday</span>
+              <input id="wizardNextPayDateInput" type="date" />
+            </label>
+          </div>
+          <p id="wizardMonthlyEstimate" class="wizard-estimate">$0 monthly average for budget suggestions</p>
+        </section>
+
+        <section class="wizard-step" data-step="3" hidden>
+          <p class="eyebrow">Categories</p>
+          <h2>Choose what you actually want to track.</h2>
+          <p class="wizard-copy">Keep it lean. Fewer categories usually means people stick with it longer.</p>
+          <div id="categoryChecklist" class="category-checklist"></div>
+          <div class="custom-category-card">
+            <div>
+              <p class="eyebrow">Custom category</p>
+              <h3>Add a bill or category that is personal to you.</h3>
+            </div>
+            <div class="custom-category-form">
+              <label>
+                <span>Category name</span>
+                <input id="customCategoryNameInput" type="text" placeholder="Childcare, pets, gym..." autocomplete="off" />
+              </label>
+              <label>
+                <span>Type</span>
+                <select id="customCategoryGroupInput">
+                  <option>Needs</option>
+                  <option>Wants</option>
+                  <option>Savings</option>
+                </select>
+              </label>
+              <button id="addCustomCategoryBtn" class="secondary-button" type="button">Add category</button>
+            </div>
+            <p id="customCategoryMessage" class="custom-category-message" role="status"></p>
+          </div>
+        </section>
+
+        <section class="wizard-step" data-step="4" hidden>
+          <p class="eyebrow">Review</p>
+          <h2>Here is your starter budget.</h2>
+          <p class="wizard-copy">These numbers are auto-suggested from your income and budget style. Adjust anything now or later.</p>
+          <div class="wizard-review-header">
+            <strong id="reviewTotalBudget">$0 planned</strong>
+            <span id="reviewLeftover">$0 left after budget</span>
+          </div>
+          <div id="wizardBudgetReview" class="wizard-budget-review"></div>
+        </section>
+
+        <footer class="wizard-footer">
+          <button id="wizardBackBtn" class="ghost-button" type="button">Back</button>
+          <button id="wizardNextBtn" class="primary-button" type="button">Continue</button>
+        </footer>
+      </div>
+    </section>
+
+    <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <section id="editDialog" class="edit-overlay" aria-label="Edit transaction" aria-modal="true" role="dialog" hidden>
+      <div class="edit-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Edit</p>
+            <h2>Update transaction</h2>
+          </div>
+          <button id="closeEditBtn" class="ghost-button" type="button">Close</button>
+        </div>
+        <form id="editForm" class="transaction-form">
+          <label>
+            <span>Date</span>
+            <input id="editDateInput" type="date" required />
+          </label>
+          <label>
+            <span>Type</span>
+            <select id="editTypeInput">
+              <option>Expense</option>
+              <option>Income</option>
+            </select>
+          </label>
+          <label>
+            <span>Category</span>
+            <select id="editCategoryInput"></select>
+          </label>
+          <label>
+            <span>Account</span>
+            <select id="editAccountInput"></select>
+          </label>
+          <label class="wide">
+            <span>Description</span>
+            <input id="editDescriptionInput" type="text" />
+          </label>
+          <label>
+            <span>Amount</span>
+            <input id="editAmountInput" type="number" min="0.01" step="0.01" required />
+          </label>
+          <button class="primary-button wide" type="submit">Save changes</button>
+        </form>
+      </div>
+    </section>
+
+    <script src="./app.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      }
+    </script>
+  </body>
+</html>

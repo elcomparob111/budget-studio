@@ -1,0 +1,6 @@
+# Personal data and working files - not part of the shared app
+outputs/
+.codex-work/
+*.backup-*.xlsx
+node_modules/
+.DS_Store
