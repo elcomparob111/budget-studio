@@ -4,7 +4,10 @@ outputs/
 *.backup-*.xlsx
 node_modules/
 .DS_Store
-supabase/
+# Local Supabase CLI artifacts (committed: supabase/rls.sql)
+supabase/.temp/
+supabase/.branches/
+ios/build/
 ios/BudgetStudio.xcodeproj/
 ios/DerivedData/
 ios/DerivedData-Device/

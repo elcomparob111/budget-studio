@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; base-uri 'self'; form-action 'self'" />
+    <title>Privacy — Budget Studio</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      .legal-page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+      .legal-page h1 { margin: 0 0 8px; font-size: 1.75rem; }
+      .legal-page h2 { margin: 28px 0 8px; font-size: 1.1rem; }
+      .legal-page p, .legal-page li { color: var(--muted); line-height: 1.55; }
+      .legal-page a { color: inherit; }
+      .legal-back { display: inline-block; margin-bottom: 20px; }
+    </style>
+  </head>
+  <body>
+    <main class="legal-page">
+      <a class="legal-back" href="./index.html">← Back to Budget Studio</a>
+      <h1>Privacy Policy</h1>
+      <p><em>Placeholder — replace with counsel-reviewed text before a commercial launch.</em></p>
+      <p>Last updated: July 9, 2026</p>
+
+      <h2>What Budget Studio stores</h2>
+      <p>
+        Budget Studio is a personal budgeting tool. If you create an account, we store your email,
+        optional display name, and the budget data you enter (categories, amounts, transaction notes)
+        in Supabase (hosted Postgres + Auth). On this device we may also keep a local cache in your
+        browser so the app works offline.
+      </p>
+
+      <h2>What we do not collect</h2>
+      <p>
+        We do not ask for bank login credentials, account numbers, Social Security numbers, or payment
+        card details. There is no bank aggregation in this app.
+      </p>
+
+      <h2>How data is protected</h2>
+      <p>
+        Authentication and password hashing are handled by Supabase Auth. Budget rows are protected with
+        Row Level Security so each signed-in user can only access their own data. Encryption at rest and
+        in transit for cloud data is provided by the hosting providers (Supabase / your browser’s HTTPS
+        connection to GitHub Pages).
+      </p>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li>Export CSV or JSON backup from Settings.</li>
+        <li>Delete cloud budget data from Settings → Delete cloud data (then sign out).</li>
+        <li>
+          To fully remove your Auth user, delete it in the Supabase project dashboard
+          (Authentication → Users), or contact the app operator.
+        </li>
+      </ul>
+
+      <h2>Disclaimer</h2>
+      <p>
+        Budget Studio is not financial, legal, tax, or investment advice. Figures you enter are for
+        personal organization only.
+      </p>
+
+      <p><a href="./terms.html">Terms of Use</a></p>
+    </main>
+  </body>
+</html>

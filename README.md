@@ -29,6 +29,8 @@ Live site: https://elcomparob111.github.io/budget-studio/
 
 You can also open `index.html` directly in a browser, but a local server is recommended for PWA features.
 
+Security launch checklist: see [`SECURITY.md`](SECURITY.md). Run `npm test` and `npm run security:scan` before release.
+
 ## Features
 
 - Guided budget setup with income-based category suggestions

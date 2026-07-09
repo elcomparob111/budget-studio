@@ -1,5 +1,18 @@
-const CACHE = "budget-studio-v27";
-const ASSETS = ["./", "./index.html", "./app.js", "./sync.js", "./sync-config.js", "./styles.css", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png"];
+const CACHE = "budget-studio-v28";
+const ASSETS = [
+  "./",
+  "./index.html",
+  "./app.js",
+  "./sync.js",
+  "./sync-config.js",
+  "./security.js",
+  "./styles.css",
+  "./manifest.json",
+  "./privacy.html",
+  "./terms.html",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));

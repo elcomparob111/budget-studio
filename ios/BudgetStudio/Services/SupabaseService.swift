@@ -2,6 +2,7 @@ import Foundation
 import Supabase
 
 enum SyncConfig {
+    // Anon / publishable key only — never embed service_role in the app.
     static let url = URL(string: "https://dhlaqqghjfmgdlkfxlxg.supabase.co")!
     static let anonKey = "sb_publishable_poVoneGFjZxQ2ecE7fQSiA_7YJinWt6"
 }
@@ -92,10 +93,21 @@ final class SupabaseService {
 
     func friendlyAuthError(_ error: Error) -> String {
         let message = error.localizedDescription.lowercased()
-        if message.contains("invalid login credentials") { return "Email or password is incorrect." }
-        if message.contains("already registered") { return "That email already has an account. Try signing in." }
-        if message.contains("valid email") { return "That doesn't look like a valid email." }
-        if message.contains("at least 6") { return "Password needs at least 6 characters." }
+        if message.contains("rate limit") || message.contains("too many") {
+            return "Too many attempts. Wait a minute and try again."
+        }
+        if message.contains("valid email") || message.contains("invalid format") {
+            return "Enter a valid email address."
+        }
+        if message.contains("at least") && message.contains("character") {
+            return "Password does not meet the requirements."
+        }
+        if message.contains("invalid login")
+            || message.contains("invalid credentials")
+            || message.contains("already registered")
+            || message.contains("user not found") {
+            return "Unable to sign in with those details. Check your email and password, or create an account."
+        }
         return "Something went wrong. Please try again."
     }
 }

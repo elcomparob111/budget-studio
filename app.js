@@ -9,7 +9,22 @@ import {
   fetchCloudBudget,
   pushCloudBudget,
   friendlyAuthError,
+  deleteOwnBudgetAndSignOut,
 } from "./sync.js";
+import {
+  AUTH_PASSWORD_HINT,
+  clearAuthFailures,
+  escapeHtml,
+  getAuthLockout,
+  safeLog,
+  validateAmount,
+  validateCategoryName,
+  validateDate,
+  validateDescription,
+  validateEmail,
+  validatePassword,
+  validateTransactionType,
+} from "./security.js";
 
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
@@ -392,6 +407,10 @@ const elements = {
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
   exportJsonBtn: document.querySelector("#exportJsonBtn"),
   importJsonInput: document.querySelector("#importJsonInput"),
+  deleteAccountBtn: document.querySelector("#deleteAccountBtn"),
+  privacyLink: document.querySelector("#privacyLink"),
+  termsLink: document.querySelector("#termsLink"),
+  authLegal: document.querySelector("#authLegal"),
   setupWizard: document.querySelector("#setupWizard"),
   wizardStepLabel: document.querySelector("#wizardStepLabel"),
   wizardProgressFill: document.querySelector("#wizardProgressFill"),
@@ -593,19 +612,28 @@ function attachEvents() {
 
   elements.transactionForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const amount = Number(elements.amountInput.value);
-    if (!elements.dateInput.value || !Number.isFinite(amount) || amount <= 0) {
-      setMessage("Enter a date and an amount greater than zero.", true);
+    const dateCheck = validateDate(elements.dateInput.value);
+    const amountCheck = validateAmount(elements.amountInput.value);
+    const typeCheck = validateTransactionType(elements.typeInput.value);
+    const categoryCheck = validateCategoryName(elements.categoryInput.value);
+    const descriptionCheck = validateDescription(
+      elements.descriptionInput.value.trim() || elements.categoryInput.value,
+    );
+    if (!dateCheck.ok || !amountCheck.ok || !typeCheck.ok || !categoryCheck.ok || !descriptionCheck.ok) {
+      setMessage(
+        dateCheck.message || amountCheck.message || typeCheck.message || categoryCheck.message || descriptionCheck.message,
+        true,
+      );
       return;
     }
 
     const item = transaction(
-      elements.dateInput.value,
-      elements.typeInput.value,
-      elements.categoryInput.value,
-      elements.descriptionInput.value.trim() || elements.categoryInput.value,
+      dateCheck.value,
+      typeCheck.value,
+      categoryCheck.value,
+      descriptionCheck.value,
       elements.accountInput.value,
-      amount,
+      amountCheck.value,
     );
 
     state.transactions.push(item);
@@ -751,6 +779,7 @@ function attachEvents() {
   elements.exportCsvBtn.addEventListener("click", exportCsv);
   elements.exportJsonBtn.addEventListener("click", exportJson);
   elements.importJsonInput.addEventListener("change", importJson);
+  elements.deleteAccountBtn?.addEventListener("click", handleDeleteAccount);
 
   elements.authForm.addEventListener("submit", handleAuthSubmit);
   elements.authModeToggleBtn.addEventListener("click", () => {
@@ -758,8 +787,7 @@ function attachEvents() {
   });
   elements.authForgotBtn.addEventListener("click", handleForgotPassword);
   elements.signOutBtn.addEventListener("click", async () => {
-    await signOutUser();
-    showToast("Signed out.");
+    await handleSignOut();
   });
 
   elements.themeToggleBtn.addEventListener("click", toggleTheme);
@@ -1013,11 +1041,12 @@ function renderCategoryChecklist() {
 }
 
 function addCustomWizardCategory() {
-  const name = cleanCategoryName(elements.customCategoryNameInput.value);
-  if (!name) {
-    setCustomCategoryMessage("Type a category name first.", true);
+  const nameCheck = validateCategoryName(elements.customCategoryNameInput.value);
+  if (!nameCheck.ok) {
+    setCustomCategoryMessage(nameCheck.message, true);
     return;
   }
+  const name = nameCheck.value;
 
   if (categoryExists(getWizardExpenseCategories(), name)) {
     setCustomCategoryMessage(`${name} already exists. Select it above.`, true);
@@ -1453,22 +1482,24 @@ function renderBudgetEditor() {
 }
 
 function addCategoryFromBudgetPanel() {
-  const name = cleanCategoryName(elements.categoryBuilderNameInput.value);
-  if (!name) {
-    setCategoryBuilderMessage("Type a category name first.", true);
+  const nameCheck = validateCategoryName(elements.categoryBuilderNameInput.value);
+  if (!nameCheck.ok) {
+    setCategoryBuilderMessage(nameCheck.message, true);
     return;
   }
+  const name = nameCheck.value;
 
   if (categoryExists(state.categories, name)) {
     setCategoryBuilderMessage(`${name} already exists. Update its budget above.`, true);
     return;
   }
 
+  const budget = Number(elements.categoryBuilderBudgetInput.value);
   state.categories.push({
     name,
     type: "Expense",
     group: normalizeCategoryGroup(elements.categoryBuilderGroupInput.value),
-    budget: Math.max(0, Number(elements.categoryBuilderBudgetInput.value) || 0),
+    budget: Number.isFinite(budget) && budget >= 0 ? Math.min(budget, 1_000_000_000) : 0,
   });
   saveState();
   populateCategorySelect();
@@ -1688,7 +1719,7 @@ function setAuthMode(mode) {
       ? "Create your account"
       : "Welcome back";
   elements.authCopy.textContent = recovery
-    ? "Enter a new password for your Budget Studio account. At least 6 characters."
+    ? `Enter a new password for your Budget Studio account. ${AUTH_PASSWORD_HINT}.`
     : "Sign in and your budget follows you on every device — private to your account only.";
 
   elements.authNameLabel.hidden = !signup;
@@ -1696,7 +1727,8 @@ function setAuthMode(mode) {
   elements.authEmailLabel.hidden = recovery;
   elements.authEmailInput.required = !recovery;
   elements.authPasswordLabelText.textContent = recovery ? "New password" : "Password";
-  elements.authPasswordInput.placeholder = recovery ? "New password (at least 6 characters)" : "At least 6 characters";
+  elements.authPasswordInput.placeholder = AUTH_PASSWORD_HINT;
+  elements.authPasswordInput.minLength = signup || recovery ? 8 : 1;
   elements.authPasswordInput.autocomplete = signup || recovery ? "new-password" : "current-password";
   elements.authSubmitBtn.textContent = recovery ? "Save new password" : signup ? "Create account" : "Sign in";
   elements.authModeToggleBtn.hidden = recovery;
@@ -1706,8 +1738,13 @@ function setAuthMode(mode) {
 }
 
 async function handleForgotPassword() {
-  const email = elements.authEmailInput.value.trim();
-  if (!email) {
+  const lock = getAuthLockout();
+  if (lock.locked) {
+    setAuthMessage(`Too many attempts. Wait ${Math.ceil(lock.retryAfterMs / 1000)}s and try again.`, true);
+    return;
+  }
+  const emailCheck = validateEmail(elements.authEmailInput.value);
+  if (!emailCheck.ok) {
     setAuthMessage("Enter your email first, then tap Forgot password.", true);
     elements.authEmailInput.focus();
     return;
@@ -1715,8 +1752,9 @@ async function handleForgotPassword() {
   elements.authForgotBtn.disabled = true;
   setAuthMessage("Sending reset email...");
   try {
-    await resetPassword(email);
-    setAuthMessage("Check your email for a reset link. If nothing arrives in a minute, check spam.");
+    await resetPassword(emailCheck.value);
+    // Generic success — do not reveal whether the email exists.
+    setAuthMessage("If an account exists for that email, a reset link is on the way. Check spam if nothing arrives.");
   } catch (error) {
     setAuthMessage(friendlyAuthError(error), true);
   } finally {
@@ -1731,19 +1769,26 @@ function setAuthMessage(message, isError = false) {
 
 async function handleAuthSubmit(event) {
   event.preventDefault();
+  const lock = getAuthLockout();
+  if (lock.locked) {
+    setAuthMessage(`Too many attempts. Wait ${Math.ceil(lock.retryAfterMs / 1000)}s and try again.`, true);
+    return;
+  }
+
   const email = elements.authEmailInput.value.trim();
   const password = elements.authPasswordInput.value;
   const name = cleanProfileName(elements.authNameInput.value);
 
   if (authMode === "recovery") {
-    if (password.length < 6) {
-      setAuthMessage("Password needs at least 6 characters.", true);
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.ok) {
+      setAuthMessage(passwordCheck.message, true);
       return;
     }
     elements.authSubmitBtn.disabled = true;
     setAuthMessage("Saving new password...");
     try {
-      await updatePassword(password);
+      await updatePassword(passwordCheck.value);
       elements.authPasswordInput.value = "";
       history.replaceState(null, "", window.location.pathname);
       setAuthMode("signin");
@@ -1762,20 +1807,102 @@ async function handleAuthSubmit(event) {
     return;
   }
 
+  const emailCheck = validateEmail(email);
+  if (!emailCheck.ok) {
+    setAuthMessage(emailCheck.message, true);
+    return;
+  }
+
+  if (authMode === "signup") {
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.ok) {
+      setAuthMessage(passwordCheck.message, true);
+      return;
+    }
+  } else if (!password) {
+    setAuthMessage("Enter your password.", true);
+    return;
+  }
+
   elements.authSubmitBtn.disabled = true;
   setAuthMessage(authMode === "signup" ? "Creating your account..." : "Signing in...");
   try {
     if (authMode === "signup") {
-      await signUp(name, email, password);
+      await signUp(name, emailCheck.value, password);
     } else {
-      await signIn(email, password);
+      await signIn(emailCheck.value, password);
     }
     elements.authPasswordInput.value = "";
+    clearAuthFailures();
     // onAuthStateChanged drives the rest
   } catch (error) {
+    safeLog("warn", "Auth submit failed", { mode: authMode });
     setAuthMessage(friendlyAuthError(error), true);
   } finally {
     elements.authSubmitBtn.disabled = false;
+  }
+}
+
+function clearLocalUserCaches(uid) {
+  try {
+    if (uid) localStorage.removeItem(cacheKey(uid));
+    localStorage.removeItem(CLOUD_DIRTY_KEY);
+    // Clear any legacy device-locked caches from older versions.
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith(`${STORAGE_KEY}:uid:`) || key === STORAGE_KEY || key === PROFILES_KEY)) {
+        toRemove.push(key);
+      }
+    }
+    toRemove.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // ignore storage errors during logout
+  }
+  clearAuthFailures();
+}
+
+async function handleSignOut() {
+  const uid = currentUser?.uid;
+  try {
+    if (!localOnlyMode) await signOutUser();
+  } catch (error) {
+    safeLog("warn", "Sign-out failed", { code: error?.code || "signout" });
+  }
+  clearLocalUserCaches(uid);
+  currentUser = null;
+  state = createEmptyState();
+  renderIdentityUI();
+  render();
+  openAuthGate();
+  showToast("Signed out.");
+}
+
+async function handleDeleteAccount() {
+  if (localOnlyMode || !currentUser) {
+    showToast("Sign in to manage your cloud account.", "error");
+    return;
+  }
+  const confirmed = window.confirm(
+    "Delete your cloud budget data and sign out?\n\nThis removes your synced budget from Budget Studio. Your Auth login may still exist until you delete it in Supabase (see Privacy). Export a backup first if you need it.",
+  );
+  if (!confirmed) return;
+  const uid = currentUser.uid;
+  elements.deleteAccountBtn.disabled = true;
+  try {
+    await deleteOwnBudgetAndSignOut();
+    clearLocalUserCaches(uid);
+    currentUser = null;
+    state = createEmptyState();
+    renderIdentityUI();
+    render();
+    openAuthGate();
+    setAuthMessage("Your budget data was deleted and you are signed out. To remove the login entirely, delete the user in Supabase Authentication.");
+    showToast("Budget data deleted.");
+  } catch (error) {
+    showToast(friendlyAuthError(error), "error");
+  } finally {
+    elements.deleteAccountBtn.disabled = false;
   }
 }
 
@@ -1802,6 +1929,9 @@ function renderIdentityUI() {
     if (showToday) elements.appSubtitle.textContent = formatFriendlyToday();
   }
   elements.signOutBtn.hidden = localOnlyMode || !currentUser;
+  if (elements.deleteAccountBtn) {
+    elements.deleteAccountBtn.hidden = localOnlyMode || !currentUser;
+  }
   if (elements.tabBar) elements.tabBar.hidden = Boolean(elements.authGate && !elements.authGate.hidden);
 }
 
@@ -2034,18 +2164,25 @@ function saveEditTransaction(event) {
   const item = state.transactions.find((transaction) => transaction.id === editingTransactionId);
   if (!item) return;
 
-  const amount = Number(elements.editAmountInput.value);
-  if (!elements.editDateInput.value || !Number.isFinite(amount) || amount <= 0) {
-    showToast("Enter a date and an amount greater than zero.", "error");
+  const dateCheck = validateDate(elements.editDateInput.value);
+  const amountCheck = validateAmount(elements.editAmountInput.value);
+  const typeCheck = validateTransactionType(elements.editTypeInput.value);
+  const categoryCheck = validateCategoryName(elements.editCategoryInput.value);
+  const descriptionCheck = validateDescription(elements.editDescriptionInput.value);
+  if (!dateCheck.ok || !amountCheck.ok || !typeCheck.ok || !categoryCheck.ok || !descriptionCheck.ok) {
+    showToast(
+      dateCheck.message || amountCheck.message || typeCheck.message || categoryCheck.message || descriptionCheck.message,
+      "error",
+    );
     return;
   }
 
-  item.date = elements.editDateInput.value;
-  item.type = elements.editTypeInput.value;
-  item.category = elements.editCategoryInput.value;
+  item.date = dateCheck.value;
+  item.type = typeCheck.value;
+  item.category = categoryCheck.value;
   item.account = elements.editAccountInput.value;
-  item.description = elements.editDescriptionInput.value.trim() || item.category;
-  item.amount = amount;
+  item.description = descriptionCheck.value || categoryCheck.value;
+  item.amount = amountCheck.value;
   saveState();
   closeEditDialog();
   render();
@@ -2332,11 +2469,4 @@ function csvCell(value) {
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+// escapeHtml is imported from security.js for all user-controlled HTML rendering.

@@ -620,6 +620,21 @@ td.amount { font-weight: 700; color: var(--ink); }
   gap: 10px;
 }
 
+.settings-legal,
+.auth-legal {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.settings-legal a,
+.auth-legal a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .tab-bar {
   position: fixed;
   left: 0;

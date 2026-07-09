@@ -1,5 +1,7 @@
--- Budget Studio schema + RLS (also mirrored in supabase/rls.sql).
--- Run in the Supabase SQL Editor before launch.
+-- Budget Studio — Row Level Security (run in Supabase SQL Editor before launch)
+-- Ensures every authenticated user can only read/write their own budget row.
+-- Safe to re-run: policies are dropped/recreated; table is created if missing.
+
 create table if not exists public.budgets (
   user_id uuid primary key references auth.users (id) on delete cascade,
   state jsonb not null,
@@ -9,6 +11,7 @@ create table if not exists public.budgets (
 
 alter table public.budgets enable row level security;
 
+-- Revoke broad grants; authenticated role uses RLS policies below.
 revoke all on table public.budgets from anon;
 grant select, insert, update, delete on table public.budgets to authenticated;
 
@@ -36,3 +39,6 @@ create policy "Users delete own budget"
   on public.budgets for delete
   to authenticated
   using (auth.uid() = user_id);
+
+-- Optional: block PostgREST from exposing the table to the anon role entirely.
+-- (Anon key is still used for Auth; RLS + revoke above is the real control.)
