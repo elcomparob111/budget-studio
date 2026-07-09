@@ -921,6 +921,61 @@ td.amount { font-weight: 700; color: var(--ink); }
   min-height: 72px;
 }
 
+.settings-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-summary-emoji {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--soft-green) 45%, transparent);
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.settings-summary-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-summary-copy strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.settings-summary-copy span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.settings-summary-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.settings-summary-edit {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .pay-schedule-form {
   display: grid;
   gap: 14px;

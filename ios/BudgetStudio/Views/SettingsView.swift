@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject private var store: BudgetStore
     @Binding var showSetup: Bool
 
+    @State private var showPayScheduleEditor = false
     @State private var payAmountText = ""
     @State private var payFrequency = "biweekly"
     @State private var nextPayDate = Date()
@@ -19,11 +20,27 @@ struct SettingsView: View {
         store.payPeriodSummary?.rangeLabel
     }
 
+    private var payScheduleSubtitle: String {
+        let profile = store.state.setupProfile
+        let frequencyLabel = frequencies.first(where: { $0.0 == (profile?.payFrequency ?? "biweekly") })?.1 ?? "Biweekly"
+        let amount = profile?.payAmount ?? 0
+        var parts: [String] = []
+        if let activePeriodLabel {
+            parts.append(activePeriodLabel)
+        }
+        if amount > 0 {
+            parts.append("\(currency(amount)) · \(frequencyLabel)")
+        } else {
+            parts.append(frequencyLabel)
+        }
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
-                    payScheduleCard
+                    payScheduleSummaryRow
 
                     VStack(spacing: AppTheme.sm) {
                         settingsButton(title: "Setup wizard", emoji: "🪄") { showSetup = true }
@@ -84,6 +101,20 @@ struct SettingsView: View {
             }
             .background(AppTheme.background.ignoresSafeArea())
             .navigationTitle("Settings")
+            .sheet(isPresented: $showPayScheduleEditor) {
+                PayScheduleEditorSheet(
+                    payAmountText: $payAmountText,
+                    payFrequency: $payFrequency,
+                    nextPayDate: $nextPayDate,
+                    frequencies: frequencies,
+                    onSave: {
+                        savePaySchedule()
+                        showPayScheduleEditor = false
+                    },
+                    onCancel: { showPayScheduleEditor = false }
+                )
+                .appSheetChrome(detents: [.medium, .large])
+            }
             .onAppear(perform: loadPayScheduleFromStore)
             .onChange(of: showSetup) { _, isShowing in
                 if !isShowing { loadPayScheduleFromStore() }
@@ -91,68 +122,37 @@ struct SettingsView: View {
         }
     }
 
-    private var payScheduleCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.lg) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: AppTheme.xs) {
-                    Text("Pay schedule")
-                        .font(.app(18, weight: .bold))
-                        .foregroundStyle(AppTheme.primaryText)
-                    if let activePeriodLabel {
-                        Text(activePeriodLabel)
-                            .font(.app(13, weight: .medium))
-                            .foregroundStyle(AppTheme.secondaryText)
-                    }
-                }
-                Spacer()
+    private var payScheduleSummaryRow: some View {
+        Button {
+            loadPayScheduleFromStore()
+            showPayScheduleEditor = true
+        } label: {
+            HStack(spacing: AppTheme.md) {
                 Text("💵")
                     .font(.app(22))
                     .frame(width: 40, height: 40)
                     .background(AppTheme.pastelGreen.opacity(0.45), in: Circle())
-            }
-
-            labeledField("Amount per check") {
-                TextField("e.g. 2100", text: $payAmountText)
-                    .keyboardType(.decimalPad)
-                    .font(.app(16, weight: .medium))
-            }
-
-            VStack(alignment: .leading, spacing: AppTheme.sm) {
-                Text("Frequency")
-                    .font(.app(13, weight: .semibold))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Pay schedule")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text(payScheduleSubtitle)
+                        .font(.app(13, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: AppTheme.sm)
+                Text("Edit")
+                    .font(.app(14, weight: .semibold))
                     .foregroundStyle(AppTheme.secondaryText)
-                FlowFrequencyChips(selection: $payFrequency, options: frequencies)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.secondaryText)
             }
-
-            DatePicker("Next payday", selection: $nextPayDate, displayedComponents: .date)
-                .font(.app(15, weight: .medium))
-                .tint(AppTheme.primaryText)
-
-            Button(action: savePaySchedule) {
-                Text("Save pay schedule")
-                    .font(.app(16, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(AppTheme.primaryText)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
+            .appCard()
         }
-        .appCard()
-    }
-
-    private func labeledField<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.sm) {
-            Text(title)
-                .font(.app(13, weight: .semibold))
-                .foregroundStyle(AppTheme.secondaryText)
-            content()
-                .padding(.horizontal, AppTheme.lg)
-                .padding(.vertical, AppTheme.md)
-                .background(AppTheme.inputFill)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens pay schedule editor")
     }
 
     private func loadPayScheduleFromStore() {
@@ -209,6 +209,80 @@ struct SettingsView: View {
             .appCard()
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct PayScheduleEditorSheet: View {
+    @Binding var payAmountText: String
+    @Binding var payFrequency: String
+    @Binding var nextPayDate: Date
+    let frequencies: [(String, String)]
+    let onSave: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.lg) {
+                    labeledField("Amount per check") {
+                        TextField("e.g. 2100", text: $payAmountText)
+                            .keyboardType(.decimalPad)
+                            .font(.app(16, weight: .medium))
+                            .appInputText()
+                    }
+
+                    VStack(alignment: .leading, spacing: AppTheme.sm) {
+                        Text("Frequency")
+                            .font(.app(13, weight: .semibold))
+                            .foregroundStyle(AppTheme.secondaryText)
+                        FlowFrequencyChips(selection: $payFrequency, options: frequencies)
+                    }
+
+                    DatePicker("Next payday", selection: $nextPayDate, displayedComponents: .date)
+                        .font(.app(15, weight: .medium))
+                        .tint(AppTheme.primaryText)
+
+                    Button(action: onSave) {
+                        Text("Save pay schedule")
+                            .font(.app(16, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(AppTheme.primaryText)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, AppTheme.pagePadding)
+                .padding(.top, AppTheme.lg)
+                .padding(.bottom, AppTheme.xxl)
+                .readableWidth(AdaptiveLayout.formMaxWidth)
+            }
+            .background(AppTheme.background.ignoresSafeArea())
+            .navigationTitle("Pay schedule")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                        .font(.app(16, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+            }
+            .decimalPadDoneToolbar()
+        }
+    }
+
+    private func labeledField<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.sm) {
+            Text(title)
+                .font(.app(13, weight: .semibold))
+                .foregroundStyle(AppTheme.secondaryText)
+            content()
+                .padding(.horizontal, AppTheme.lg)
+                .padding(.vertical, AppTheme.md)
+                .background(AppTheme.inputFill)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
     }
 }
 

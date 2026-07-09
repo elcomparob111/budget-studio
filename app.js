@@ -341,10 +341,13 @@ const elements = {
   paycheckLeftRange: document.querySelector("#paycheckLeftRange"),
   paycheckBreakdown: document.querySelector("#paycheckBreakdown"),
   payScheduleForm: document.querySelector("#payScheduleForm"),
+  payScheduleDialog: document.querySelector("#payScheduleDialog"),
+  editPayScheduleBtn: document.querySelector("#editPayScheduleBtn"),
+  closePayScheduleBtn: document.querySelector("#closePayScheduleBtn"),
   settingsPayFrequencyGrid: document.querySelector("#settingsPayFrequencyGrid"),
   settingsPayAmountInput: document.querySelector("#settingsPayAmountInput"),
   settingsNextPayDateInput: document.querySelector("#settingsNextPayDateInput"),
-  settingsPayPeriodChip: document.querySelector("#settingsPayPeriodChip"),
+  settingsPayScheduleSubtitle: document.querySelector("#settingsPayScheduleSubtitle"),
   savePayScheduleBtn: document.querySelector("#savePayScheduleBtn"),
   netMetric: document.querySelector("#netMetric"),
   savingsMetric: document.querySelector("#savingsMetric"),
@@ -639,6 +642,11 @@ function attachEvents() {
     event.preventDefault();
     savePayScheduleFromSettings();
   });
+  elements.editPayScheduleBtn?.addEventListener("click", openPayScheduleDialog);
+  elements.closePayScheduleBtn?.addEventListener("click", closePayScheduleDialog);
+  elements.payScheduleDialog?.addEventListener("click", (event) => {
+    if (event.target === elements.payScheduleDialog) closePayScheduleDialog();
+  });
   elements.settingsPayFrequencyGrid?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-frequency-id]");
     if (!button || !elements.settingsPayFrequencyGrid) return;
@@ -764,9 +772,21 @@ function switchTab(tab) {
     if (selected) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
-  if (activeTab === "settings") populatePayScheduleForm();
+  if (activeTab === "settings") updatePayScheduleSummary();
   renderIdentityUI();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function updatePayScheduleSummary() {
+  const profile = normalizeSetupProfile(state.setupProfile);
+  const month = elements.monthInput?.value || currentMonthKey();
+  const paySummary = getPayPeriodSummary(month);
+  const frequencyName = payFrequencies[profile.payFrequency]?.name || "Biweekly";
+  const amountPart = profile.payAmount > 0 ? `${money(profile.payAmount)} · ${frequencyName}` : frequencyName;
+  const subtitle = paySummary.rangeLabel ? `${paySummary.rangeLabel} · ${amountPart}` : amountPart;
+  if (elements.settingsPayScheduleSubtitle) {
+    elements.settingsPayScheduleSubtitle.textContent = subtitle;
+  }
 }
 
 function populatePayScheduleForm() {
@@ -789,10 +809,19 @@ function populatePayScheduleForm() {
   if (elements.settingsNextPayDateInput) {
     elements.settingsNextPayDateInput.value = profile.nextPayDate || todayString();
   }
-  const month = elements.monthInput?.value || currentMonthKey();
-  const paySummary = getPayPeriodSummary(month);
-  if (elements.settingsPayPeriodChip) {
-    elements.settingsPayPeriodChip.textContent = paySummary.rangeLabel;
+  updatePayScheduleSummary();
+}
+
+function openPayScheduleDialog() {
+  populatePayScheduleForm();
+  if (elements.payScheduleDialog) elements.payScheduleDialog.hidden = false;
+  document.body.classList.add("wizard-open");
+}
+
+function closePayScheduleDialog() {
+  if (elements.payScheduleDialog) elements.payScheduleDialog.hidden = true;
+  if (elements.setupWizard?.hidden && elements.editDialog?.hidden) {
+    document.body.classList.remove("wizard-open");
   }
 }
 
@@ -813,7 +842,8 @@ function savePayScheduleFromSettings() {
   };
   state.setupComplete = true;
   saveState();
-  populatePayScheduleForm();
+  closePayScheduleDialog();
+  updatePayScheduleSummary();
   render();
   showToast("Pay schedule updated.");
 }
@@ -1185,9 +1215,7 @@ function renderPaycheckView(month) {
   if (elements.paycheckLeftRange) {
     elements.paycheckLeftRange.textContent = paySummary.rangeLabel;
   }
-  if (elements.settingsPayPeriodChip) {
-    elements.settingsPayPeriodChip.textContent = paySummary.rangeLabel;
-  }
+  updatePayScheduleSummary();
 
   const rows = paySummary.categoryRows.filter((row) => row.spent > 0).slice(0, 5);
   if (!rows.length) {
@@ -1998,6 +2026,11 @@ function installGlobalKeyboard() {
       return;
     }
     if (event.key !== "Escape") return;
+    if (elements.payScheduleDialog && !elements.payScheduleDialog.hidden) {
+      event.preventDefault();
+      closePayScheduleDialog();
+      return;
+    }
     if (!elements.editDialog.hidden) {
       event.preventDefault();
       closeEditDialog();
@@ -2008,7 +2041,7 @@ function installGlobalKeyboard() {
       closeWizard();
       return;
     }
-    if (activeTab === "settings" && elements.setupWizard.hidden && elements.editDialog.hidden) {
+    if (activeTab === "settings" && elements.setupWizard.hidden && elements.editDialog.hidden && (!elements.payScheduleDialog || elements.payScheduleDialog.hidden)) {
       event.preventDefault();
       closeSettingsView();
     }
