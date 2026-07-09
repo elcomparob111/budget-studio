@@ -1986,40 +1986,6 @@ function getPayPeriodForDate(dateString, profileInput) {
   return { start: toDateString(start), end: toDateString(end) };
 }
 
-function getPaydaysForMonth(month, profileInput) {
-  const profile = normalizeSetupProfile(profileInput);
-  const monthStart = parseLocalDate(`${month}-01`);
-  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-
-  if (profile.payFrequency === "monthly") {
-    const preferredDay = parseLocalDate(profile.nextPayDate).getDate();
-    const payday = new Date(monthStart.getFullYear(), monthStart.getMonth(), Math.min(preferredDay, monthEnd.getDate()));
-    return [toDateString(payday)];
-  }
-
-  if (profile.payFrequency === "semimonthly") {
-    return [1, 15]
-      .map((day) => new Date(monthStart.getFullYear(), monthStart.getMonth(), Math.min(day, monthEnd.getDate())))
-      .map(toDateString);
-  }
-
-  const interval = payFrequencies[profile.payFrequency]?.intervalDays || 14;
-  let cursor = parseLocalDate(profile.nextPayDate);
-  while (cursor > monthStart) {
-    cursor = addDays(cursor, -interval);
-  }
-  while (cursor < monthStart) {
-    cursor = addDays(cursor, interval);
-  }
-
-  const paydays = [];
-  while (cursor <= monthEnd) {
-    paydays.push(toDateString(cursor));
-    cursor = addDays(cursor, interval);
-  }
-  return paydays;
-}
-
 function dateInRange(dateString, startString, endString) {
   return dateString >= startString && dateString <= endString;
 }
