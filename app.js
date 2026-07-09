@@ -338,7 +338,14 @@ const elements = {
   paycheckIncomeMetric: document.querySelector("#paycheckIncomeMetric"),
   paycheckSpentMetric: document.querySelector("#paycheckSpentMetric"),
   paycheckLeftMetric: document.querySelector("#paycheckLeftMetric"),
+  paycheckLeftRange: document.querySelector("#paycheckLeftRange"),
   paycheckBreakdown: document.querySelector("#paycheckBreakdown"),
+  payScheduleForm: document.querySelector("#payScheduleForm"),
+  settingsPayFrequencyGrid: document.querySelector("#settingsPayFrequencyGrid"),
+  settingsPayAmountInput: document.querySelector("#settingsPayAmountInput"),
+  settingsNextPayDateInput: document.querySelector("#settingsNextPayDateInput"),
+  settingsPayPeriodChip: document.querySelector("#settingsPayPeriodChip"),
+  savePayScheduleBtn: document.querySelector("#savePayScheduleBtn"),
   netMetric: document.querySelector("#netMetric"),
   savingsMetric: document.querySelector("#savingsMetric"),
   topCategoryBadge: document.querySelector("#topCategoryBadge"),
@@ -628,6 +635,17 @@ function attachEvents() {
   elements.resetBtn.addEventListener("click", () => openWizard(true));
   elements.openSetupBtn.addEventListener("click", () => switchTab("settings"));
   elements.closeSettingsBtn.addEventListener("click", () => switchTab("overview"));
+  elements.payScheduleForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    savePayScheduleFromSettings();
+  });
+  elements.settingsPayFrequencyGrid?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-frequency-id]");
+    if (!button || !elements.settingsPayFrequencyGrid) return;
+    elements.settingsPayFrequencyGrid.querySelectorAll("[data-frequency-id]").forEach((node) => {
+      node.classList.toggle("selected", node === button);
+    });
+  });
   elements.tabBar?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-tab]");
     if (button) switchTab(button.dataset.tab);
@@ -746,8 +764,58 @@ function switchTab(tab) {
     if (selected) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
+  if (activeTab === "settings") populatePayScheduleForm();
   renderIdentityUI();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function populatePayScheduleForm() {
+  if (!elements.settingsPayFrequencyGrid) return;
+  const profile = normalizeSetupProfile(state.setupProfile);
+  elements.settingsPayFrequencyGrid.innerHTML = Object.entries(payFrequencies)
+    .map(([id, frequency]) => {
+      const selected = profile.payFrequency === id ? "selected" : "";
+      return `
+        <button class="pay-frequency-card ${selected}" type="button" data-frequency-id="${id}">
+          <strong>${escapeHtml(frequency.name)}</strong>
+          <span>${escapeHtml(frequency.blurb)}</span>
+        </button>
+      `;
+    })
+    .join("");
+  if (elements.settingsPayAmountInput) {
+    elements.settingsPayAmountInput.value = profile.payAmount > 0 ? String(profile.payAmount) : "";
+  }
+  if (elements.settingsNextPayDateInput) {
+    elements.settingsNextPayDateInput.value = profile.nextPayDate || todayString();
+  }
+  const month = elements.monthInput?.value || currentMonthKey();
+  const paySummary = getPayPeriodSummary(month);
+  if (elements.settingsPayPeriodChip) {
+    elements.settingsPayPeriodChip.textContent = paySummary.rangeLabel;
+  }
+}
+
+function savePayScheduleFromSettings() {
+  const selected = elements.settingsPayFrequencyGrid?.querySelector("[data-frequency-id].selected");
+  const payFrequency = selected?.dataset.frequencyId || state.setupProfile?.payFrequency || "biweekly";
+  const payAmount = Math.max(0, Number(elements.settingsPayAmountInput?.value) || 0);
+  const nextPayDate = elements.settingsNextPayDateInput?.value || todayString();
+  const existing = normalizeSetupProfile(state.setupProfile);
+  state.setupProfile = {
+    ...existing,
+    payAmount,
+    payFrequency,
+    nextPayDate,
+    income: monthlyIncomeFromPay(payAmount, payFrequency),
+    demo: false,
+    completedAt: existing.completedAt || new Date().toISOString(),
+  };
+  state.setupComplete = true;
+  saveState();
+  populatePayScheduleForm();
+  render();
+  showToast("Pay schedule updated.");
 }
 
 function openSettingsView() {
@@ -1114,6 +1182,12 @@ function renderPaycheckView(month) {
   elements.paycheckIncomeMetric.textContent = money(paySummary.income);
   elements.paycheckSpentMetric.textContent = money(paySummary.expenses);
   elements.paycheckLeftMetric.textContent = money(paySummary.left);
+  if (elements.paycheckLeftRange) {
+    elements.paycheckLeftRange.textContent = paySummary.rangeLabel;
+  }
+  if (elements.settingsPayPeriodChip) {
+    elements.settingsPayPeriodChip.textContent = paySummary.rangeLabel;
+  }
 
   const rows = paySummary.categoryRows.filter((row) => row.spent > 0).slice(0, 5);
   if (!rows.length) {

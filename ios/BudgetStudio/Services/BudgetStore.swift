@@ -239,6 +239,39 @@ final class BudgetStore: ObservableObject {
         showToast("Budget setup complete.")
     }
 
+    /// Update pay schedule after setup — recalculates Overview pay window on next render.
+    func updatePaySchedule(payAmount: Double, payFrequency: String, nextPayDate: String) {
+        var profile = state.setupProfile ?? SetupProfile(
+            presetId: "single",
+            income: 0,
+            payAmount: 0,
+            payFrequency: "biweekly",
+            nextPayDate: BudgetCalculator.todayString(),
+            completedAt: ISO8601DateFormatter().string(from: Date()),
+            demo: false
+        )
+        let amount = max(0, payAmount)
+        profile.payAmount = amount
+        profile.payFrequency = payFrequency
+        profile.nextPayDate = nextPayDate
+        profile.income = Self.monthlyIncomeFromPay(amount, payFrequency)
+        profile.demo = false
+        state.setupProfile = profile
+        state.setupComplete = true
+        saveLocal()
+        scheduleCloudSave()
+        showToast("Pay schedule updated.")
+    }
+
+    private static func monthlyIncomeFromPay(_ amount: Double, _ frequency: String) -> Double {
+        switch frequency {
+        case "weekly": return (amount * 52 / 12).rounded()
+        case "biweekly": return (amount * 26 / 12).rounded()
+        case "semimonthly": return (amount * 2).rounded()
+        default: return amount.rounded()
+        }
+    }
+
     /// Persist setup as done without changing categories (Close / Skip).
     /// Matches web `closeWizard` which finishes setup instead of leaving it incomplete.
     func markSetupCompleteIfNeeded() {

@@ -88,7 +88,7 @@
             <article>
               <span>Check left</span>
               <strong id="paycheckLeftMetric">$0</strong>
-              <small>This paycheck</small>
+              <small id="paycheckLeftRange">This paycheck</small>
             </article>
           </div>
           <div id="paycheckBreakdown" class="paycheck-breakdown"></div>
@@ -237,6 +237,30 @@
       </section>
 
       <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
+        <section class="panel settings-actions-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Payday</p>
+              <h2>Pay schedule</h2>
+            </div>
+            <span id="settingsPayPeriodChip" class="money-chip">Not set</span>
+          </div>
+          <form id="payScheduleForm" class="pay-schedule-form">
+            <div id="settingsPayFrequencyGrid" class="pay-frequency-grid compact"></div>
+            <div class="payday-input-grid">
+              <label class="big-input">
+                <span>Amount per check</span>
+                <input id="settingsPayAmountInput" type="number" min="0" step="1" placeholder="e.g. 2100" />
+              </label>
+              <label class="big-input">
+                <span>Next payday</span>
+                <input id="settingsNextPayDateInput" type="date" />
+              </label>
+            </div>
+            <button id="savePayScheduleBtn" class="primary-button" type="submit">Save pay schedule</button>
+          </form>
+        </section>
+
         <section class="panel settings-actions-panel">
           <div class="panel-heading">
             <div>

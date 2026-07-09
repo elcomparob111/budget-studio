@@ -18,6 +18,7 @@ struct SetupWizardView: View {
     private let frequencies = [
         ("weekly", "Weekly"),
         ("biweekly", "Biweekly"),
+        ("semimonthly", "Twice / mo"),
         ("monthly", "Monthly"),
     ]
 
@@ -129,7 +130,7 @@ struct SetupWizardView: View {
                 Text("Frequency")
                     .font(.app(13, weight: .semibold))
                     .foregroundStyle(AppTheme.secondaryText)
-                HStack(spacing: AppTheme.sm) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: AppTheme.sm)], spacing: AppTheme.sm) {
                     ForEach(frequencies, id: \.0) { value, label in
                         Button {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -138,8 +139,8 @@ struct SetupWizardView: View {
                         } label: {
                             Text(label)
                                 .font(.app(13, weight: .semibold))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
                                 .background(payFrequency == value ? AppTheme.pastelBlue.opacity(0.55) : Color.gray.opacity(0.08))
                                 .clipShape(Capsule())
                                 .foregroundStyle(AppTheme.primaryText)
@@ -304,6 +305,7 @@ struct SetupWizardView: View {
         switch frequency {
         case "weekly": return amount * 52 / 12
         case "biweekly": return amount * 26 / 12
+        case "semimonthly": return amount * 2
         default: return amount
         }
     }

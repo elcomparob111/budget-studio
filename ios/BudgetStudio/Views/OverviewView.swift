@@ -225,7 +225,8 @@ struct OverviewView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.sm) {
                 miniStat("Income", currency(pay.income), AppTheme.income)
                 miniStat("Spent", currency(pay.spent), AppTheme.expense)
-                miniStat("Check left", currency(pay.left), AppTheme.primaryText, subtitle: "This paycheck")
+                // Date range under Check left so month vs paycheck windows are obvious at a glance.
+                miniStat("Check left", currency(pay.left), AppTheme.primaryText, subtitle: pay.rangeLabel)
             }
         }
         .appCard()

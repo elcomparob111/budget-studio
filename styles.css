@@ -913,6 +913,24 @@ td.amount { font-weight: 700; color: var(--ink); }
   margin-bottom: 14px;
 }
 
+.pay-frequency-grid.compact {
+  margin-bottom: 16px;
+}
+
+.pay-frequency-grid.compact .pay-frequency-card {
+  min-height: 72px;
+}
+
+.pay-schedule-form {
+  display: grid;
+  gap: 14px;
+}
+
+.pay-schedule-form .primary-button {
+  justify-self: start;
+  min-width: 180px;
+}
+
 .pay-frequency-card {
   min-height: 88px;
 }
