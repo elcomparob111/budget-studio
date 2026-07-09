@@ -39,7 +39,10 @@ struct MonthSummary {
     var income: Double
     var spent: Double
     var budgeted: Double
+    /// Planned expense budgets minus month spent (budget remaining).
     var left: Double
+    /// Logged month income minus month spent (cash remaining).
+    var cashLeft: Double
     var usedRatio: Double
 }
 
@@ -47,6 +50,7 @@ struct PayPeriodSummary {
     var rangeLabel: String
     var income: Double
     var spent: Double
+    /// Pay-period income (logged, else configured check amount) minus period spent.
     var left: Double
 }
 

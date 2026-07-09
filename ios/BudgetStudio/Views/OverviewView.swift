@@ -18,9 +18,26 @@ struct OverviewView: View {
                         columns: AdaptiveLayout.metricColumns(horizontalSizeClass: horizontalSizeClass),
                         spacing: AppTheme.md
                     ) {
-                        MetricCard(title: "Income", value: currency(store.monthSummary.income), subtitle: "This month", valueColor: AppTheme.income, emoji: "💵")
-                        MetricCard(title: "Spent", value: currency(store.monthSummary.spent), subtitle: "Against plan", valueColor: AppTheme.expense, emoji: "🧾")
-                        MetricCard(title: "Left to spend", value: currency(store.monthSummary.left), subtitle: "Before budget limit", emoji: "🎯")
+                        MetricCard(
+                            title: "Income",
+                            value: currency(store.monthSummary.income),
+                            subtitle: "Logged this month",
+                            valueColor: AppTheme.income,
+                            emoji: "💵"
+                        )
+                        MetricCard(
+                            title: "Spent",
+                            value: currency(store.monthSummary.spent),
+                            subtitle: "All expenses this month",
+                            valueColor: AppTheme.expense,
+                            emoji: "🧾"
+                        )
+                        MetricCard(
+                            title: "Budget left",
+                            value: currency(store.monthSummary.left),
+                            subtitle: "Plan \(currency(store.monthSummary.budgeted)) − spent",
+                            emoji: "🎯"
+                        )
                         HStack(spacing: AppTheme.md) {
                             BudgetRingView(progress: store.monthSummary.usedRatio, label: "\(Int(store.monthSummary.usedRatio * 100))%")
                             VStack(alignment: .leading, spacing: AppTheme.xs) {
@@ -28,6 +45,9 @@ struct OverviewView: View {
                                     .font(.app(14, weight: .semibold))
                                     .foregroundStyle(AppTheme.primaryText)
                                 Text(store.monthSummary.usedRatio > 1 ? "Over plan" : "Healthy pace")
+                                    .font(.app(12, weight: .medium))
+                                    .foregroundStyle(AppTheme.secondaryText)
+                                Text("Cash left \(currency(store.monthSummary.cashLeft))")
                                     .font(.app(12, weight: .medium))
                                     .foregroundStyle(AppTheme.secondaryText)
                             }
@@ -202,8 +222,11 @@ struct OverviewView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.sm) {
                 miniStat("Income", currency(pay.income), AppTheme.income)
                 miniStat("Spent", currency(pay.spent), AppTheme.expense)
-                miniStat("Left", currency(pay.left), AppTheme.primaryText)
+                miniStat("Check left", currency(pay.left), AppTheme.primaryText)
             }
+            Text("Check left = income − spent for this pay window only.")
+                .font(.app(12, weight: .medium))
+                .foregroundStyle(AppTheme.secondaryText)
         }
         .appCard()
     }

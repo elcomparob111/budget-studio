@@ -3,8 +3,20 @@ import Foundation
 enum BudgetCalculator {
     static func monthKey(from date: Date) -> String {
         let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
         formatter.dateFormat = "yyyy-MM"
         return formatter.string(from: date)
+    }
+
+    /// Local calendar "today" as `yyyy-MM-dd` (avoids UTC drift from ISO8601).
+    static func todayString(now: Date = Date(), calendar: Calendar = .current) -> String {
+        let comps = calendar.dateComponents([.year, .month, .day], from: now)
+        let year = comps.year ?? 0
+        let month = comps.month ?? 0
+        let day = comps.day ?? 0
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
     static func monthSummary(state: BudgetState, month: String) -> MonthSummary {
@@ -12,23 +24,36 @@ enum BudgetCalculator {
         let income = monthTransactions.filter { $0.type == "Income" }.reduce(0) { $0 + $1.amount }
         let spent = monthTransactions.filter { $0.type == "Expense" }.reduce(0) { $0 + $1.amount }
         let budgeted = state.categories.filter { $0.type == "Expense" }.reduce(0) { $0 + $1.budget }
-        let left = budgeted - spent
+        let budgetLeft = budgeted - spent
+        let cashLeft = income - spent
         let usedRatio = budgeted > 0 ? spent / budgeted : 0
-        return MonthSummary(income: income, spent: spent, budgeted: budgeted, left: left, usedRatio: usedRatio)
+        return MonthSummary(
+            income: income,
+            spent: spent,
+            budgeted: budgeted,
+            left: budgetLeft,
+            cashLeft: cashLeft,
+            usedRatio: usedRatio
+        )
     }
 
-    static func payPeriodSummary(state: BudgetState, month: String) -> PayPeriodSummary? {
+    static func payPeriodSummary(state: BudgetState, month: String, now: Date = Date()) -> PayPeriodSummary? {
         guard let profile = state.setupProfile else { return nil }
-        let today = ISO8601DateFormatter().string(from: Date()).prefix(10)
-        let todayString = String(today)
-        guard let period = payPeriod(for: todayString, profile: profile) else { return nil }
+        let today = todayString(now: now)
+        // When browsing the current month, use today; otherwise use the 1st of that month
+        // so the paycheck window matches the selected month (same as web).
+        let referenceDate = month == String(today.prefix(7)) ? today : "\(month)-01"
+        guard let period = payPeriod(for: referenceDate, profile: profile) else { return nil }
 
         let transactions = state.transactions.filter {
             dateInRange($0.date, start: period.start, end: period.end)
         }
-        let income = transactions.filter { $0.type == "Income" }.reduce(0) { $0 + $1.amount }
+        let loggedIncome = transactions.filter { $0.type == "Income" }.reduce(0) { $0 + $1.amount }
+        // Show logged paycheck income when present; otherwise fall back to configured check amount.
+        let income = loggedIncome > 0 ? loggedIncome : max(0, profile.payAmount)
         let spent = transactions.filter { $0.type == "Expense" }.reduce(0) { $0 + $1.amount }
-        let left = profile.payAmount - spent
+        // Left must use the same income basis shown in the Income metric (not a hidden payAmount).
+        let left = income - spent
         return PayPeriodSummary(
             rangeLabel: "\(formatShort(period.start)) – \(formatShort(period.end))",
             income: income,
@@ -66,6 +91,23 @@ enum BudgetCalculator {
             return (formatISO(anchor), formatISO(end))
         }
 
+        if frequency == "semimonthly" {
+            let comps = Calendar.current.dateComponents([.year, .month, .day], from: date)
+            let day = comps.day ?? 1
+            let isFirstHalf = day <= 15
+            var startComps = comps
+            startComps.day = isFirstHalf ? 1 : 16
+            let start = Calendar.current.date(from: startComps)!
+            if isFirstHalf {
+                var endComps = comps
+                endComps.day = 15
+                let end = Calendar.current.date(from: endComps)!
+                return (formatISO(start), formatISO(end))
+            }
+            let end = Calendar.current.date(byAdding: DateComponents(month: 1, day: -1), to: Calendar.current.date(from: DateComponents(year: comps.year, month: comps.month, day: 1))!)!
+            return (formatISO(start), formatISO(end))
+        }
+
         if frequency == "monthly" {
             let comps = Calendar.current.dateComponents([.year, .month], from: date)
             let start = Calendar.current.date(from: comps)!
@@ -82,12 +124,18 @@ enum BudgetCalculator {
 
     private static func parseDate(_ value: String) -> Date? {
         let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.date(from: value)
     }
 
     private static func formatISO(_ date: Date) -> String {
         let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
     }

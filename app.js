@@ -1082,16 +1082,18 @@ function renderDashboard() {
   const topCategory = summary.categoryRows.find((row) => row.spent > 0);
 
   elements.incomeMetric.textContent = money(summary.income);
-  elements.incomeSubtext.textContent = `${summary.incomeCount} income ${summary.incomeCount === 1 ? "item" : "items"}`;
+  elements.incomeSubtext.textContent = `${summary.incomeCount} income ${summary.incomeCount === 1 ? "item" : "items"} logged`;
   elements.spentMetric.textContent = money(summary.expenses);
-  elements.spentSubtext.textContent = `${percent(usedPercent)} of ${money(summary.totalBudget)}`;
+  elements.spentSubtext.textContent = `All expenses · ${percent(usedPercent)} of ${money(summary.totalBudget)} plan`;
   elements.leftMetric.textContent = money(left);
-  elements.leftSubtext.textContent = left >= 0 ? "Available this month" : "Over planned budget";
+  elements.leftSubtext.textContent = left >= 0
+    ? `Plan ${money(summary.totalBudget)} − spent (cash left ${money(net)})`
+    : `Over plan · cash left ${money(net)}`;
   elements.budgetUsedMetric.textContent = percent(usedPercent);
   elements.budgetRing.style.setProperty("--used", `${Math.min(100, Math.max(0, usedPercent * 100))}%`);
   elements.budgetRing.classList.toggle("over", usedPercent > 1);
   elements.ringSubtext.textContent = statusCopy(usedPercent);
-  elements.netMetric.textContent = `${money(net)} net`;
+  elements.netMetric.textContent = `${money(net)} cash left`;
   elements.netMetric.className = "money-chip";
   elements.savingsMetric.textContent = `${percent(savingsRate)} saved`;
   elements.savingsMetric.className = "money-chip";
@@ -1109,8 +1111,7 @@ function renderPaycheckView(month) {
   elements.payPeriodRange.textContent = paySummary.rangeLabel;
   elements.paycheckIncomeMetric.textContent = money(paySummary.income);
   elements.paycheckSpentMetric.textContent = money(paySummary.expenses);
-  const paycheckLeft = paySummary.income - paySummary.expenses;
-  elements.paycheckLeftMetric.textContent = money(paycheckLeft);
+  elements.paycheckLeftMetric.textContent = money(paySummary.left);
 
   const rows = paySummary.categoryRows.filter((row) => row.spent > 0).slice(0, 5);
   if (!rows.length) {
@@ -1399,9 +1400,12 @@ function getPayPeriodSummary(month) {
   const periodTransactions = state.transactions.filter((item) => dateInRange(item.date, period.start, period.end));
   const incomeItems = periodTransactions.filter((item) => item.type === "Income");
   const expenseItems = periodTransactions.filter((item) => item.type === "Expense");
-  const actualIncome = sum(incomeItems.map((item) => item.amount));
-  const income = actualIncome || profile.payAmount || 0;
+  const loggedIncome = sum(incomeItems.map((item) => item.amount));
+  // Same basis as the Income metric: logged paycheck income, else configured check amount.
+  const income = loggedIncome > 0 ? loggedIncome : (profile.payAmount || 0);
   const expenses = sum(expenseItems.map((item) => item.amount));
+  // Check left must use the same income shown above (never a hidden different basis).
+  const left = income - expenses;
   const expenseCategories = state.categories.filter((category) => category.type === "Expense");
   const categoryRows = expenseCategories
     .map((category) => ({
@@ -1416,6 +1420,7 @@ function getPayPeriodSummary(month) {
     rangeLabel: `${formatDate(period.start)} - ${formatDate(period.end)}`,
     income,
     expenses,
+    left,
     categoryRows,
   };
 }
