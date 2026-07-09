@@ -42,3 +42,8 @@ create policy "Users delete own budget"
 
 -- Optional: block PostgREST from exposing the table to the anon role entirely.
 -- (Anon key is still used for Auth; RLS + revoke above is the real control.)
+
+-- Verify after run:
+--   select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename = 'budgets';
+--   select policyname, cmd from pg_policies where tablename = 'budgets';
+-- Expect rowsecurity = true and four policies (SELECT/INSERT/UPDATE/DELETE).

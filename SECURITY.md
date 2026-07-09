@@ -73,7 +73,9 @@ Supabase Auth redirect allowlist (step 3) is the critical control for password-r
 
 ### 6. Privacy / terms
 
-Replace placeholder copy in [`privacy.html`](privacy.html) and [`terms.html`](terms.html) before a commercial launch. Linked from Settings and the auth screen.
+[`privacy.html`](privacy.html) and [`terms.html`](terms.html) are live, linked from Settings and the auth screen. Contact: `1munoz.roberto@gmail.com`. Have counsel review before any commercial launch.
+
+Crisp click-path: [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md).
 
 ### 7. Account deletion
 
