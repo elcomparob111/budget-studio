@@ -2,7 +2,7 @@
 
 Live: https://elcomparob111.github.io/budget-studio/  
 Supabase: https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg  
-Details: [SECURITY.md](SECURITY.md)
+Details: [docs/SECURITY.md](docs/SECURITY.md) (root [SECURITY.md](SECURITY.md) is a pointer)
 
 ## Repo (done in code)
 

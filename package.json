@@ -1,6 +1,8 @@
 {
   "name": "budget-studio",
   "private": true,
+  "license": "UNLICENSED",
+  "author": "Roberto Munoz / Budget Studio",
   "type": "module",
   "scripts": {
     "start": "npx serve .",

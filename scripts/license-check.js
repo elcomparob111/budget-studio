@@ -62,9 +62,15 @@ if (!existsSync(pkgPath)) {
 const pkg = loadJson(pkgPath);
 const npmNames = collectNpmNames(pkg);
 
-console.log("Project LICENSE file:", existsSync(join(root, "LICENSE")) || existsSync(join(root, "LICENSE.md"))
-  ? "present"
-  : "MISSING (flagged in LEGAL_SWEEP.md)");
+const hasLicense =
+  existsSync(join(root, "LICENSE")) || existsSync(join(root, "LICENSE.md"));
+const hasThirdParty = existsSync(join(root, "legal", "THIRD_PARTY_LICENSES.md"));
+console.log("Project LICENSE file:", hasLicense ? "present (proprietary All Rights Reserved)" : "MISSING");
+console.log("THIRD_PARTY_LICENSES.md:", hasThirdParty ? "present" : "MISSING");
+if (!hasLicense) {
+  console.error("FAIL: root LICENSE missing — see legal/COPYRIGHT.md");
+  process.exit(1);
+}
 console.log("");
 
 console.log("--- CDN / runtime (documented) ---");
@@ -137,5 +143,5 @@ if (riskyHits.length) {
 }
 
 console.log("OK: no risky npm licenses detected (GPL/AGPL/LGPL/unknown).");
-console.log("See LEGAL_SWEEP.md for full compliance notes (project LICENSE, AI logo, Google Fonts).");
+console.log("See legal/THIRD_PARTY_LICENSES.md, legal/AI_ASSETS.md, and LEGAL_SWEEP.md.");
 process.exit(0);

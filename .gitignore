@@ -4,9 +4,23 @@ outputs/
 *.backup-*.xlsx
 node_modules/
 .DS_Store
+
+# Secrets and local env (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+credentials.json
+**/service_role*
+**/service-role*
+
 # Local Supabase CLI artifacts (committed: supabase/rls.sql)
 supabase/.temp/
 supabase/.branches/
+
+# iOS build products
 ios/build/
 ios/BudgetStudio.xcodeproj/
 ios/DerivedData/

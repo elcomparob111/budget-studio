@@ -2,6 +2,8 @@
 
 A personal budget app with setup wizard, paycheck view, charts, cloud sync, and CSV/JSON backup.
 
+**License:** Proprietary — All Rights Reserved ([`LICENSE`](LICENSE), [`legal/COPYRIGHT.md`](legal/COPYRIGHT.md)).
+
 ## iOS app (native)
 
 A SwiftUI iPhone app lives in [`ios/`](ios/). It uses the same Supabase accounts and sync as the web version, with a rebuilt native Apple-style UI (tab bar, sheets, grouped lists).
@@ -29,7 +31,21 @@ Live site: https://elcomparob111.github.io/budget-studio/
 
 You can also open `index.html` directly in a browser, but a local server is recommended for PWA features.
 
-Security launch checklist: see [`SECURITY.md`](SECURITY.md). Run `npm test` and `npm run security:scan` before release.
+### Privacy & terms
+
+- [Privacy Policy](privacy.html)
+- [Terms of Use](terms.html)
+
+### Security & quality checks
+
+```bash
+npm test
+npm run security:scan
+npm run security:audit
+npm run license:check
+```
+
+See [`docs/SECURITY.md`](docs/SECURITY.md) and [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md).
 
 ## Features
 
@@ -40,3 +56,16 @@ Security launch checklist: see [`SECURITY.md`](SECURITY.md). Run `npm test` and 
 - Cloud sync with email/password accounts (Supabase)
 - CSV export and JSON backup/restore
 - Dark mode and offline support (PWA on web)
+
+## Documentation
+
+| Doc | Description |
+|-----|-------------|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design (Pages + Supabase + iOS) |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Security checklist and defenses |
+| [`docs/API.md`](docs/API.md) | Supabase tables / Auth as the API |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploy web, Supabase, iOS |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | TestFlight, scale, monitoring |
+| [`docs/PRODUCTION_AUDIT.md`](docs/PRODUCTION_AUDIT.md) | Production readiness audit + scores |
+| [`legal/`](legal/) | LICENSE, copyright, AI assets, compliance |
+| [`LEGAL_SWEEP.md`](LEGAL_SWEEP.md) | Copyright/license inventory sweep |

@@ -54,8 +54,10 @@ Transitive pins from `ios/BudgetStudio.xcodeproj/project.xcworkspace/xcshareddat
 
 | Item | Status |
 |------|--------|
-| Root `LICENSE` / `LICENSE.md` | **MISSING** — no project license file found. |
-| Third-party NOTICE / attribution file | **MISSING** — no `NOTICE`, `THIRD_PARTY_LICENSES`, or in-app OSS credits screen. |
+| Root `LICENSE` / `LICENSE.md` | **Present** — proprietary All Rights Reserved (2026 Roberto Munoz / Budget Studio). See [`legal/COPYRIGHT.md`](legal/COPYRIGHT.md). |
+| Third-party NOTICE / attribution file | **Present** — [`legal/THIRD_PARTY_LICENSES.md`](legal/THIRD_PARTY_LICENSES.md). In-app OSS credits screen still recommended for App Store. |
+| Legal pack | [`legal/`](legal/) — COPYRIGHT, AI_ASSETS, TRADEMARK, compliance/privacy/release checklists. |
+| Production audit | [`docs/PRODUCTION_AUDIT.md`](docs/PRODUCTION_AUDIT.md). |
 
 ---
 
@@ -63,7 +65,7 @@ Transitive pins from `ios/BudgetStudio.xcodeproj/project.xcworkspace/xcshareddat
 
 | Finding | Severity | Detail |
 |---------|----------|--------|
-| **No project LICENSE** | **High for distribution clarity** | App source/assets have **no declared license**. Default copyright remains with the author; redistributors/forks lack clear terms. |
+| **Project LICENSE** | **Resolved (proprietary)** | Root `LICENSE` is All Rights Reserved — clear ownership for commercial/acquisition path. Redistribution still requires Owner permission. |
 | GPL / AGPL / LGPL | **None found** | No copyleft packages in npm (empty), CDN (Supabase MIT), or SPM tree (MIT / Apache-2.0 only). |
 | Unknown npm licenses | **N/A** | No declared npm dependencies. |
 | **CDN floating major** (`@supabase/supabase-js@2`) | Low–Medium ops | Not a “risky license,” but version is not fully pinned; license remains MIT across v2, yet supply-chain/reproducibility is weaker than a lockfile. |
@@ -123,29 +125,31 @@ Transitive pins from `ios/BudgetStudio.xcodeproj/project.xcworkspace/xcshareddat
 
 **Do not delete yet — document and replace/clarify:**
 
-1. **Add a root `LICENSE`** (and decide OSS vs proprietary). Until then, redistribution rights are unclear.  
-2. **Dog logo / App Icon** — replace **or** document AI tool + commercial rights + photo ownership; keep current files until replacement is ready. Highest brand/IP uncertainty.  
-3. **Self-host Inter (OFL)** or switch to a fully owned/system stack; stop relying solely on Google Fonts CDN if you want cleaner ToS/privacy posture. Keep OFL attribution if bundling.  
-4. **Pin `@supabase/supabase-js`** to an exact version (or vendor the ESM file) and record MIT attribution in a `THIRD_PARTY_NOTICES` (or Settings → Licenses).  
+1. ~~**Add a root `LICENSE`**~~ **Done** — proprietary All Rights Reserved ([`LICENSE`](LICENSE), [`legal/COPYRIGHT.md`](legal/COPYRIGHT.md)).  
+2. **Dog logo / App Icon** — replace **or** finish documenting AI tool + commercial rights + photo ownership ([`legal/AI_ASSETS.md`](legal/AI_ASSETS.md)); keep current files until replacement is ready. Highest remaining brand/IP uncertainty.  
+3. **Self-host Inter (OFL)** or switch to a fully owned/system stack; stop relying solely on Google Fonts CDN if you want cleaner ToS/privacy posture. Keep OFL attribution if bundling ([`legal/THIRD_PARTY_LICENSES.md`](legal/THIRD_PARTY_LICENSES.md)).  
+4. **Pin `@supabase/supabase-js`** to an exact version (or vendor the ESM file); MIT attribution is in `legal/THIRD_PARTY_LICENSES.md` — still add Settings → Licenses in-app.  
 5. **iOS OSS attribution** — list supabase-swift + transitive MIT/Apache packages in App Store privacy/credits or an in-app Licenses screen (Apple often expects this for included OSS).  
-6. **Counsel review** of `privacy.html` / `terms.html` before any paid/commercial positioning (already flagged in `SECURITY.md`).  
-7. **Optional:** Trademark clearance for “Budget Studio” / bundle id `com.budgetstudio.app`.  
+6. **Counsel review** of `privacy.html` / `terms.html` before any paid/commercial positioning (already flagged in `docs/SECURITY.md`).  
+7. **Trademark clearance** for “Budget Studio” / bundle id `com.budgetstudio.app` ([`legal/TRADEMARK.md`](legal/TRADEMARK.md)).  
 8. **Optional:** Soften “command center” marketing if you want more distinctive voice (not a legal blocker).
 
-**Scripts added for ongoing checks:** `npm run license:check`, `npm run security:audit` (see `package.json`).
+**Scripts for ongoing checks:** `npm run license:check`, `npm run security:audit` (see `package.json`).
 
 ---
 
 ## 7. A final risk rating: Low, Medium, or High
 
-### **Medium**
+### **Medium** (improved from pre-LICENSE baseline)
 
-**Why not Low:** Missing project `LICENSE`; primary brand mark is **AI-stylized with undocumented generator/commercial terms**; Google Fonts CDN + floating Supabase CDN major; no third-party notices file; legal pages are DIY.
+**Why not Low:** Primary brand mark is **AI-stylized with undocumented generator/commercial terms**; Google Fonts CDN + floating Supabase CDN major; legal pages are DIY; trademark uncleared; in-app OSS credits still missing.
 
-**Why not High:** No GPL/AGPL/LGPL dependencies; SPM and Supabase JS are permissive (MIT/Apache-2.0); no clear evidence of copied proprietary app code or competitor trademarks in UI; favicon geometry looks original; privacy/terms read as original drafts.
+**Why not High:** Proprietary LICENSE + third-party notices now present; no GPL/AGPL/LGPL dependencies; SPM and Supabase JS are permissive (MIT/Apache-2.0); no clear evidence of copied proprietary app code or competitor trademarks in UI; favicon geometry looks original; privacy/terms read as original drafts.
 
-**Launch blocker priority:** (1) license the repo or explicitly mark proprietary, (2) clear or replace the dog logo, (3) add third-party attribution + prefer self-hosted Inter.
+**Launch blocker priority:** (1) clear or replace the dog logo, (2) counsel-reviewed Privacy/Terms + trademark search, (3) prefer self-hosted Inter + in-app OSS credits.
+
+**Follow-up pack:** [`legal/`](legal/) · [`docs/PRODUCTION_AUDIT.md`](docs/PRODUCTION_AUDIT.md)
 
 ---
 
-*Sweep performed without removing assets or rewriting application code. Findings are documentation only.*
+*Sweep performed without removing assets or rewriting application code. Legal pack added in a later commit; dog logo retained by design.*
