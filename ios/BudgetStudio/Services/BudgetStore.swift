@@ -175,12 +175,27 @@ final class BudgetStore: ObservableObject {
     }
 
     func signOut() async {
+        let previousUserId = supabase.currentUser?.id
         try? await supabase.signOut()
+        clearLocalCaches(for: previousUserId)
         isAuthenticated = false
         isUnlocked = false
         userName = ""
         state = BudgetDefaults.emptyState()
+        cloudDirty = false
         // Keep Face ID credentials so the next launch can unlock quickly.
+    }
+
+    /// Remove cached budget blobs for this user (and any leftover uid-keyed caches).
+    private func clearLocalCaches(for userId: UUID?) {
+        let defaults = UserDefaults.standard
+        if let userId {
+            defaults.removeObject(forKey: cacheKey(for: userId))
+        }
+        // Sweep any other budget-studio uid caches on a shared device.
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("budget-studio-state-v7:uid:") {
+            defaults.removeObject(forKey: key)
+        }
     }
 
     func loadDemo() {

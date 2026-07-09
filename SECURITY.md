@@ -94,10 +94,28 @@ Settings → **Delete cloud data** removes the user’s `budgets` row (RLS) and 
 - Password strength + email validation before signup / password update
 - SessionStorage auth cooldown after repeated failures
 - Generic auth error messages (no “user exists” vs “wrong password” leak where avoidable)
-- Logout clears local budget caches and calls `signOut`
-- Cloud fetch/push asserts `auth.uid()` matches the requested user id
+- Logout clears **all** `budget-studio-state-v7:uid:*` local caches (shared-device hygiene)
+- Cloud fetch/push asserts live `auth.uid()` matches the requested user id **and** refuses missing session
+- Cloud/import payloads are schema-sanitized (whitelist fields, strip `__proto__`, cap array sizes, strip `<>` from names)
+- Import rejects files over 2 MB and ignores any `user_id` in the JSON (ownership is session-only)
+- Password-recovery session does not load/sync budget data until the new password is saved
+- Service worker caches only same-origin static assets (never Supabase/API JSON)
 - Safe logger redacts financial / secret fields
 - CSP meta + security meta tags
+- iOS: session ownership check on fetch/push; UserDefaults uid caches cleared on sign-out
+
+---
+
+## Remaining risks (cannot fully fix in a static SPA)
+
+| Risk | Mitigation |
+| --- | --- |
+| XSS → session token theft | Keep CSP + `escapeHtml`; prefer hosting with real CSP headers (Netlify/Vercel/`_headers`) |
+| Client auth lockout bypass | Enable Supabase Auth rate limits + CAPTCHA |
+| Shared browser without logout | Always sign out; caches are cleared on logout but a live session is still the user’s |
+| Full Auth user deletion | Dashboard or privileged Edge Function — never `service_role` in the client |
+| iOS Face ID stores email/password in Keychain | Device-only Keychain item; user can disable in Settings |
+| Server-side payload size / rate limits | Configure Supabase / Postgres limits in the dashboard |
 
 ---
 
@@ -107,4 +125,4 @@ Settings → **Delete cloud data** removes the user’s `budgets` row (RLS) and 
 npm test
 ```
 
-Runs `tests/security.test.js` (escapeHtml, validators, ownership check, rate-limit helper, auth error sanitization).
+Runs `tests/security.test.js` (escapeHtml, validators, ownership check, payload sanitization, import size, rate-limit helper, auth error sanitization).

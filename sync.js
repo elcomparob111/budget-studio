@@ -9,6 +9,8 @@ import {
   recordAuthFailure,
   safeLog,
   sanitizeAuthError,
+  sanitizeBudgetState,
+  sanitizeCloudPayload,
   validateEmail,
   validatePassword,
 } from "./security.js";
@@ -164,6 +166,7 @@ export async function fetchCloudBudget(uid) {
   const client = requireClient();
   const { data: sessionData } = await client.auth.getSession();
   const sessionUid = sessionData.session?.user?.id;
+  // Refuse missing session and mismatched uid (defense-in-depth; RLS is still required).
   assertOwnUserId(sessionUid, uid);
 
   const { data, error } = await client
@@ -173,7 +176,12 @@ export async function fetchCloudBudget(uid) {
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return { state: data.state, updatedAt: data.updated_at, name: data.name };
+  // Sanitize before applying in the UI — never trust cloud JSON shape blindly.
+  return {
+    state: sanitizeBudgetState(data.state),
+    updatedAt: Number(data.updated_at) || 0,
+    name: String(data.name || "").slice(0, 80),
+  };
 }
 
 export async function pushCloudBudget(uid, payload) {
@@ -182,11 +190,12 @@ export async function pushCloudBudget(uid, payload) {
   const sessionUid = sessionData.session?.user?.id;
   assertOwnUserId(sessionUid, uid);
 
+  const safe = sanitizeCloudPayload(payload);
   const { error } = await client.from("budgets").upsert({
     user_id: sessionUid,
-    state: payload.state,
-    updated_at: payload.updatedAt ?? Date.now(),
-    name: String(payload.name || "").slice(0, 80),
+    state: safe.state,
+    updated_at: safe.updatedAt,
+    name: safe.name,
   });
   if (error) throw error;
 }

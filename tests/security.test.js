@@ -5,13 +5,17 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  assertImportFileSize,
   assertOwnUserId,
+  BUDGET_LIMITS,
   clearAuthFailures,
   escapeHtml,
   getAuthLockout,
   recordAuthFailure,
   redactForLog,
   sanitizeAuthError,
+  sanitizeBudgetState,
+  sanitizeCloudPayload,
   validateAmount,
   validateCategoryName,
   validateDate,
@@ -71,9 +75,94 @@ describe("assertOwnUserId", () => {
     assert.equal(assertOwnUserId("abc", "abc"), "abc");
   });
   it("rejects mismatched or empty ids", () => {
-    assert.throws(() => assertOwnUserId("abc", "xyz"));
-    assert.throws(() => assertOwnUserId("", "abc"));
-    assert.throws(() => assertOwnUserId("abc", ""));
+    assert.throws(() => assertOwnUserId("abc", "xyz"), /own budget/i);
+    assert.throws(() => assertOwnUserId("", "abc"), /signed in/i);
+    assert.throws(() => assertOwnUserId("abc", ""), /own budget/i);
+    assert.throws(() => assertOwnUserId(null, "abc"), /signed in/i);
+  });
+});
+
+describe("sanitizeBudgetState", () => {
+  it("strips prototype pollution and unexpected keys", () => {
+    const polluted = JSON.parse(
+      '{"categories":[{"name":"Rent","type":"Expense","group":"Needs","budget":100,"__proto__":{"polluted":true}}],"transactions":[],"evil":1}',
+    );
+    const out = sanitizeBudgetState(polluted);
+    assert.equal(Object.prototype.polluted, undefined);
+    assert.equal(out.evil, undefined);
+    assert.equal(out.categories.length, 1);
+    assert.equal(out.categories[0].name, "Rent");
+    assert.ok(!Object.hasOwn(out.categories[0], "__proto__"));
+    assert.ok(!Object.hasOwn(out, "evil"));
+  });
+
+  it("caps oversized arrays and strips XSS-ish names", () => {
+    const cats = Array.from({ length: BUDGET_LIMITS.maxCategories + 50 }, (_, i) => ({
+      name: i === 0 ? "<script>x</script>" : `Cat${i}`,
+      type: "Expense",
+      group: "Needs",
+      budget: 10,
+    }));
+    const txs = Array.from({ length: 5 }, () => ({
+      id: "1",
+      date: "2026-07-09",
+      type: "Expense",
+      category: "Cat1",
+      description: "<img onerror=1>",
+      account: "Checking",
+      amount: 5,
+    }));
+    const out = sanitizeBudgetState({ categories: cats, transactions: txs, setupComplete: true });
+    assert.ok(out.categories.length <= BUDGET_LIMITS.maxCategories);
+    assert.ok(!out.categories[0].name.includes("<"));
+    assert.ok(!out.transactions[0].description.includes("<"));
+  });
+
+  it("drops invalid transactions", () => {
+    const out = sanitizeBudgetState({
+      categories: [{ name: "Salary", type: "Income", group: "Income", budget: 0 }],
+      transactions: [
+        { id: "a", date: "bad", type: "Expense", category: "X", description: "y", account: "Checking", amount: 1 },
+        { id: "b", date: "2026-07-09", type: "Hack", category: "X", description: "y", account: "Checking", amount: 1 },
+        { id: "c", date: "2026-07-09", type: "Expense", category: "X", description: "y", account: "Checking", amount: -1 },
+        {
+          id: "d",
+          date: "2026-07-09",
+          type: "Expense",
+          category: "X",
+          description: "ok",
+          account: "Checking",
+          amount: 12.345,
+        },
+      ],
+    });
+    assert.equal(out.transactions.length, 1);
+    assert.equal(out.transactions[0].amount, 12.35);
+  });
+});
+
+describe("sanitizeCloudPayload", () => {
+  it("requires categories and clamps name", () => {
+    assert.throws(() => sanitizeCloudPayload({ state: { categories: [], transactions: [] } }));
+    const safe = sanitizeCloudPayload({
+      state: {
+        categories: [{ name: "Salary", type: "Income", group: "Income", budget: 0 }],
+        transactions: [],
+      },
+      updatedAt: Date.now(),
+      name: "x".repeat(200),
+      user_id: "attacker-uid",
+    });
+    assert.equal(safe.name.length, BUDGET_LIMITS.maxPayloadNameLength);
+    assert.equal(safe.user_id, undefined);
+  });
+});
+
+describe("assertImportFileSize", () => {
+  it("rejects empty and oversized files", () => {
+    assert.throws(() => assertImportFileSize(0));
+    assert.throws(() => assertImportFileSize(BUDGET_LIMITS.maxImportBytes + 1));
+    assert.equal(assertImportFileSize(100), 100);
   });
 });
 

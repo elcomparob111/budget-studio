@@ -60,6 +60,7 @@ final class SupabaseService {
     }
 
     func fetchBudget(userId: UUID) async throws -> CloudBudgetPayload? {
+        try await assertSessionOwns(userId)
         let rows: [CloudBudgetRow] = try await client
             .from("budgets")
             .select("state, updated_at, name")
@@ -68,27 +69,96 @@ final class SupabaseService {
             .execute()
             .value
         guard let row = rows.first else { return nil }
-        return CloudBudgetPayload(state: row.state, updatedAt: row.updated_at, name: row.name)
+        return CloudBudgetPayload(
+            state: sanitizeState(row.state),
+            updatedAt: row.updated_at,
+            name: String(row.name.prefix(80))
+        )
     }
 
     func pushBudget(userId: UUID, payload: CloudBudgetPayload) async throws {
+        try await assertSessionOwns(userId)
         struct UpsertRow: Encodable {
             var user_id: UUID
             var state: BudgetState
             var updated_at: Int64
             var name: String
         }
+        let safeState = sanitizeState(payload.state)
+        guard !safeState.categories.isEmpty else {
+            throw NSError(domain: "BudgetStudio", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid budget payload."])
+        }
         let row = UpsertRow(
             user_id: userId,
-            state: payload.state,
+            state: safeState,
             updated_at: payload.updatedAt,
-            name: payload.name
+            name: String(payload.name.prefix(80))
         )
         // Explicit conflict target matches web upsert on primary key user_id.
         try await client
             .from("budgets")
             .upsert(row, onConflict: "user_id")
             .execute()
+    }
+
+    /// Refuse cloud access unless the live session matches the requested user id.
+    private func assertSessionOwns(_ userId: UUID) async throws {
+        let sessionUser = try await client.auth.session.user
+        guard sessionUser.id == userId else {
+            throw NSError(
+                domain: "BudgetStudio",
+                code: 403,
+                userInfo: [NSLocalizedDescriptionKey: "You can only access your own budget."]
+            )
+        }
+        currentUser = sessionUser
+    }
+
+    private static let maxCategories = 200
+    private static let maxTransactions = 20_000
+
+    private func sanitizeState(_ state: BudgetState) -> BudgetState {
+        var categories = Array(state.categories.prefix(Self.maxCategories)).compactMap { cat -> BudgetCategory? in
+            let name = String(cat.name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+                .replacingOccurrences(of: "<", with: "")
+                .replacingOccurrences(of: ">", with: "")
+            guard !name.isEmpty else { return nil }
+            let type = (cat.type == "Income" || cat.type == "Expense") ? cat.type : "Expense"
+            let group = String(cat.group.prefix(40))
+            let budget = min(max(cat.budget, 0), 1_000_000_000)
+            return BudgetCategory(name: name, type: type, group: group.isEmpty ? "Needs" : group, budget: budget)
+        }
+        if categories.isEmpty {
+            categories = BudgetDefaults.emptyState().categories
+        }
+        let transactions = Array(state.transactions.prefix(Self.maxTransactions)).compactMap { tx -> BudgetTransaction? in
+            guard tx.type == "Income" || tx.type == "Expense" else { return nil }
+            guard tx.amount > 0, tx.amount <= 1_000_000_000 else { return nil }
+            let date = tx.date
+            guard date.count == 10 else { return nil }
+            let category = String(tx.category.prefix(40))
+                .replacingOccurrences(of: "<", with: "")
+                .replacingOccurrences(of: ">", with: "")
+            guard !category.isEmpty else { return nil }
+            let description = String(tx.description.prefix(120))
+                .replacingOccurrences(of: "<", with: "")
+                .replacingOccurrences(of: ">", with: "")
+            return BudgetTransaction(
+                id: String(tx.id.prefix(80)),
+                date: date,
+                type: tx.type,
+                category: category,
+                description: description.isEmpty ? category : description,
+                account: String(tx.account.prefix(40)),
+                amount: (tx.amount * 100).rounded() / 100
+            )
+        }
+        return BudgetState(
+            categories: categories,
+            transactions: transactions,
+            setupComplete: state.setupComplete,
+            setupProfile: state.setupProfile
+        )
     }
 
     func friendlyAuthError(_ error: Error) -> String {
