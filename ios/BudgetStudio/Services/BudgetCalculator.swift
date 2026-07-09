@@ -62,6 +62,8 @@ enum BudgetCalculator {
         )
     }
 
+    /// Expense categories with activity this month or a budget — used by Overview progress.
+    /// Idle $0/$0 rows are omitted; they reappear automatically when spent or budget becomes > 0.
     static func categorySpending(state: BudgetState, month: String) -> [(category: BudgetCategory, spent: Double)] {
         let monthTransactions = state.transactions.filter { $0.date.hasPrefix(month) && $0.type == "Expense" }
         return state.categories
@@ -70,7 +72,11 @@ enum BudgetCalculator {
                 let spent = monthTransactions.filter { $0.category == category.name }.reduce(0) { $0 + $1.amount }
                 return (category, spent)
             }
-            .sorted { $0.spent > $1.spent }
+            .filter { $0.spent > 0 || $0.category.budget > 0 }
+            .sorted {
+                if $0.spent != $1.spent { return $0.spent > $1.spent }
+                return $0.category.budget > $1.category.budget
+            }
     }
 
     private static func payPeriod(for dateString: String, profile: SetupProfile) -> (start: String, end: String)? {

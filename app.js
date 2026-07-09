@@ -1137,7 +1137,12 @@ function renderPaycheckView(month) {
 }
 
 function renderProgress(rows) {
-  const visible = rows.slice(0, 9);
+  // Dynamic: hide idle $0/$0; reappear when spent > 0 or budget > 0.
+  const visible = rows.filter((row) => row.spent > 0 || row.budget > 0);
+  if (!visible.length) {
+    elements.categoryProgress.innerHTML = `<div class="empty-state">No budgeted or spent categories this month.</div>`;
+    return;
+  }
   elements.categoryProgress.innerHTML = visible
     .map((row) => {
       const used = row.budget ? row.spent / row.budget : 0;

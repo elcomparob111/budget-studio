@@ -255,7 +255,7 @@ struct OverviewView: View {
                 columns: AdaptiveLayout.categoryColumns(horizontalSizeClass: horizontalSizeClass),
                 spacing: AppTheme.md
             ) {
-                ForEach(store.categorySpending.prefix(horizontalSizeClass == .regular ? 8 : 6), id: \.category.id) { row in
+                ForEach(store.categorySpending, id: \.category.id) { row in
                     VStack(alignment: .leading, spacing: AppTheme.sm) {
                         HStack {
                             Text(row.category.name)
