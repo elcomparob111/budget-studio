@@ -75,7 +75,7 @@ body.wizard-open { overflow: hidden; }
 .app-shell {
   width: min(920px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 20px 0 calc(var(--tab-h) + 28px);
+  padding: 20px 0 calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 28px);
 }
 
 .app-header {
@@ -456,6 +456,14 @@ td.amount { font-weight: 700; color: var(--ink); }
   font-weight: 600;
   background: var(--panel);
   color: var(--muted);
+}
+.type-pill.income {
+  background: color-mix(in srgb, var(--soft-green) 70%, white);
+  color: var(--teal);
+}
+.type-pill.expense {
+  background: color-mix(in srgb, var(--soft-amber) 65%, white);
+  color: var(--amber);
 }
 
 .budget-editor {
@@ -1025,7 +1033,7 @@ td.amount { font-weight: 700; color: var(--ink); }
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 24px, 920px);
-    padding: 14px 0 calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 24px);
+    padding: 14px 0 calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 36px);
   }
   .app-header { align-items: start; flex-direction: column; }
   .header-actions { width: 100%; justify-content: start; }
@@ -1055,7 +1063,132 @@ td.amount { font-weight: 700; color: var(--ink); }
   }
   .wizard-footer button,
   .wizard-topline button { width: 100%; }
-  table { min-width: 640px; }
+
+  .table-panel .panel-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .table-tools {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .table-tools input,
+  .table-tools select {
+    width: 100%;
+  }
+
+  .table-panel .table-wrap {
+    overflow: visible;
+    background: transparent;
+    border-radius: 0;
+  }
+  .table-panel table {
+    min-width: 0;
+    width: 100%;
+    display: block;
+  }
+  .table-panel thead {
+    display: none;
+  }
+  .table-panel tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .table-panel tbody tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "desc desc amount"
+      "type cat amount"
+      "date account actions";
+    gap: 6px 10px;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--input);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+  }
+  .table-panel tbody tr:not(.table-row-clickable) {
+    grid-template-columns: 1fr;
+    grid-template-areas: none;
+  }
+  .table-panel tbody tr:not(.table-row-clickable) td {
+    grid-column: 1 / -1;
+    text-align: center;
+    white-space: normal;
+    color: var(--muted);
+    padding: 18px 8px;
+    border: 0;
+  }
+  .table-panel tbody td {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    white-space: normal;
+  }
+  .table-panel tbody tr.table-row-clickable:hover td {
+    background: transparent;
+  }
+  .table-panel tbody tr.table-row-clickable:active {
+    transform: scale(0.995);
+  }
+  .table-panel td:nth-child(1) {
+    grid-area: date;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .table-panel td:nth-child(2) {
+    grid-area: type;
+  }
+  .table-panel td:nth-child(3) {
+    grid-area: cat;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+  }
+  .table-panel td:nth-child(4) {
+    grid-area: desc;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--ink);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .table-panel td:nth-child(5) {
+    grid-area: account;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+  }
+  .table-panel td.amount {
+    grid-area: amount;
+    align-self: start;
+    justify-self: end;
+    text-align: right;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .table-panel td.action-cell {
+    grid-area: actions;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .table-panel .edit-button {
+    margin-right: 0;
+  }
 }
 
 [data-theme="dark"] .month-control input,
@@ -1074,4 +1207,13 @@ td.amount { font-weight: 700; color: var(--ink); }
 [data-theme="dark"] .review-budget-row input {
   background: var(--input);
   color: var(--ink);
+}
+
+[data-theme="dark"] .type-pill.income {
+  background: var(--soft-green);
+  color: #8fd9a8;
+}
+[data-theme="dark"] .type-pill.expense {
+  background: var(--soft-amber);
+  color: #f0c27a;
 }
