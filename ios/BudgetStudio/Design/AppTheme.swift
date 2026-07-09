@@ -108,7 +108,8 @@ extension View {
         modifier(ReadableWidthModifier(maxWidth: maxWidth))
     }
 
-    /// Comfortable sheet presentation: detents on iPhone, centered form sheet on iPad.
+    /// Comfortable sheet presentation: medium/large detents on iPhone;
+    /// page-sized (or large) sheet on iPad so forms are not cramped.
     func appSheetChrome(detents: Set<PresentationDetent> = [.large]) -> some View {
         modifier(AppSheetChromeModifier(detents: detents))
     }
@@ -149,8 +150,18 @@ private struct AppSheetChromeModifier: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if horizontalSizeClass == .regular {
-            content
-                .presentationDragIndicator(.visible)
+            // Default iPad form sheet is a short centered card that clips forms.
+            // Prefer page sizing (iOS 18+); fall back to a large detent on iOS 17.
+            if #available(iOS 18.0, *) {
+                content
+                    .presentationDragIndicator(.visible)
+                    .presentationSizing(.page)
+            } else {
+                content
+                    .presentationDragIndicator(.visible)
+                    .presentationDetents([.large])
+                    .presentationContentInteraction(.scrolls)
+            }
         } else {
             content
                 .presentationDragIndicator(.visible)
