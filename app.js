@@ -495,7 +495,9 @@ async function handleUserChanged(user, info) {
   try {
     const cloud = await fetchCloudBudget(user.uid);
     const local = readCachePayload(user.uid);
-    if (cloud && (!local || (cloud.updatedAt || 0) > (local.updatedAt || 0))) {
+    const cloudAt = cloud?.updatedAt || 0;
+    const localAt = local?.updatedAt || 0;
+    if (cloud && (!local || cloudAt > localAt)) {
       const before = (cloud.state?.transactions || []).length;
       state = normalizeState(cloud.state);
       const stripped = before !== state.transactions.length;
@@ -510,8 +512,18 @@ async function handleUserChanged(user, info) {
       }
       populateCategorySelect();
       render();
-    } else if (!cloud && local) {
-      await pushCloudBudget(user.uid, { state: local.state, updatedAt: local.updatedAt || Date.now(), name: user.displayName || "" });
+    } else if (local && (!cloud || localAt >= cloudAt)) {
+      // Keep newer local (e.g. setup finished before cloud push) and sync up.
+      state = normalizeState(local.state);
+      populateCategorySelect();
+      render();
+      if (!cloud || localAt > cloudAt) {
+        await pushCloudBudget(user.uid, {
+          state: local.state,
+          updatedAt: local.updatedAt || Date.now(),
+          name: user.displayName || "",
+        });
+      }
     } else if (!cloud && !local) {
       const legacy = readLegacyState();
       if (legacy) {

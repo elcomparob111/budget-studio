@@ -70,9 +70,14 @@ struct SetupWizardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                        .font(.app(15, weight: .semibold))
-                        .foregroundStyle(AppTheme.primaryText)
+                    Button(store.state.setupComplete ? "Close" : "Skip") {
+                        if !store.state.setupComplete {
+                            store.markSetupCompleteIfNeeded()
+                        }
+                        dismiss()
+                    }
+                    .font(.app(15, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
                 }
             }
         }

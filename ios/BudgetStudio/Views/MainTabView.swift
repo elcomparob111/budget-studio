@@ -31,14 +31,24 @@ struct MainTabView: View {
             AddTransactionSheet()
                 .appSheetChrome(detents: [.medium, .large])
         }
-        .sheet(isPresented: $showSetup) {
+        .sheet(isPresented: $showSetup, onDismiss: {
+            // If the sheet was dismissed without finishing, still persist completion
+            // so setup does not reopen on every launch.
+            store.markSetupCompleteIfNeeded()
+        }) {
             SetupWizardView()
                 .appSheetChrome()
         }
         .onAppear {
-            if store.isAuthenticated && !store.state.setupComplete {
-                showSetup = true
-            }
+            presentSetupIfNeeded()
         }
+        .onChange(of: store.state.setupComplete) { _, complete in
+            if complete { showSetup = false }
+        }
+    }
+
+    private func presentSetupIfNeeded() {
+        guard store.isAuthenticated, !store.state.setupComplete else { return }
+        showSetup = true
     }
 }

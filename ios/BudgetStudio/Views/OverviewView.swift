@@ -10,6 +10,8 @@ struct OverviewView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
+                    welcomeHeader
+
                     monthPicker
 
                     LazyVGrid(
@@ -49,21 +51,12 @@ struct OverviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 10) {
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 32, height: 32)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(welcomeTitle)
-                                .font(.app(16, weight: .bold))
-                                .foregroundStyle(AppTheme.primaryText)
-                            Text(todaySubtitle)
-                                .font(.app(13, weight: .medium))
-                                .foregroundStyle(AppTheme.secondaryText)
-                        }
-                    }
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 32, height: 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .accessibilityLabel("Budget Studio")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 8) {
@@ -78,6 +71,7 @@ struct OverviewView: View {
                                 .clipShape(Circle())
                                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
                         }
+                        .accessibilityLabel("Add transaction")
 
                         Button {
                             showSetup = true
@@ -90,10 +84,24 @@ struct OverviewView: View {
                                 .clipShape(Circle())
                                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
                         }
+                        .accessibilityLabel("Open setup")
                     }
                 }
             }
         }
+    }
+
+    private var welcomeHeader: some View {
+        VStack(alignment: .leading, spacing: AppTheme.xs) {
+            Text(welcomeTitle)
+                .font(.app(28, weight: .bold))
+                .foregroundStyle(AppTheme.primaryText)
+            Text(todaySubtitle)
+                .font(.app(15, weight: .medium))
+                .foregroundStyle(AppTheme.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private var welcomeTitle: String {
