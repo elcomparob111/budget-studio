@@ -5,7 +5,7 @@ struct SetupWizardView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var step = 0
-    @State private var payAmount = 2100.0
+    @State private var payAmountText = ""
     @State private var payFrequency = "biweekly"
     @State private var nextPayDate = Date()
     @State private var selectedCategories: Set<String> = [
@@ -114,7 +114,7 @@ struct SetupWizardView: View {
 
             VStack(alignment: .leading, spacing: AppTheme.md) {
                 labeledField("Amount per check") {
-                    TextField("2100", value: $payAmount, format: .number)
+                    TextField("e.g. 2100", text: $payAmountText)
                         .keyboardType(.decimalPad)
                         .font(.app(16, weight: .medium))
                         .appInputText()
@@ -268,6 +268,7 @@ struct SetupWizardView: View {
     }
 
     private func finish() {
+        let payAmount = Double(payAmountText.replacingOccurrences(of: ",", with: "")) ?? 0
         let monthlyIncome = monthlyIncomeFromPay(payAmount, payFrequency)
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -288,6 +289,7 @@ struct SetupWizardView: View {
             return updated
         }
 
+        // Setup only saves the profile + category budgets — never invents paycheck transactions.
         store.completeSetup(with: profile, categories: categories)
         dismiss()
     }
