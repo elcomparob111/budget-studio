@@ -8,6 +8,8 @@ struct AddTransactionSheet: View {
 
     var existing: BudgetTransaction?
     var prefill: TransactionPrefill?
+    /// When true (new transactions only), open the camera/library flow on appear.
+    var startWithScan = false
 
     @State private var date = Date()
     @State private var type = "Expense"
@@ -23,6 +25,7 @@ struct AddTransactionSheet: View {
     @State private var isScanning = false
     @State private var scanBanner: String?
     @State private var scanError: String?
+    @State private var didAutoPresentScan = false
 
     private var categories: [BudgetCategory] {
         store.state.categories.filter { $0.type == type }
@@ -128,7 +131,10 @@ struct AddTransactionSheet: View {
                             .foregroundStyle(AppTheme.primaryText)
                     }
                 }
-                .onAppear(perform: populate)
+                .onAppear {
+                    populate()
+                    presentScanIfRequested()
+                }
                 .onChange(of: type) { _, _ in
                     if !categories.contains(where: { $0.name == category }) {
                         category = categories.first?.name ?? ""
@@ -211,9 +217,21 @@ struct AddTransactionSheet: View {
                 }
             }
 
-            Text("We’ll fill in what we can — review before saving.")
+            Text("We’ll fill what we can — review before saving.")
                 .font(.app(12, weight: .medium))
                 .foregroundStyle(AppTheme.secondaryText)
+        }
+    }
+
+    private func presentScanIfRequested() {
+        guard startWithScan, existing == nil, !didAutoPresentScan else { return }
+        didAutoPresentScan = true
+        // Brief delay so the sheet finishes presenting before the camera covers it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            if cameraAvailable {
+                cameraImage = nil
+                showCamera = true
+            }
         }
     }
 

@@ -4,17 +4,27 @@ struct MainTabView: View {
     @EnvironmentObject private var store: BudgetStore
     @State private var selectedTab = 0
     @State private var showAddTransaction = false
+    @State private var preferScanOnAdd = false
     @State private var showSetup = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            OverviewView(showSetup: $showSetup, showAddTransaction: $showAddTransaction)
+            OverviewView(
+                showSetup: $showSetup,
+                showAddTransaction: $showAddTransaction,
+                onAddManually: { openAdd(preferScan: false) },
+                onScanReceipt: { openAdd(preferScan: true) }
+            )
                 .tabItem {
                     Label("Overview", systemImage: "chart.pie.fill")
                 }
                 .tag(0)
 
-            TransactionsView(showAddTransaction: $showAddTransaction)
+            TransactionsView(
+                showAddTransaction: $showAddTransaction,
+                onAddManually: { openAdd(preferScan: false) },
+                onScanReceipt: { openAdd(preferScan: true) }
+            )
                 .tabItem {
                     Label("Activity", systemImage: "list.bullet")
                 }
@@ -33,8 +43,10 @@ struct MainTabView: View {
                 .tag(3)
         }
         .tint(AppTheme.primaryText)
-        .sheet(isPresented: $showAddTransaction) {
-            AddTransactionSheet()
+        .sheet(isPresented: $showAddTransaction, onDismiss: {
+            preferScanOnAdd = false
+        }) {
+            AddTransactionSheet(startWithScan: preferScanOnAdd)
                 .appSheetChrome(detents: [.medium, .large])
         }
         .sheet(isPresented: $showSetup, onDismiss: {
@@ -51,6 +63,11 @@ struct MainTabView: View {
         .onChange(of: store.state.setupComplete) { _, complete in
             if complete { showSetup = false }
         }
+    }
+
+    private func openAdd(preferScan: Bool) {
+        preferScanOnAdd = preferScan
+        showAddTransaction = true
     }
 
     private func presentSetupIfNeeded() {

@@ -69,22 +69,29 @@ struct BudgetsView: View {
 
     private var categoryBudgetsCard: some View {
         VStack(alignment: .leading, spacing: AppTheme.md) {
-            Text("Monthly category budgets")
+            Text("Category budgets")
                 .font(.app(18, weight: .bold))
                 .foregroundStyle(AppTheme.primaryText)
 
-            ForEach(expenseCategories) { category in
-                HStack {
-                    VStack(alignment: .leading, spacing: AppTheme.xs) {
-                        Text(category.name)
-                            .font(.app(15, weight: .semibold))
-                            .foregroundStyle(AppTheme.primaryText)
-                        GroupPill(group: category.group)
+            if expenseCategories.isEmpty {
+                Text("No expense categories yet. Add one below.")
+                    .font(.app(14, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .padding(.vertical, AppTheme.sm)
+            } else {
+                ForEach(expenseCategories) { category in
+                    HStack {
+                        VStack(alignment: .leading, spacing: AppTheme.xs) {
+                            Text(category.name)
+                                .font(.app(15, weight: .semibold))
+                                .foregroundStyle(AppTheme.primaryText)
+                            GroupPill(group: category.group)
+                        }
+                        Spacer()
+                        budgetAmountControl(for: category)
                     }
-                    Spacer()
-                    budgetAmountControl(for: category)
+                    .id(budgetRowID(category.name))
                 }
-                .id(budgetRowID(category.name))
             }
         }
         .appCard()

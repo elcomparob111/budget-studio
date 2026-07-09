@@ -5,6 +5,12 @@ struct OverviewView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var showSetup: Bool
     @Binding var showAddTransaction: Bool
+    var onAddManually: (() -> Void)? = nil
+    var onScanReceipt: (() -> Void)? = nil
+
+    private var breakdownRows: [(category: BudgetCategory, spent: Double)] {
+        Array(store.categorySpending.filter { $0.spent > 0 }.prefix(8))
+    }
 
     var body: some View {
         NavigationStack {
@@ -44,7 +50,7 @@ struct OverviewView: View {
                                 Text("Budget used")
                                     .font(.app(14, weight: .semibold))
                                     .foregroundStyle(AppTheme.primaryText)
-                                Text(store.monthSummary.usedRatio > 1 ? "Over plan" : "Healthy pace")
+                                Text(store.monthSummary.usedRatio > 1 ? "Over plan" : "On track")
                                     .font(.app(12, weight: .medium))
                                     .foregroundStyle(AppTheme.secondaryText)
                                 Text("Cash left")
@@ -64,6 +70,7 @@ struct OverviewView: View {
                     }
 
                     categoryProgressSection
+                    categoryBreakdownSection
                 }
                 .padding(.horizontal, AppTheme.pagePadding)
                 .padding(.top, AppTheme.lg)
@@ -85,12 +92,20 @@ struct OverviewView: View {
                     HStack(spacing: 8) {
                         Menu {
                             Button {
-                                showAddTransaction = true
+                                if let onAddManually {
+                                    onAddManually()
+                                } else {
+                                    showAddTransaction = true
+                                }
                             } label: {
                                 Label("Add manually", systemImage: "plus")
                             }
                             Button {
-                                showAddTransaction = true
+                                if let onScanReceipt {
+                                    onScanReceipt()
+                                } else {
+                                    showAddTransaction = true
+                                }
                             } label: {
                                 Label("Scan receipt", systemImage: "doc.text.viewfinder")
                             }
@@ -253,33 +268,135 @@ struct OverviewView: View {
 
     private var categoryProgressSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.md) {
-            Text("Category progress")
-                .font(.app(18, weight: .bold))
-                .foregroundStyle(AppTheme.primaryText)
+            VStack(alignment: .leading, spacing: AppTheme.xs) {
+                Text("Control")
+                    .font(.app(12, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .textCase(.uppercase)
+                Text("Category progress")
+                    .font(.app(18, weight: .bold))
+                    .foregroundStyle(AppTheme.primaryText)
+            }
 
-            LazyVGrid(
-                columns: AdaptiveLayout.categoryColumns(horizontalSizeClass: horizontalSizeClass),
-                spacing: AppTheme.md
-            ) {
-                ForEach(store.categorySpending, id: \.category.id) { row in
-                    VStack(alignment: .leading, spacing: AppTheme.sm) {
-                        HStack {
-                            Text(row.category.name)
-                                .font(.app(15, weight: .semibold))
-                                .foregroundStyle(AppTheme.primaryText)
-                            Spacer()
-                            GroupPill(group: row.category.group)
+            if store.categorySpending.isEmpty {
+                Text("Set budgets or log spending to track progress.")
+                    .font(.app(14, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .padding(.vertical, AppTheme.sm)
+            } else {
+                LazyVGrid(
+                    columns: AdaptiveLayout.categoryColumns(horizontalSizeClass: horizontalSizeClass),
+                    spacing: AppTheme.md
+                ) {
+                    ForEach(store.categorySpending, id: \.category.id) { row in
+                        VStack(alignment: .leading, spacing: AppTheme.sm) {
+                            HStack {
+                                Text(row.category.name)
+                                    .font(.app(15, weight: .semibold))
+                                    .foregroundStyle(AppTheme.primaryText)
+                                Spacer()
+                                GroupPill(group: row.category.group)
+                            }
+                            ProgressView(value: min(row.category.budget > 0 ? row.spent / row.category.budget : 0, 1))
+                                .tint(row.spent > row.category.budget ? AppTheme.expense : AppTheme.primaryText)
+                            Text("\(currencyDetailed(row.spent)) / \(currency(row.category.budget))")
+                                .font(.app(12, weight: .medium))
+                                .foregroundStyle(AppTheme.secondaryText)
                         }
-                        ProgressView(value: min(row.category.budget > 0 ? row.spent / row.category.budget : 0, 1))
-                            .tint(row.spent > row.category.budget ? AppTheme.expense : AppTheme.primaryText)
-                        Text("\(currency(row.spent)) / \(currency(row.category.budget))")
-                            .font(.app(12, weight: .medium))
-                            .foregroundStyle(AppTheme.secondaryText)
+                        .padding(.vertical, AppTheme.xs)
                     }
-                    .padding(.vertical, AppTheme.xs)
                 }
             }
         }
         .appCard()
+    }
+
+    private var categoryBreakdownSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: AppTheme.xs) {
+                    Text("Spending")
+                        .font(.app(12, weight: .bold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .textCase(.uppercase)
+                    Text("Category breakdown")
+                        .font(.app(18, weight: .bold))
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+                Spacer(minLength: AppTheme.sm)
+                if let top = breakdownRows.first {
+                    Text("\(top.category.name): \(currencyDetailed(top.spent))")
+                        .font(.app(12, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.gray.opacity(0.08), in: Capsule())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                } else {
+                    Text("No spending yet")
+                        .font(.app(12, weight: .semibold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.gray.opacity(0.08), in: Capsule())
+                }
+            }
+
+            if breakdownRows.isEmpty {
+                Text("No spending logged for this month.")
+                    .font(.app(14, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, AppTheme.lg)
+            } else {
+                let maxSpent = breakdownRows.map(\.spent).max() ?? 1
+                VStack(spacing: AppTheme.md) {
+                    ForEach(Array(breakdownRows.enumerated()), id: \.element.category.id) { index, row in
+                        categoryBreakdownRow(row: row, maxSpent: maxSpent, index: index)
+                    }
+                }
+                .padding(.top, AppTheme.xs)
+            }
+        }
+        .appCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Spending by category")
+    }
+
+    private func categoryBreakdownRow(
+        row: (category: BudgetCategory, spent: Double),
+        maxSpent: Double,
+        index: Int
+    ) -> some View {
+        let fraction = maxSpent > 0 ? row.spent / maxSpent : 0
+        let barColor = AppTheme.chartBarColor(group: row.category.group, index: index)
+
+        return HStack(spacing: AppTheme.md) {
+            Text(row.category.name)
+                .font(.app(13, weight: .bold))
+                .foregroundStyle(AppTheme.primaryText)
+                .frame(width: horizontalSizeClass == .regular ? 120 : 88, alignment: .leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            GeometryReader { geo in
+                let width = max(8, geo.size.width * fraction)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(barColor)
+                    .frame(width: width, height: 18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(height: 18)
+
+            Text(currencyDetailed(row.spent))
+                .font(.app(12, weight: .bold))
+                .foregroundStyle(AppTheme.secondaryText)
+                .frame(width: horizontalSizeClass == .regular ? 72 : 64, alignment: .trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(row.category.name), \(currencyDetailed(row.spent))")
     }
 }

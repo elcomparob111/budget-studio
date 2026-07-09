@@ -48,6 +48,22 @@ enum AppTheme {
         }
     }
 
+    /// Soft bar fills for the Overview category breakdown (pastel, group-aware).
+    static func chartBarColor(group: String, index: Int) -> Color {
+        let palette: [Color]
+        switch group {
+        case "Needs":
+            palette = [pastelBlue, Color(hex: 0xA8D4F0), Color(hex: 0xB8E0FF), Color(hex: 0x9EC9E8)]
+        case "Wants":
+            palette = [pastelPurple, pastelPink, Color(hex: 0xE8D4F5), Color(hex: 0xF0C4D8)]
+        case "Savings":
+            palette = [pastelGreen, Color(hex: 0xC5D9A8), Color(hex: 0xD4E8B8), Color(hex: 0xB8D090)]
+        default:
+            palette = [pastelOrange, pastelPink, pastelBlue, pastelPurple]
+        }
+        return palette[index % palette.count]
+    }
+
     static func groupEmoji(_ group: String) -> String {
         switch group {
         case "Needs": return "🏠"

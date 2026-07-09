@@ -3,6 +3,8 @@ import SwiftUI
 struct TransactionsView: View {
     @EnvironmentObject private var store: BudgetStore
     @Binding var showAddTransaction: Bool
+    var onAddManually: (() -> Void)? = nil
+    var onScanReceipt: (() -> Void)? = nil
     @State private var search = ""
     @State private var typeFilter = "All"
     @State private var editingTransaction: BudgetTransaction?
@@ -60,12 +62,20 @@ struct TransactionsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
-                            showAddTransaction = true
+                            if let onAddManually {
+                                onAddManually()
+                            } else {
+                                showAddTransaction = true
+                            }
                         } label: {
                             Label("Add manually", systemImage: "plus")
                         }
                         Button {
-                            showAddTransaction = true
+                            if let onScanReceipt {
+                                onScanReceipt()
+                            } else {
+                                showAddTransaction = true
+                            }
                         } label: {
                             Label("Scan receipt", systemImage: "doc.text.viewfinder")
                         }
@@ -131,12 +141,30 @@ struct TransactionsView: View {
                 .font(.app(40))
                 .frame(width: 70, height: 70)
                 .background(AppTheme.pastelOrange.opacity(0.4), in: Circle())
-            Text("No transactions yet")
+                .accessibilityHidden(true)
+            Text(search.isEmpty && typeFilter == "All" ? "No transactions yet" : "Nothing matches")
                 .font(.app(18, weight: .bold))
                 .foregroundStyle(AppTheme.primaryText)
-            Text("Add your first one for this month.")
+            Text(search.isEmpty && typeFilter == "All"
+                  ? "Add one for this month, or scan a receipt."
+                  : "Try a different filter or search.")
                 .font(.app(14, weight: .medium))
                 .foregroundStyle(AppTheme.secondaryText)
+                .multilineTextAlignment(.center)
+            if search.isEmpty && typeFilter == "All" {
+                Button {
+                    if let onAddManually {
+                        onAddManually()
+                    } else {
+                        showAddTransaction = true
+                    }
+                } label: {
+                    Text("Add transaction")
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .frame(maxWidth: 220)
+                .padding(.top, AppTheme.xs)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AppTheme.xxl)

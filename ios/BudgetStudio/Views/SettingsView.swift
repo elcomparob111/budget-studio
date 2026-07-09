@@ -26,8 +26,8 @@ struct SettingsView: View {
                     payScheduleCard
 
                     VStack(spacing: AppTheme.sm) {
-                        settingsButton(title: "Open setup wizard", emoji: "🪄") { showSetup = true }
-                        settingsButton(title: "Load demo budget", emoji: "🧪") { store.loadDemo() }
+                        settingsButton(title: "Setup wizard", emoji: "🪄") { showSetup = true }
+                        settingsButton(title: "Load demo data", emoji: "🧪") { store.loadDemo() }
                     }
 
                     if BiometricAuth.isAvailable {
@@ -43,7 +43,7 @@ struct SettingsView: View {
                                         .font(.app(16, weight: .semibold))
                                         .foregroundStyle(AppTheme.primaryText)
                                     Text(store.faceIDEnabled
-                                          ? "On — next launch asks for \(store.biometryLabel)"
+                                          ? "On for next launch"
                                           : "Sign in with password once to enable")
                                         .font(.app(12, weight: .medium))
                                         .foregroundStyle(AppTheme.secondaryText)

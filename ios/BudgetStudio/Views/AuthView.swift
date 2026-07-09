@@ -37,8 +37,8 @@ struct AuthView: View {
                             .font(.app(28, weight: .bold))
                             .foregroundStyle(AppTheme.primaryText)
 
-                        Text("Sign in and your budget follows you on every device — private to your account only.")
-                            .font(.app(16, weight: .medium))
+                        Text("Your budget stays private and syncs across your devices.")
+                            .font(.app(15, weight: .medium))
                             .foregroundStyle(AppTheme.secondaryText)
                             .multilineTextAlignment(.center)
                     }
