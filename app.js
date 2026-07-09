@@ -410,6 +410,7 @@ const elements = {
   editDescriptionInput: document.querySelector("#editDescriptionInput"),
   editAmountInput: document.querySelector("#editAmountInput"),
   appTitle: document.querySelector("#appTitle"),
+  appSubtitle: document.querySelector("#appSubtitle"),
   authGate: document.querySelector("#authGate"),
   authTitle: document.querySelector("#authTitle"),
   authCopy: document.querySelector("#authCopy"),
@@ -1630,14 +1631,27 @@ async function handleAuthSubmit(event) {
   }
 }
 
+function formatFriendlyToday() {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
+}
+
 function renderIdentityUI() {
   const name = currentUser?.displayName ? cleanProfileName(currentUser.displayName) : "";
   const titles = {
-    overview: name ? `${name}'s budget` : "Overview",
+    overview: name ? `Welcome ${name}!` : "Welcome!",
     activity: "Activity",
     settings: "Settings",
   };
   elements.appTitle.textContent = titles[activeTab] || titles.overview;
+  if (elements.appSubtitle) {
+    const showToday = activeTab === "overview";
+    elements.appSubtitle.hidden = !showToday;
+    if (showToday) elements.appSubtitle.textContent = formatFriendlyToday();
+  }
   elements.signOutBtn.hidden = localOnlyMode || !currentUser;
   if (elements.tabBar) elements.tabBar.hidden = Boolean(elements.authGate && !elements.authGate.hidden);
 }

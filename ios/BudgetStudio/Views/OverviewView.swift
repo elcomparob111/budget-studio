@@ -56,13 +56,12 @@ struct OverviewView: View {
                             .frame(width: 32, height: 32)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Budget Studio")
-                                .font(.app(11, weight: .bold))
-                                .foregroundStyle(AppTheme.secondaryText)
-                                .textCase(.uppercase)
-                            Text(store.userName.isEmpty ? "Overview" : "\(store.userName)'s budget")
+                            Text(welcomeTitle)
                                 .font(.app(16, weight: .bold))
                                 .foregroundStyle(AppTheme.primaryText)
+                            Text(todaySubtitle)
+                                .font(.app(13, weight: .medium))
+                                .foregroundStyle(AppTheme.secondaryText)
                         }
                     }
                 }
@@ -97,17 +96,68 @@ struct OverviewView: View {
         }
     }
 
+    private var welcomeTitle: String {
+        let name = store.userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "Welcome!" : "Welcome \(name)!"
+    }
+
+    private var todaySubtitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("EEEE, MMMM d")
+        return formatter.string(from: Date())
+    }
+
     private var monthPicker: some View {
-        HStack {
+        HStack(spacing: AppTheme.sm) {
             Text("Month")
                 .font(.app(14, weight: .semibold))
                 .foregroundStyle(AppTheme.secondaryText)
             Spacer()
-            DatePicker("", selection: $store.selectedMonth, displayedComponents: [.date])
-                .labelsHidden()
-                .datePickerStyle(.compact)
+            Button {
+                shiftMonth(by: -1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(width: 36, height: 36)
+                    .background(AppTheme.inputFill)
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Previous month")
+
+            Text(monthYearLabel)
+                .font(.app(15, weight: .semibold))
+                .foregroundStyle(AppTheme.primaryText)
+                .frame(minWidth: 120)
+                .multilineTextAlignment(.center)
+
+            Button {
+                shiftMonth(by: 1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(width: 36, height: 36)
+                    .background(AppTheme.inputFill)
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Next month")
         }
         .appCard()
+    }
+
+    private var monthYearLabel: String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        return formatter.string(from: store.selectedMonth)
+    }
+
+    private func shiftMonth(by value: Int) {
+        if let next = Calendar.current.date(byAdding: .month, value: value, to: store.selectedMonth) {
+            store.selectedMonth = next
+        }
     }
 
     private func payPeriodCard(_ pay: PayPeriodSummary) -> some View {

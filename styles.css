@@ -119,6 +119,14 @@ body.wizard-open { overflow: hidden; }
   color: var(--ink);
 }
 
+.brand-lockup .header-subtitle {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
 .header-actions {
   display: flex;
   align-items: end;
