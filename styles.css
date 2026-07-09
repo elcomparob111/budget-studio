@@ -302,14 +302,6 @@ body.wizard-open { overflow: hidden; }
   font-weight: 700 !important;
 }
 
-.metric-hint {
-  margin: 10px 2px 0;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.35;
-}
-
 .paycheck-grid article small {
   display: block;
   margin-top: 4px;

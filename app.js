@@ -1083,19 +1083,17 @@ function renderDashboard() {
   const topCategory = summary.categoryRows.find((row) => row.spent > 0);
 
   elements.incomeMetric.textContent = money(summary.income);
-  elements.incomeSubtext.textContent = "Logged this month";
+  elements.incomeSubtext.textContent = "This month";
   elements.spentMetric.textContent = money(summary.expenses);
-  elements.spentSubtext.textContent = "All expenses this month";
+  elements.spentSubtext.textContent = "This month";
   elements.leftMetric.textContent = money(left);
-  elements.leftSubtext.textContent = left >= 0
-    ? `Of ${money(summary.totalBudget)} planned · not cash`
-    : `Over plan by ${money(Math.abs(left))} · not cash`;
+  elements.leftSubtext.textContent = "Of your plan";
   elements.budgetUsedMetric.textContent = percent(usedPercent);
   elements.budgetRing.style.setProperty("--used", `${Math.min(100, Math.max(0, usedPercent * 100))}%`);
   elements.budgetRing.classList.toggle("over", usedPercent > 1);
   elements.ringSubtext.textContent = statusCopy(usedPercent);
   if (elements.cashLeftSubtext) {
-    elements.cashLeftSubtext.textContent = `${money(net)} · income − spent`;
+    elements.cashLeftSubtext.textContent = money(net);
   }
   elements.netMetric.textContent = `${money(net)} left from income`;
   elements.netMetric.className = "money-chip";

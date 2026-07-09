@@ -21,21 +21,21 @@ struct OverviewView: View {
                         MetricCard(
                             title: "Income",
                             value: currency(store.monthSummary.income),
-                            subtitle: "Logged this month",
+                            subtitle: "This month",
                             valueColor: AppTheme.income,
                             emoji: "💵"
                         )
                         MetricCard(
                             title: "Spent",
                             value: currency(store.monthSummary.spent),
-                            subtitle: "All expenses this month",
+                            subtitle: "This month",
                             valueColor: AppTheme.expense,
                             emoji: "🧾"
                         )
                         MetricCard(
-                            title: "Budget remaining",
+                            title: "Plan left",
                             value: currency(store.monthSummary.left),
-                            subtitle: "Of \(currency(store.monthSummary.budgeted)) planned · not cash",
+                            subtitle: "Of your plan",
                             emoji: "🎯"
                         )
                         HStack(spacing: AppTheme.md) {
@@ -47,10 +47,10 @@ struct OverviewView: View {
                                 Text(store.monthSummary.usedRatio > 1 ? "Over plan" : "Healthy pace")
                                     .font(.app(12, weight: .medium))
                                     .foregroundStyle(AppTheme.secondaryText)
-                                Text("Left from income")
+                                Text("Cash left")
                                     .font(.app(12, weight: .semibold))
                                     .foregroundStyle(AppTheme.primaryText)
-                                Text("\(currency(store.monthSummary.cashLeft)) · income − spent")
+                                Text(currency(store.monthSummary.cashLeft))
                                     .font(.app(12, weight: .medium))
                                     .foregroundStyle(AppTheme.secondaryText)
                             }
@@ -58,11 +58,6 @@ struct OverviewView: View {
                         }
                         .appCard()
                     }
-
-                    Text("Budget remaining is what’s left of your category plan — not money left from income.")
-                        .font(.app(12, weight: .medium))
-                        .foregroundStyle(AppTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
 
                     if let pay = store.payPeriodSummary {
                         payPeriodCard(pay)
@@ -230,16 +225,13 @@ struct OverviewView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.sm) {
                 miniStat("Income", currency(pay.income), AppTheme.income)
                 miniStat("Spent", currency(pay.spent), AppTheme.expense)
-                miniStat("Check left", currency(pay.left), AppTheme.primaryText)
+                miniStat("Check left", currency(pay.left), AppTheme.primaryText, subtitle: "This paycheck")
             }
-            Text("Check left = income in this pay period − spent.")
-                .font(.app(12, weight: .medium))
-                .foregroundStyle(AppTheme.secondaryText)
         }
         .appCard()
     }
 
-    private func miniStat(_ title: String, _ value: String, _ color: Color) -> some View {
+    private func miniStat(_ title: String, _ value: String, _ color: Color, subtitle: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.xs) {
             Text(title)
                 .font(.app(12, weight: .medium))
@@ -249,6 +241,11 @@ struct OverviewView: View {
                 .foregroundStyle(color)
                 .minimumScaleFactor(0.8)
                 .lineLimit(1)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.app(11, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
