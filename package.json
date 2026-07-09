@@ -6,6 +6,8 @@
     "start": "npx serve .",
     "test": "node --test tests/security.test.js",
     "security:scan": "bash scripts/security-scan.sh",
-    "security:test": "npm test"
+    "security:test": "npm test",
+    "license:check": "node scripts/license-check.js",
+    "security:audit": "node scripts/security-audit.js"
   }
 }
