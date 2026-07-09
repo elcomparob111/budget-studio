@@ -7,6 +7,9 @@ struct SettingsView: View {
     @State private var newCategoryName = ""
     @State private var newCategoryGroup = "Needs"
     @State private var newCategoryBudget = ""
+    /// Draft text while typing so each keystroke does not hit cloud sync.
+    @State private var budgetDrafts: [String: String] = [:]
+    @State private var budgetCommitTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -66,7 +69,11 @@ struct SettingsView: View {
                                     GroupPill(group: category.group)
                                 }
                                 Spacer()
-                                TextField("0", value: binding(for: category.name), format: .number)
+                                TextField(
+                                    "0",
+                                    text: budgetTextBinding(for: category.name),
+                                    prompt: Text("0")
+                                )
                                     .font(.app(16, weight: .semibold))
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
@@ -76,6 +83,7 @@ struct SettingsView: View {
                                     .frame(width: 96)
                                     .background(AppTheme.inputFill)
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .onSubmit { commitBudgetDraft(for: category.name) }
                             }
                         }
                     }
@@ -143,6 +151,7 @@ struct SettingsView: View {
             }
             .background(AppTheme.background.ignoresSafeArea())
             .navigationTitle("Settings")
+            .onDisappear { commitAllBudgetDrafts() }
         }
     }
 
@@ -166,10 +175,48 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    private func binding(for name: String) -> Binding<Double> {
+    private func budgetTextBinding(for name: String) -> Binding<String> {
         Binding(
-            get: { store.state.categories.first(where: { $0.name == name })?.budget ?? 0 },
-            set: { store.updateCategoryBudget(name: name, budget: $0) }
+            get: {
+                if let draft = budgetDrafts[name] { return draft }
+                let value = store.state.categories.first(where: { $0.name == name })?.budget ?? 0
+                if value == 0 { return "" }
+                return value.truncatingRemainder(dividingBy: 1) == 0
+                    ? String(Int(value))
+                    : String(value)
+            },
+            set: { newValue in
+                budgetDrafts[name] = newValue
+                scheduleBudgetCommit()
+            }
         )
+    }
+
+    private func scheduleBudgetCommit() {
+        budgetCommitTask?.cancel()
+        budgetCommitTask = Task {
+            do {
+                try await Task.sleep(for: .milliseconds(800))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            commitAllBudgetDrafts()
+        }
+    }
+
+    private func commitBudgetDraft(for name: String) {
+        guard let draft = budgetDrafts[name] else { return }
+        let parsed = Double(draft.replacingOccurrences(of: ",", with: "")) ?? 0
+        store.updateCategoryBudget(name: name, budget: parsed)
+        budgetDrafts[name] = nil
+    }
+
+    private func commitAllBudgetDrafts() {
+        budgetCommitTask?.cancel()
+        let names = Array(budgetDrafts.keys)
+        for name in names {
+            commitBudgetDraft(for: name)
+        }
     }
 }

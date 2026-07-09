@@ -18,6 +18,10 @@ final class BudgetStore: ObservableObject {
     private let supabase = SupabaseService.shared
     private var cloudSaveTask: Task<Void, Never>?
     private var localUpdatedAt: Int64 = 0
+    /// Pending cloud push after a failed sync — retried quietly on next save/bootstrap.
+    private var cloudDirty = false
+    /// Avoid toast spam while typing category budgets or during rapid edits.
+    private var didNotifySyncFailure = false
 
     var monthKey: String { BudgetCalculator.monthKey(from: selectedMonth) }
     var monthSummary: MonthSummary { BudgetCalculator.monthSummary(state: state, month: monthKey) }
@@ -304,16 +308,25 @@ final class BudgetStore: ObservableObject {
                 // Prefer newer local (e.g. setup finished before cloud push landed).
                 applyLoadedState(local.state, updatedAt: local.updatedAt, persistCleanup: true)
                 if cloud == nil || localAt > cloudAt {
-                    await pushCloud()
+                    await pushCloud(notifyOnFailure: false)
                 }
             } else {
                 state = BudgetDefaults.emptyState()
+            }
+            // Quietly flush any edits that failed to sync earlier.
+            if cloudDirty {
+                await pushCloud(notifyOnFailure: false)
             }
         } catch {
             if let local = loadLocal(userId: userId) {
                 applyLoadedState(local.state, updatedAt: local.updatedAt, persistCleanup: false)
             }
-            showToast("Working offline — changes will sync when you're back online.")
+            cloudDirty = true
+            // One soft notice on launch — never blocks local editing.
+            if !didNotifySyncFailure {
+                didNotifySyncFailure = true
+                showToast("Working offline — changes save on this device.")
+            }
         }
     }
 
@@ -334,21 +347,34 @@ final class BudgetStore: ObservableObject {
         return payload
     }
 
-    private func pushCloud() async {
+    private func pushCloud(notifyOnFailure: Bool = true) async {
         guard let userId = supabase.currentUser?.id else { return }
         let payload = CloudBudgetPayload(state: state, updatedAt: localUpdatedAt, name: userName)
         do {
             try await supabase.pushBudget(userId: userId, payload: payload)
+            cloudDirty = false
+            didNotifySyncFailure = false
         } catch {
-            showToast("Could not sync yet. We'll retry when you're online.")
+            cloudDirty = true
+            // Local save already succeeded — never block input. Toast at most once until sync works again.
+            if notifyOnFailure && !didNotifySyncFailure {
+                didNotifySyncFailure = true
+                showToast("Saved on this device. Cloud sync will retry shortly.")
+            }
         }
     }
 
     private func scheduleCloudSave() {
         cloudSaveTask?.cancel()
-        cloudSaveTask = Task {
-            try? await Task.sleep(for: .milliseconds(700))
-            await pushCloud()
+        cloudSaveTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(900))
+            } catch {
+                // Cancelled by a newer edit — do not push (old bug: try? let cancelled tasks still sync).
+                return
+            }
+            guard !Task.isCancelled else { return }
+            await self?.pushCloud()
         }
     }
 

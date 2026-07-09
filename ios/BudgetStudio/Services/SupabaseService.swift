@@ -83,7 +83,11 @@ final class SupabaseService {
             updated_at: payload.updatedAt,
             name: payload.name
         )
-        try await client.from("budgets").upsert(row).execute()
+        // Explicit conflict target matches web upsert on primary key user_id.
+        try await client
+            .from("budgets")
+            .upsert(row, onConflict: "user_id")
+            .execute()
     }
 
     func friendlyAuthError(_ error: Error) -> String {
