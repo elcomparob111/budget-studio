@@ -51,6 +51,23 @@ export async function signOutUser() {
   await supabase.auth.signOut();
 }
 
+export async function resetPassword(email) {
+  // Always send people to the live site — localhost only works if a local server is running.
+  const redirectTo = "https://elcomparob111.github.io/budget-studio/";
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+export async function updatePassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+export function isPasswordRecoveryLink() {
+  const hash = window.location.hash || "";
+  return hash.includes("type=recovery");
+}
+
 export async function fetchCloudBudget(uid) {
   const { data, error } = await supabase
     .from("budgets")
@@ -80,5 +97,6 @@ export function friendlyAuthError(error) {
   if (message.includes("at least 6")) return "Password needs at least 6 characters.";
   if (message.includes("rate limit") || message.includes("too many")) return "Too many attempts. Wait a minute and try again.";
   if (message.includes("fetch") || message.includes("network")) return "No connection. Check your internet and try again.";
+  if (message.includes("user not found") || message.includes("unable to validate")) return "No account found for that email.";
   return "Something went wrong. Please try again.";
 }

@@ -3,6 +3,9 @@ import {
   signUp,
   signIn,
   signOutUser,
+  resetPassword,
+  updatePassword,
+  isPasswordRecoveryLink,
   fetchCloudBudget,
   pushCloudBudget,
   friendlyAuthError,
@@ -404,20 +407,25 @@ const elements = {
   appTitle: document.querySelector("#appTitle"),
   authGate: document.querySelector("#authGate"),
   authTitle: document.querySelector("#authTitle"),
+  authCopy: document.querySelector("#authCopy"),
   authForm: document.querySelector("#authForm"),
   authNameLabel: document.querySelector("#authNameLabel"),
   authNameInput: document.querySelector("#authNameInput"),
+  authEmailLabel: document.querySelector("#authEmailLabel"),
   authEmailInput: document.querySelector("#authEmailInput"),
+  authPasswordLabel: document.querySelector("#authPasswordLabel"),
+  authPasswordLabelText: document.querySelector("#authPasswordLabelText"),
   authPasswordInput: document.querySelector("#authPasswordInput"),
   authSubmitBtn: document.querySelector("#authSubmitBtn"),
   authModeToggleBtn: document.querySelector("#authModeToggleBtn"),
+  authForgotBtn: document.querySelector("#authForgotBtn"),
   authMessage: document.querySelector("#authMessage"),
   signOutBtn: document.querySelector("#signOutBtn"),
 };
 
 let currentUser = null;
 let localOnlyMode = false;
-let authMode = "signin";
+let authMode = "signin"; // signin | signup | recovery
 let cloudSaveTimer = null;
 let state = createEmptyState();
 let wizard = createWizardDraft(false);
@@ -458,6 +466,15 @@ async function handleUserChanged(user, info) {
     renderIdentityUI();
     render();
     openAuthGate();
+    return;
+  }
+
+  // Password-recovery links sign the user in temporarily so they can set a new password.
+  if (isPasswordRecoveryLink() || authMode === "recovery") {
+    currentUser = user;
+    openAuthGate();
+    setAuthMode("recovery");
+    elements.authPasswordInput.focus();
     return;
   }
 
@@ -657,6 +674,7 @@ function attachEvents() {
   elements.authModeToggleBtn.addEventListener("click", () => {
     setAuthMode(authMode === "signin" ? "signup" : "signin");
   });
+  elements.authForgotBtn.addEventListener("click", handleForgotPassword);
   elements.signOutBtn.addEventListener("click", async () => {
     await signOutUser();
     showToast("Signed out.");
@@ -1463,13 +1481,48 @@ function closeAuthGate() {
 function setAuthMode(mode) {
   authMode = mode;
   const signup = mode === "signup";
-  elements.authTitle.textContent = signup ? "Create your account" : "Welcome back";
+  const recovery = mode === "recovery";
+
+  elements.authTitle.textContent = recovery
+    ? "Choose a new password"
+    : signup
+      ? "Create your account"
+      : "Welcome back";
+  elements.authCopy.textContent = recovery
+    ? "Enter a new password for your Budget Studio account. At least 6 characters."
+    : "Sign in and your budget follows you on every device — private to your account only.";
+
   elements.authNameLabel.hidden = !signup;
   elements.authNameInput.required = signup;
-  elements.authSubmitBtn.textContent = signup ? "Create account" : "Sign in";
+  elements.authEmailLabel.hidden = recovery;
+  elements.authEmailInput.required = !recovery;
+  elements.authPasswordLabelText.textContent = recovery ? "New password" : "Password";
+  elements.authPasswordInput.placeholder = recovery ? "New password (at least 6 characters)" : "At least 6 characters";
+  elements.authPasswordInput.autocomplete = signup || recovery ? "new-password" : "current-password";
+  elements.authSubmitBtn.textContent = recovery ? "Save new password" : signup ? "Create account" : "Sign in";
+  elements.authModeToggleBtn.hidden = recovery;
+  elements.authForgotBtn.hidden = signup || recovery;
   elements.authModeToggleBtn.textContent = signup ? "Already have an account? Sign in" : "New here? Create an account";
-  elements.authPasswordInput.autocomplete = signup ? "new-password" : "current-password";
   setAuthMessage("");
+}
+
+async function handleForgotPassword() {
+  const email = elements.authEmailInput.value.trim();
+  if (!email) {
+    setAuthMessage("Enter your email first, then tap Forgot password.", true);
+    elements.authEmailInput.focus();
+    return;
+  }
+  elements.authForgotBtn.disabled = true;
+  setAuthMessage("Sending reset email...");
+  try {
+    await resetPassword(email);
+    setAuthMessage("Check your email for a reset link. If nothing arrives in a minute, check spam.");
+  } catch (error) {
+    setAuthMessage(friendlyAuthError(error), true);
+  } finally {
+    elements.authForgotBtn.disabled = false;
+  }
 }
 
 function setAuthMessage(message, isError = false) {
@@ -1482,6 +1535,28 @@ async function handleAuthSubmit(event) {
   const email = elements.authEmailInput.value.trim();
   const password = elements.authPasswordInput.value;
   const name = cleanProfileName(elements.authNameInput.value);
+
+  if (authMode === "recovery") {
+    if (password.length < 6) {
+      setAuthMessage("Password needs at least 6 characters.", true);
+      return;
+    }
+    elements.authSubmitBtn.disabled = true;
+    setAuthMessage("Saving new password...");
+    try {
+      await updatePassword(password);
+      elements.authPasswordInput.value = "";
+      history.replaceState(null, "", window.location.pathname);
+      setAuthMode("signin");
+      setAuthMessage("Password updated. You're signed in.");
+      showToast("Password updated.");
+    } catch (error) {
+      setAuthMessage(friendlyAuthError(error), true);
+    } finally {
+      elements.authSubmitBtn.disabled = false;
+    }
+    return;
+  }
 
   if (authMode === "signup" && !name) {
     setAuthMessage("Type your name first.", true);

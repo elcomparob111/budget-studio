@@ -366,7 +366,7 @@
         <img class="app-logo" src="./icons/icon-192.png" width="72" height="72" alt="" />
         <p class="eyebrow">Budget Studio</p>
         <h2 id="authTitle">Welcome back</h2>
-        <p class="wizard-copy">
+        <p id="authCopy" class="wizard-copy">
           Sign in and your budget follows you on every device — private to your account only.
         </p>
         <form id="authForm" class="profile-form">
@@ -374,15 +374,16 @@
             <span>Your name</span>
             <input id="authNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="name" />
           </label>
-          <label>
+          <label id="authEmailLabel">
             <span>Email</span>
             <input id="authEmailInput" type="email" placeholder="you@example.com" autocomplete="email" required />
           </label>
-          <label>
-            <span>Password</span>
+          <label id="authPasswordLabel">
+            <span id="authPasswordLabelText">Password</span>
             <input id="authPasswordInput" type="password" minlength="6" placeholder="At least 6 characters" autocomplete="current-password" required />
           </label>
           <button id="authSubmitBtn" class="primary-button" type="submit">Sign in</button>
+          <button id="authForgotBtn" class="ghost-button" type="button">Forgot password?</button>
           <button id="authModeToggleBtn" class="ghost-button" type="button">New here? Create an account</button>
           <p id="authMessage" class="form-message" role="status"></p>
         </form>
