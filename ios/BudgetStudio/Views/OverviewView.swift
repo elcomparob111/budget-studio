@@ -60,8 +60,17 @@ struct OverviewView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 8) {
-                        Button {
-                            showAddTransaction = true
+                        Menu {
+                            Button {
+                                showAddTransaction = true
+                            } label: {
+                                Label("Add manually", systemImage: "plus")
+                            }
+                            Button {
+                                showAddTransaction = true
+                            } label: {
+                                Label("Scan receipt", systemImage: "doc.text.viewfinder")
+                            }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.system(size: 15, weight: .semibold))
@@ -73,18 +82,21 @@ struct OverviewView: View {
                         }
                         .accessibilityLabel("Add transaction")
 
-                        Button {
-                            showSetup = true
-                        } label: {
-                            Image(systemName: "wand.and.stars")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(AppTheme.primaryText)
-                                .frame(width: 36, height: 36)
-                                .background(AppTheme.surface)
-                                .clipShape(Circle())
-                                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+                        // Setup wand only before first-run completion; afterward use Settings.
+                        if !store.state.setupComplete {
+                            Button {
+                                showSetup = true
+                            } label: {
+                                Image(systemName: "wand.and.stars")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(AppTheme.primaryText)
+                                    .frame(width: 36, height: 36)
+                                    .background(AppTheme.surface)
+                                    .clipShape(Circle())
+                                    .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+                            }
+                            .accessibilityLabel("Open setup")
                         }
-                        .accessibilityLabel("Open setup")
                     }
                 }
             }

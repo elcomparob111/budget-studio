@@ -58,8 +58,17 @@ struct TransactionsView: View {
             .navigationTitle("Activity")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showAddTransaction = true
+                    Menu {
+                        Button {
+                            showAddTransaction = true
+                        } label: {
+                            Label("Add manually", systemImage: "plus")
+                        }
+                        Button {
+                            showAddTransaction = true
+                        } label: {
+                            Label("Scan receipt", systemImage: "doc.text.viewfinder")
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 15, weight: .semibold))
@@ -69,6 +78,7 @@ struct TransactionsView: View {
                             .clipShape(Circle())
                             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
                     }
+                    .accessibilityLabel("Add transaction")
                 }
             }
             .sheet(item: $editingTransaction) { transaction in
