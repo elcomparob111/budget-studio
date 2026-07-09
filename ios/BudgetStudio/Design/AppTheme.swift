@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AppTheme {
     // MARK: - Colors (swiftui-design skill)
@@ -112,6 +113,25 @@ extension View {
     /// page-sized (or large) sheet on iPad so forms are not cramped.
     func appSheetChrome(detents: Set<PresentationDetent> = [.large]) -> some View {
         modifier(AppSheetChromeModifier(detents: detents))
+    }
+
+    /// Adds a Done button above the decimal/number pad so users can dismiss it.
+    func decimalPadDoneToolbar() -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil,
+                        from: nil,
+                        for: nil
+                    )
+                }
+                .font(.app(16, weight: .semibold))
+                .foregroundStyle(AppTheme.primaryText)
+            }
+        }
     }
 }
 

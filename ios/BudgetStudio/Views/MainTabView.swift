@@ -20,11 +20,17 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
+            BudgetsView()
+                .tabItem {
+                    Label("Budgets", systemImage: "chart.bar.fill")
+                }
+                .tag(2)
+
             SettingsView(showSetup: $showSetup)
                 .tabItem {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
-                .tag(2)
+                .tag(3)
         }
         .tint(AppTheme.primaryText)
         .sheet(isPresented: $showAddTransaction) {

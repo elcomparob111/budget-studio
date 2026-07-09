@@ -68,6 +68,7 @@ struct SetupWizardView: View {
             .background(AppTheme.background.ignoresSafeArea())
             .navigationTitle("Setup")
             .navigationBarTitleDisplayMode(.inline)
+            .decimalPadDoneToolbar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(store.state.setupComplete ? "Close" : "Skip") {

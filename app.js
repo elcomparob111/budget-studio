@@ -371,6 +371,7 @@ const elements = {
   bottomDock: document.querySelector("#bottomDock"),
   overviewTab: document.querySelector("#overviewTab"),
   activityTab: document.querySelector("#activityTab"),
+  budgetsTab: document.querySelector("#budgetsTab"),
   settingsTab: document.querySelector("#settingsTab"),
   tabBar: document.querySelector("#tabBar"),
   addTransactionBtn: document.querySelector("#addTransactionBtn"),
@@ -728,10 +729,11 @@ function attachEvents() {
 }
 
 function switchTab(tab) {
-  activeTab = tab === "activity" || tab === "settings" ? tab : "overview";
+  activeTab = ["activity", "budgets", "settings"].includes(tab) ? tab : "overview";
   const panels = {
     overview: elements.overviewTab,
     activity: elements.activityTab,
+    budgets: elements.budgetsTab,
     settings: elements.settingsTab,
   };
   Object.entries(panels).forEach(([name, panel]) => {
@@ -1656,6 +1658,7 @@ function renderIdentityUI() {
   const titles = {
     overview: name ? `Welcome ${name}!` : "Welcome!",
     activity: "Activity",
+    budgets: "Budgets",
     settings: "Settings",
   };
   elements.appTitle.textContent = titles[activeTab] || titles.overview;

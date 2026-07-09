@@ -12,6 +12,7 @@ struct AddTransactionSheet: View {
     @State private var account = BudgetDefaults.accounts[0]
     @State private var description = ""
     @State private var amount = ""
+    @FocusState private var amountFocused: Bool
 
     private var categories: [BudgetCategory] {
         store.state.categories.filter { $0.type == type }
@@ -23,69 +24,81 @@ struct AddTransactionSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.lg) {
-                    typeChips
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: AppTheme.lg) {
+                        typeChips
 
-                    fieldLabel("Date") {
-                        DatePicker("", selection: $date, displayedComponents: .date)
-                            .labelsHidden()
-                    }
+                        fieldLabel("Date") {
+                            DatePicker("", selection: $date, displayedComponents: .date)
+                                .labelsHidden()
+                        }
 
-                    fieldLabel("Category") {
-                        Picker("", selection: $category) {
-                            ForEach(categories, id: \.id) { item in
-                                Text(item.name).tag(item.name)
+                        fieldLabel("Category") {
+                            Picker("", selection: $category) {
+                                ForEach(categories, id: \.id) { item in
+                                    Text(item.name).tag(item.name)
+                                }
                             }
+                            .labelsHidden()
                         }
-                        .labelsHidden()
-                    }
 
-                    fieldLabel("Account") {
-                        Picker("", selection: $account) {
-                            ForEach(BudgetDefaults.accounts, id: \.self) { Text($0).tag($0) }
+                        fieldLabel("Account") {
+                            Picker("", selection: $account) {
+                                ForEach(BudgetDefaults.accounts, id: \.self) { Text($0).tag($0) }
+                            }
+                            .labelsHidden()
                         }
-                        .labelsHidden()
-                    }
 
-                    fieldLabel("Description") {
-                        TextField("What was this for?", text: $description)
-                            .font(.app(16, weight: .medium))
-                            .appInputText()
-                    }
+                        fieldLabel("Description") {
+                            TextField("What was this for?", text: $description)
+                                .font(.app(16, weight: .medium))
+                                .appInputText()
+                        }
 
-                    fieldLabel("Amount") {
-                        TextField("0.00", text: $amount)
-                            .font(.app(16, weight: .medium))
-                            .keyboardType(.decimalPad)
-                            .appInputText()
-                    }
+                        fieldLabel("Amount") {
+                            TextField("0.00", text: $amount)
+                                .font(.app(16, weight: .medium))
+                                .keyboardType(.decimalPad)
+                                .appInputText()
+                                .focused($amountFocused)
+                        }
+                        .id("amount-field")
 
-                    Button(existing == nil ? "Add transaction" : "Save changes") {
-                        save()
+                        Button(existing == nil ? "Add transaction" : "Save changes") {
+                            save()
+                        }
+                        .buttonStyle(PrimaryButtonStyle(disabled: !canSave))
+                        .disabled(!canSave)
                     }
-                    .buttonStyle(PrimaryButtonStyle(disabled: !canSave))
-                    .disabled(!canSave)
+                    .padding(.horizontal, AppTheme.pagePadding)
+                    .padding(.top, AppTheme.lg)
+                    .padding(.bottom, AppTheme.xl)
+                    .readableWidth(AdaptiveLayout.formMaxWidth)
                 }
-                .padding(.horizontal, AppTheme.pagePadding)
-                .padding(.top, AppTheme.lg)
-                .padding(.bottom, AppTheme.xl)
-                .readableWidth(AdaptiveLayout.formMaxWidth)
-            }
-            .background(AppTheme.background.ignoresSafeArea())
-            .navigationTitle(existing == nil ? "New transaction" : "Edit transaction")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .font(.app(15, weight: .semibold))
-                        .foregroundStyle(AppTheme.primaryText)
+                .scrollDismissesKeyboard(.interactively)
+                .background(AppTheme.background.ignoresSafeArea())
+                .navigationTitle(existing == nil ? "New transaction" : "Edit transaction")
+                .navigationBarTitleDisplayMode(.inline)
+                .decimalPadDoneToolbar()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                            .font(.app(15, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryText)
+                    }
                 }
-            }
-            .onAppear(perform: populate)
-            .onChange(of: type) { _, _ in
-                if !categories.contains(where: { $0.name == category }) {
-                    category = categories.first?.name ?? ""
+                .onAppear(perform: populate)
+                .onChange(of: type) { _, _ in
+                    if !categories.contains(where: { $0.name == category }) {
+                        category = categories.first?.name ?? ""
+                    }
+                }
+                .onChange(of: amountFocused) { _, focused in
+                    guard focused else { return }
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo("amount-field", anchor: .center)
+                    }
                 }
             }
         }

@@ -545,7 +545,7 @@ td.amount { font-weight: 700; color: var(--ink); }
   bottom: 0;
   z-index: 15;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
   padding: 8px 12px env(safe-area-inset-bottom, 0px);
   background: var(--panel);

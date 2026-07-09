@@ -201,14 +201,13 @@
         </section>
       </section>
 
-      <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
+      <section id="budgetsTab" class="tab-panel" data-tab-panel="budgets" hidden>
         <section class="panel setup-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Setup</p>
+              <p class="eyebrow">Categories</p>
               <h2>Monthly category budgets</h2>
             </div>
-            <button id="resetBtn" class="ghost-button" type="button">Open setup wizard</button>
           </div>
           <div id="budgetEditor" class="budget-editor"></div>
           <form id="categoryBuilderForm" class="category-builder">
@@ -231,6 +230,20 @@
             <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
             <p id="categoryBuilderMessage" class="form-message" role="status"></p>
           </form>
+        </section>
+      </section>
+
+      <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
+        <section class="panel settings-actions-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Setup</p>
+              <h2>Budget setup</h2>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button id="resetBtn" class="secondary-button" type="button">Open setup wizard</button>
+          </div>
         </section>
 
         <section class="panel settings-actions-panel">
@@ -261,6 +274,10 @@
       <button class="tab-button" type="button" data-tab="activity">
         <span class="tab-icon" aria-hidden="true">☰</span>
         <span>Activity</span>
+      </button>
+      <button class="tab-button" type="button" data-tab="budgets">
+        <span class="tab-icon" aria-hidden="true">▦</span>
+        <span>Budgets</span>
       </button>
       <button class="tab-button" type="button" data-tab="settings">
         <span class="tab-icon" aria-hidden="true">⚙</span>
