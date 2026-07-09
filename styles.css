@@ -129,7 +129,7 @@ body.wizard-open { overflow: hidden; }
 
 .header-actions {
   display: flex;
-  align-items: end;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -144,16 +144,79 @@ body.wizard-open { overflow: hidden; }
   text-transform: uppercase;
 }
 
-.month-control {
-  display: grid;
-  gap: 4px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.month-control input,
-.month-control select,
+.month-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 10px 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.month-stepper-caption {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.month-stepper-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.month-stepper-btn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--input);
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0;
+}
+
+.month-stepper-btn:hover {
+  background: var(--line-soft);
+}
+
+.month-stepper-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 45, 45, 0.12);
+}
+
+.month-stepper-label {
+  min-width: 7.5rem;
+  text-align: center;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  user-select: none;
+}
+
 .table-tools input,
 .table-tools select,
 .transaction-form input,
@@ -168,8 +231,6 @@ body.wizard-open { overflow: hidden; }
   outline: none;
 }
 
-.month-control input:focus,
-.month-control select:focus,
 .table-tools input:focus,
 .table-tools select:focus,
 .transaction-form input:focus,
@@ -1138,7 +1199,8 @@ td.amount { font-weight: 700; color: var(--ink); }
     padding: 14px 0 calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 36px);
   }
   .app-header { align-items: start; flex-direction: column; }
-  .header-actions { width: 100%; justify-content: start; }
+  .header-actions { width: 100%; justify-content: start; align-items: center; }
+  .month-stepper { flex: 1; min-width: 0; }
   .summary-grid,
   .transaction-form,
   .budget-editor,
@@ -1293,8 +1355,6 @@ td.amount { font-weight: 700; color: var(--ink); }
   }
 }
 
-[data-theme="dark"] .month-control input,
-[data-theme="dark"] .month-control select,
 [data-theme="dark"] .profile-form input,
 [data-theme="dark"] .table-tools input,
 [data-theme="dark"] .table-tools select,

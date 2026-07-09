@@ -323,6 +323,9 @@ const expenseCategoryNames = defaultCategories
 
 const elements = {
   monthInput: document.querySelector("#monthInput"),
+  monthLabel: document.querySelector("#monthLabel"),
+  prevMonthBtn: document.querySelector("#prevMonthBtn"),
+  nextMonthBtn: document.querySelector("#nextMonthBtn"),
   incomeMetric: document.querySelector("#incomeMetric"),
   incomeSubtext: document.querySelector("#incomeSubtext"),
   spentMetric: document.querySelector("#spentMetric"),
@@ -457,7 +460,7 @@ init();
 
 function init() {
   initTheme();
-  elements.monthInput.value = localStorage.getItem(SELECTED_MONTH_KEY) || currentMonthKey();
+  setSelectedMonth(localStorage.getItem(SELECTED_MONTH_KEY) || currentMonthKey());
   elements.dateInput.value = defaultDateForMonth(elements.monthInput.value);
   elements.accountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
   elements.editAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
@@ -568,10 +571,13 @@ async function handleUserChanged(user, info) {
 
 function attachEvents() {
   elements.monthInput.addEventListener("change", () => {
-    localStorage.setItem(SELECTED_MONTH_KEY, elements.monthInput.value);
+    setSelectedMonth(elements.monthInput.value);
     elements.dateInput.value = defaultDateForMonth(elements.monthInput.value);
     render();
   });
+
+  elements.prevMonthBtn?.addEventListener("click", () => shiftMonth(-1));
+  elements.nextMonthBtn?.addEventListener("click", () => shiftMonth(1));
 
   elements.typeInput.addEventListener("change", populateCategorySelect);
   elements.searchInput.addEventListener("input", renderTransactions);
@@ -1186,6 +1192,7 @@ function render() {
 
 function renderDashboard() {
   const month = elements.monthInput.value;
+  syncMonthLabel(month);
   const summary = getMonthSummary(month);
   const usedPercent = summary.totalBudget ? summary.expenses / summary.totalBudget : 0;
   const left = summary.totalBudget - summary.expenses;
@@ -1539,7 +1546,7 @@ function getPayPeriodSummary(month) {
   return {
     ...period,
     label: `${payFrequencies[profile.payFrequency]?.name || "Paycheck"} view`,
-    rangeLabel: `${formatDate(period.start)} - ${formatDate(period.end)}`,
+    rangeLabel: formatPayPeriodRange(period.start, period.end),
     income,
     expenses,
     left,
@@ -2203,9 +2210,58 @@ function monthKeyFromDate(dateString) {
   return dateString.slice(0, 7);
 }
 
+function setSelectedMonth(monthKey) {
+  const next = /^\d{4}-\d{2}$/.test(monthKey) ? monthKey : currentMonthKey();
+  elements.monthInput.value = next;
+  localStorage.setItem(SELECTED_MONTH_KEY, next);
+  syncMonthLabel(next);
+}
+
+function syncMonthLabel(monthKey = elements.monthInput.value) {
+  if (elements.monthLabel) {
+    elements.monthLabel.textContent = formatMonthLabel(monthKey);
+  }
+}
+
+function shiftMonth(delta) {
+  const [year, month] = (elements.monthInput.value || currentMonthKey()).split("-").map(Number);
+  const next = new Date(year, month - 1 + delta, 1);
+  const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+  setSelectedMonth(nextKey);
+  elements.dateInput.value = defaultDateForMonth(nextKey);
+  render();
+}
+
+function formatMonthLabel(monthKey) {
+  const [year, monthNumber] = monthKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
+    new Date(year, monthNumber - 1, 1),
+  );
+}
+
 function shortMonth(month) {
   const [year, monthNumber] = month.split("-").map(Number);
   return new Intl.DateTimeFormat("en-US", { month: "short", year: "2-digit" }).format(new Date(year, monthNumber - 1, 1));
+}
+
+function formatShortDate(dateString) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
+    new Date(year, month - 1, day),
+  );
+}
+
+function formatPayPeriodRange(start, end) {
+  const startParts = start.split("-").map(Number);
+  const endParts = end.split("-").map(Number);
+  const sameYear = startParts[0] === endParts[0];
+  const left = formatShortDate(start);
+  const right = sameYear
+    ? formatShortDate(end)
+    : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(
+        new Date(endParts[0], endParts[1] - 1, endParts[2]),
+      );
+  return `${left} – ${right}`;
 }
 
 function formatDate(dateString) {

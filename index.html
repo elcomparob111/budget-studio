@@ -25,10 +25,15 @@
           </div>
         </div>
         <div class="header-actions">
-          <label class="month-control">
-            <span>Month</span>
-            <input id="monthInput" type="month" />
-          </label>
+          <div class="month-stepper" role="group" aria-label="Selected month">
+            <span class="month-stepper-caption">Month</span>
+            <div class="month-stepper-controls">
+              <button id="prevMonthBtn" class="month-stepper-btn" type="button" aria-label="Previous month">‹</button>
+              <span id="monthLabel" class="month-stepper-label">July 2026</span>
+              <button id="nextMonthBtn" class="month-stepper-btn" type="button" aria-label="Next month">›</button>
+            </div>
+            <input id="monthInput" type="month" class="visually-hidden" tabindex="-1" aria-hidden="true" />
+          </div>
           <button id="themeToggleBtn" class="icon-button" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">◐</button>
           <button id="addTransactionBtn" class="icon-button" type="button" title="Add transaction" aria-label="Add transaction">+</button>
         </div>
