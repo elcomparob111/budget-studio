@@ -289,6 +289,35 @@ body.wizard-open { overflow: hidden; }
   gap: 14px;
 }
 
+.metric-card.compact > div {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+}
+
+.cash-left-label {
+  margin-top: 6px;
+  color: var(--ink) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.metric-hint {
+  margin: 10px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.paycheck-grid article small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .budget-ring {
   --used: 0%;
   width: 78px;

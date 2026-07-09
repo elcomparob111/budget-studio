@@ -332,6 +332,7 @@ const elements = {
   budgetRing: document.querySelector("#budgetRing"),
   budgetUsedMetric: document.querySelector("#budgetUsedMetric"),
   ringSubtext: document.querySelector("#ringSubtext"),
+  cashLeftSubtext: document.querySelector("#cashLeftSubtext"),
   payPeriodBadge: document.querySelector("#payPeriodBadge"),
   payPeriodRange: document.querySelector("#payPeriodRange"),
   paycheckIncomeMetric: document.querySelector("#paycheckIncomeMetric"),
@@ -1082,18 +1083,21 @@ function renderDashboard() {
   const topCategory = summary.categoryRows.find((row) => row.spent > 0);
 
   elements.incomeMetric.textContent = money(summary.income);
-  elements.incomeSubtext.textContent = `${summary.incomeCount} income ${summary.incomeCount === 1 ? "item" : "items"} logged`;
+  elements.incomeSubtext.textContent = "Logged this month";
   elements.spentMetric.textContent = money(summary.expenses);
-  elements.spentSubtext.textContent = `All expenses · ${percent(usedPercent)} of ${money(summary.totalBudget)} plan`;
+  elements.spentSubtext.textContent = "All expenses this month";
   elements.leftMetric.textContent = money(left);
   elements.leftSubtext.textContent = left >= 0
-    ? `Plan ${money(summary.totalBudget)} − spent (cash left ${money(net)})`
-    : `Over plan · cash left ${money(net)}`;
+    ? `Of ${money(summary.totalBudget)} planned · not cash`
+    : `Over plan by ${money(Math.abs(left))} · not cash`;
   elements.budgetUsedMetric.textContent = percent(usedPercent);
   elements.budgetRing.style.setProperty("--used", `${Math.min(100, Math.max(0, usedPercent * 100))}%`);
   elements.budgetRing.classList.toggle("over", usedPercent > 1);
   elements.ringSubtext.textContent = statusCopy(usedPercent);
-  elements.netMetric.textContent = `${money(net)} cash left`;
+  if (elements.cashLeftSubtext) {
+    elements.cashLeftSubtext.textContent = `${money(net)} · income − spent`;
+  }
+  elements.netMetric.textContent = `${money(net)} left from income`;
   elements.netMetric.className = "money-chip";
   elements.savingsMetric.textContent = `${percent(savingsRate)} saved`;
   elements.savingsMetric.className = "money-chip";

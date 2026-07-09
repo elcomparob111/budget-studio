@@ -33,9 +33,9 @@ struct OverviewView: View {
                             emoji: "🧾"
                         )
                         MetricCard(
-                            title: "Budget left",
+                            title: "Budget remaining",
                             value: currency(store.monthSummary.left),
-                            subtitle: "Plan \(currency(store.monthSummary.budgeted)) − spent",
+                            subtitle: "Of \(currency(store.monthSummary.budgeted)) planned · not cash",
                             emoji: "🎯"
                         )
                         HStack(spacing: AppTheme.md) {
@@ -47,7 +47,10 @@ struct OverviewView: View {
                                 Text(store.monthSummary.usedRatio > 1 ? "Over plan" : "Healthy pace")
                                     .font(.app(12, weight: .medium))
                                     .foregroundStyle(AppTheme.secondaryText)
-                                Text("Cash left \(currency(store.monthSummary.cashLeft))")
+                                Text("Left from income")
+                                    .font(.app(12, weight: .semibold))
+                                    .foregroundStyle(AppTheme.primaryText)
+                                Text("\(currency(store.monthSummary.cashLeft)) · income − spent")
                                     .font(.app(12, weight: .medium))
                                     .foregroundStyle(AppTheme.secondaryText)
                             }
@@ -55,6 +58,11 @@ struct OverviewView: View {
                         }
                         .appCard()
                     }
+
+                    Text("Budget remaining is what’s left of your category plan — not money left from income.")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     if let pay = store.payPeriodSummary {
                         payPeriodCard(pay)
@@ -224,7 +232,7 @@ struct OverviewView: View {
                 miniStat("Spent", currency(pay.spent), AppTheme.expense)
                 miniStat("Check left", currency(pay.left), AppTheme.primaryText)
             }
-            Text("Check left = income − spent for this pay window only.")
+            Text("Check left = income in this pay period − spent.")
                 .font(.app(12, weight: .medium))
                 .foregroundStyle(AppTheme.secondaryText)
         }
