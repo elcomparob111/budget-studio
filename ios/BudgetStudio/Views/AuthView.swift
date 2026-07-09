@@ -148,7 +148,7 @@ private struct AuthField: View {
                 }
             }
             .font(.app(16, weight: .medium))
-            .foregroundStyle(AppTheme.primaryText)
+            .appInputText()
             .padding(.horizontal, AppTheme.lg)
             .padding(.vertical, AppTheme.md)
             .background(AppTheme.inputFill)

@@ -117,6 +117,7 @@ struct SetupWizardView: View {
                     TextField("2100", value: $payAmount, format: .number)
                         .keyboardType(.decimalPad)
                         .font(.app(16, weight: .medium))
+                        .appInputText()
                 }
 
                 Text("Frequency")
@@ -203,6 +204,7 @@ struct SetupWizardView: View {
 
             TextField("Cell phone, pets, childcare...", text: $customCategoryName)
                 .font(.app(16, weight: .medium))
+                .appInputText()
                 .padding(.horizontal, AppTheme.lg)
                 .padding(.vertical, AppTheme.md)
                 .background(AppTheme.inputFill)

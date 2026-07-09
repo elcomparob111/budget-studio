@@ -51,12 +51,14 @@ struct AddTransactionSheet: View {
                     fieldLabel("Description") {
                         TextField("What was this for?", text: $description)
                             .font(.app(16, weight: .medium))
+                            .appInputText()
                     }
 
                     fieldLabel("Amount") {
                         TextField("0.00", text: $amount)
                             .font(.app(16, weight: .medium))
                             .keyboardType(.decimalPad)
+                            .appInputText()
                     }
 
                     Button(existing == nil ? "Add transaction" : "Save changes") {

@@ -95,6 +95,14 @@ extension View {
         modifier(CardModifier())
     }
 
+    /// Typed text / cursor color for fields sitting on `AppTheme.inputFill`.
+    /// Always use this — system label color can be white in dark appearance while fill stays light.
+    func appInputText() -> some View {
+        self
+            .foregroundStyle(AppTheme.primaryText)
+            .tint(AppTheme.primaryText)
+    }
+
     /// Centers content and caps width on regular-size (iPad) layouts.
     func readableWidth(_ maxWidth: CGFloat = AdaptiveLayout.pageMaxWidth) -> some View {
         modifier(ReadableWidthModifier(maxWidth: maxWidth))

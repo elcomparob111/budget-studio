@@ -107,6 +107,7 @@ struct TransactionsView: View {
                 .foregroundStyle(AppTheme.secondaryText)
             TextField("Search transactions", text: $search)
                 .font(.app(16, weight: .medium))
+                .appInputText()
         }
         .padding(.horizontal, AppTheme.lg)
         .padding(.vertical, AppTheme.md)

@@ -70,6 +70,7 @@ struct SettingsView: View {
                                     .font(.app(16, weight: .semibold))
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
+                                    .appInputText()
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 10)
                                     .frame(width: 96)
@@ -87,6 +88,7 @@ struct SettingsView: View {
 
                         TextField("New category", text: $newCategoryName)
                             .font(.app(16, weight: .medium))
+                            .appInputText()
                             .padding(.horizontal, AppTheme.lg)
                             .padding(.vertical, AppTheme.md)
                             .background(AppTheme.inputFill)
@@ -102,6 +104,7 @@ struct SettingsView: View {
                         TextField("Monthly budget", text: $newCategoryBudget)
                             .font(.app(16, weight: .medium))
                             .keyboardType(.decimalPad)
+                            .appInputText()
                             .padding(.horizontal, AppTheme.lg)
                             .padding(.vertical, AppTheme.md)
                             .background(AppTheme.inputFill)
