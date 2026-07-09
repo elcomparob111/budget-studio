@@ -369,6 +369,11 @@ const elements = {
   homeView: document.querySelector("#homeView"),
   settingsView: document.querySelector("#settingsView"),
   bottomDock: document.querySelector("#bottomDock"),
+  overviewTab: document.querySelector("#overviewTab"),
+  activityTab: document.querySelector("#activityTab"),
+  settingsTab: document.querySelector("#settingsTab"),
+  tabBar: document.querySelector("#tabBar"),
+  addTransactionBtn: document.querySelector("#addTransactionBtn"),
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
   exportJsonBtn: document.querySelector("#exportJsonBtn"),
   importJsonInput: document.querySelector("#importJsonInput"),
@@ -422,6 +427,8 @@ const elements = {
   authMessage: document.querySelector("#authMessage"),
   signOutBtn: document.querySelector("#signOutBtn"),
 };
+
+let activeTab = "overview";
 
 let currentUser = null;
 let localOnlyMode = false;
@@ -594,8 +601,16 @@ function attachEvents() {
   });
 
   elements.resetBtn.addEventListener("click", () => openWizard(true));
-  elements.openSetupBtn.addEventListener("click", openSettingsView);
-  elements.closeSettingsBtn.addEventListener("click", closeSettingsView);
+  elements.openSetupBtn.addEventListener("click", () => switchTab("settings"));
+  elements.closeSettingsBtn.addEventListener("click", () => switchTab("overview"));
+  elements.tabBar?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-tab]");
+    if (button) switchTab(button.dataset.tab);
+  });
+  elements.addTransactionBtn?.addEventListener("click", () => {
+    switchTab("activity");
+    elements.amountInput?.focus();
+  });
   elements.closeWizardBtn.addEventListener("click", closeWizard);
   elements.startWizardBtn.addEventListener("click", () => {
     wizard.step = 1;
@@ -689,18 +704,32 @@ function attachEvents() {
   });
 }
 
-function openSettingsView() {
-  elements.homeView.hidden = true;
-  elements.settingsView.hidden = false;
-  elements.bottomDock.hidden = true;
+function switchTab(tab) {
+  activeTab = tab === "activity" || tab === "settings" ? tab : "overview";
+  const panels = {
+    overview: elements.overviewTab,
+    activity: elements.activityTab,
+    settings: elements.settingsTab,
+  };
+  Object.entries(panels).forEach(([name, panel]) => {
+    if (panel) panel.hidden = name !== activeTab;
+  });
+  elements.tabBar?.querySelectorAll("[data-tab]").forEach((button) => {
+    const selected = button.dataset.tab === activeTab;
+    button.classList.toggle("is-active", selected);
+    if (selected) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  renderIdentityUI();
   window.scrollTo({ top: 0, behavior: "smooth" });
-  elements.closeSettingsBtn.focus();
+}
+
+function openSettingsView() {
+  switchTab("settings");
 }
 
 function closeSettingsView() {
-  elements.settingsView.hidden = true;
-  elements.homeView.hidden = false;
-  elements.bottomDock.hidden = false;
+  switchTab("overview");
 }
 
 function openWizard(useCurrentState) {
@@ -1468,11 +1497,13 @@ function openAuthGate() {
   setAuthMode("signin");
   elements.authGate.hidden = false;
   document.body.classList.add("wizard-open");
+  if (elements.tabBar) elements.tabBar.hidden = true;
   elements.authEmailInput.focus();
 }
 
 function closeAuthGate() {
   elements.authGate.hidden = true;
+  if (elements.tabBar) elements.tabBar.hidden = false;
   if (elements.setupWizard.hidden && elements.editDialog.hidden) {
     document.body.classList.remove("wizard-open");
   }
@@ -1582,8 +1613,14 @@ async function handleAuthSubmit(event) {
 
 function renderIdentityUI() {
   const name = currentUser?.displayName ? cleanProfileName(currentUser.displayName) : "";
-  elements.appTitle.textContent = name ? `${name}'s budget` : "Command center";
+  const titles = {
+    overview: name ? `${name}'s budget` : "Overview",
+    activity: "Activity",
+    settings: "Settings",
+  };
+  elements.appTitle.textContent = titles[activeTab] || titles.overview;
   elements.signOutBtn.hidden = localOnlyMode || !currentUser;
+  if (elements.tabBar) elements.tabBar.hidden = Boolean(elements.authGate && !elements.authGate.hidden);
 }
 
 function flushDirtyCloudSave() {
@@ -1751,7 +1788,7 @@ function applyTheme(theme) {
     elements.themeToggleBtn.setAttribute("aria-label", elements.themeToggleBtn.title);
   }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = isDark ? "#060b14" : "#0b1220";
+  if (meta) meta.content = isDark ? "#121212" : "#F9F9F9";
 }
 
 function toggleTheme() {
@@ -1837,7 +1874,7 @@ function installGlobalKeyboard() {
       closeWizard();
       return;
     }
-    if (!elements.settingsView.hidden) {
+    if (activeTab === "settings" && elements.setupWizard.hidden && elements.editDialog.hidden) {
       event.preventDefault();
       closeSettingsView();
     }

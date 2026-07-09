@@ -2,100 +2,131 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1220" />
-    <meta name="description" content="Local-first personal budget command center" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#F9F9F9" />
+    <meta name="description" content="Personal budget command center with cloud sync" />
     <title>Budget Studio</title>
     <link rel="icon" href="./icons/icon-192.png" type="image/png" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app-shell">
-      <div id="homeView">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Budget Studio</p>
-          <h1 id="appTitle">Command center</h1>
+      <header class="app-header">
+        <div class="brand-lockup">
+          <img class="brand-logo" src="./icons/icon-192.png" width="36" height="36" alt="" />
+          <div>
+            <p class="eyebrow">Budget Studio</p>
+            <h1 id="appTitle">Overview</h1>
+          </div>
         </div>
-        <div class="topbar-actions">
+        <div class="header-actions">
           <label class="month-control">
             <span>Month</span>
             <input id="monthInput" type="month" />
           </label>
           <button id="themeToggleBtn" class="icon-button" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">◐</button>
-          <button id="signOutBtn" class="secondary-button" type="button" hidden>Sign out</button>
-          <button id="exportCsvBtn" class="secondary-button" type="button">Export CSV</button>
-          <button id="exportJsonBtn" class="secondary-button" type="button">Backup</button>
-          <label class="secondary-button file-button">
-            Restore
-            <input id="importJsonInput" type="file" accept="application/json" />
-          </label>
+          <button id="addTransactionBtn" class="icon-button" type="button" title="Add transaction" aria-label="Add transaction">+</button>
         </div>
       </header>
 
-      <section class="summary-grid" aria-label="Budget summary">
-        <article class="metric-card">
-          <span>Income</span>
-          <strong id="incomeMetric">$0</strong>
-          <small id="incomeSubtext">This month</small>
-        </article>
-        <article class="metric-card">
-          <span>Spent</span>
-          <strong id="spentMetric">$0</strong>
-          <small id="spentSubtext">Against planned budget</small>
-        </article>
-        <article class="metric-card">
-          <span>Left to spend</span>
-          <strong id="leftMetric">$0</strong>
-          <small id="leftSubtext">Before budget limit</small>
-        </article>
-        <article class="metric-card compact">
-          <div id="budgetRing" class="budget-ring" role="img" aria-label="Budget used">
-            <span id="budgetUsedMetric">0%</span>
+      <section id="overviewTab" class="tab-panel" data-tab-panel="overview">
+        <section class="summary-grid" aria-label="Budget summary">
+          <article class="metric-card">
+            <span class="metric-label"><span aria-hidden="true">💵</span> Income</span>
+            <strong id="incomeMetric">$0</strong>
+            <small id="incomeSubtext">This month</small>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label"><span aria-hidden="true">🧾</span> Spent</span>
+            <strong id="spentMetric">$0</strong>
+            <small id="spentSubtext">Against planned budget</small>
+          </article>
+          <article class="metric-card">
+            <span class="metric-label"><span aria-hidden="true">🎯</span> Left to spend</span>
+            <strong id="leftMetric">$0</strong>
+            <small id="leftSubtext">Before budget limit</small>
+          </article>
+          <article class="metric-card compact">
+            <div id="budgetRing" class="budget-ring" role="img" aria-label="Budget used">
+              <span id="budgetUsedMetric">0%</span>
+            </div>
+            <div>
+              <span>Budget used</span>
+              <small id="ringSubtext">Healthy pace</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel paycheck-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Paycheck view</p>
+              <h2>This pay period</h2>
+            </div>
+            <span id="payPeriodBadge" class="money-chip">Set payday</span>
           </div>
-          <div>
-            <span>Budget used</span>
-            <small id="ringSubtext">Healthy pace</small>
+          <div class="paycheck-grid">
+            <article>
+              <span>Period</span>
+              <strong id="payPeriodRange">Not set</strong>
+            </article>
+            <article>
+              <span>Income this check</span>
+              <strong id="paycheckIncomeMetric">$0</strong>
+            </article>
+            <article>
+              <span>Spent this check</span>
+              <strong id="paycheckSpentMetric">$0</strong>
+            </article>
+            <article>
+              <span>Left this check</span>
+              <strong id="paycheckLeftMetric">$0</strong>
+            </article>
           </div>
-        </article>
+          <div id="paycheckBreakdown" class="paycheck-breakdown"></div>
+        </section>
+
+        <section class="panel progress-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Control</p>
+              <h2>Category progress</h2>
+            </div>
+            <span id="netMetric" class="money-chip">$0 net</span>
+          </div>
+          <div id="categoryProgress" class="category-progress"></div>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Spending</p>
+              <h2>Category breakdown</h2>
+            </div>
+            <span id="topCategoryBadge" class="status-pill">No spending yet</span>
+          </div>
+          <div id="categoryChart" class="chart-area"></div>
+        </section>
+
+        <section class="panel trend-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Trend</p>
+              <h2>Cash flow</h2>
+            </div>
+            <span id="savingsMetric" class="money-chip">0% saved</span>
+          </div>
+          <div id="trendChart" class="chart-area trend"></div>
+        </section>
       </section>
 
-      <section class="panel paycheck-panel">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">Paycheck view</p>
-            <h2>This pay period</h2>
-          </div>
-          <span id="payPeriodBadge" class="money-chip">Set payday</span>
-        </div>
-        <div class="paycheck-grid">
-          <article>
-            <span>Period</span>
-            <strong id="payPeriodRange">Not set</strong>
-          </article>
-          <article>
-            <span>Income this check</span>
-            <strong id="paycheckIncomeMetric">$0</strong>
-          </article>
-          <article>
-            <span>Spent this check</span>
-            <strong id="paycheckSpentMetric">$0</strong>
-          </article>
-          <article>
-            <span>Left this check</span>
-            <strong id="paycheckLeftMetric">$0</strong>
-          </article>
-        </div>
-        <div id="paycheckBreakdown" class="paycheck-breakdown"></div>
-      </section>
-
-      <section class="workspace-grid">
-        <article class="panel add-panel">
+      <section id="activityTab" class="tab-panel" data-tab-panel="activity" hidden>
+        <section class="panel add-panel">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Quick add</p>
@@ -134,88 +165,43 @@
             <button class="primary-button wide" type="submit">Add transaction</button>
             <p id="formMessage" class="form-message" role="status"></p>
           </form>
-        </article>
+        </section>
 
-        <article class="panel chart-panel">
+        <section class="panel table-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Spending</p>
-              <h2>Category breakdown</h2>
+              <p class="eyebrow">Review</p>
+              <h2>Transactions</h2>
             </div>
-            <span id="topCategoryBadge" class="status-pill">No spending yet</span>
-          </div>
-          <div id="categoryChart" class="chart-area"></div>
-        </article>
-
-        <article class="panel progress-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Control</p>
-              <h2>Budget progress</h2>
+            <div class="table-tools">
+              <input id="searchInput" type="search" placeholder="Search transactions" />
+              <select id="typeFilter">
+                <option value="All">All types</option>
+                <option value="Expense">Expenses</option>
+                <option value="Income">Income</option>
+              </select>
             </div>
-            <span id="netMetric" class="money-chip">$0 net</span>
           </div>
-          <div id="categoryProgress" class="category-progress"></div>
-        </article>
-
-        <article class="panel trend-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Trend</p>
-              <h2>Cash flow</h2>
-            </div>
-            <span id="savingsMetric" class="money-chip">0% saved</span>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Account</th>
+                  <th>Amount</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="transactionsBody"></tbody>
+            </table>
           </div>
-          <div id="trendChart" class="chart-area trend"></div>
-        </article>
+        </section>
       </section>
 
-      <section class="panel table-panel">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">Review</p>
-            <h2>Transactions</h2>
-          </div>
-          <div class="table-tools">
-            <input id="searchInput" type="search" placeholder="Search transactions" />
-            <select id="typeFilter">
-              <option value="All">All types</option>
-              <option value="Expense">Expenses</option>
-              <option value="Income">Income</option>
-            </select>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Account</th>
-                <th>Amount</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="transactionsBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      </div>
-
-      <section id="settingsView" class="settings-view" hidden>
-        <header class="topbar settings-topbar">
-          <div>
-            <p class="eyebrow">Settings</p>
-            <h1>Budgets & setup</h1>
-          </div>
-          <div class="topbar-actions">
-            <button id="closeSettingsBtn" class="secondary-button" type="button">Back to budget</button>
-          </div>
-        </header>
-
+      <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
         <section class="panel setup-panel">
           <div class="panel-heading">
             <div>
@@ -246,15 +232,48 @@
             <p id="categoryBuilderMessage" class="form-message" role="status"></p>
           </form>
         </section>
+
+        <section class="panel settings-actions-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Account</p>
+              <h2>Backup & sign out</h2>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button id="exportCsvBtn" class="secondary-button" type="button">Export CSV</button>
+            <button id="exportJsonBtn" class="secondary-button" type="button">Backup</button>
+            <label class="secondary-button file-button">
+              Restore
+              <input id="importJsonInput" type="file" accept="application/json" />
+            </label>
+            <button id="signOutBtn" class="danger-button" type="button" hidden>Sign out</button>
+          </div>
+        </section>
       </section>
     </main>
 
-    <nav id="bottomDock" class="bottom-dock" aria-label="Budget settings">
-      <button id="openSetupBtn" class="bottom-settings-button" type="button">
+    <nav id="tabBar" class="tab-bar" aria-label="Main" hidden>
+      <button class="tab-button is-active" type="button" data-tab="overview" aria-current="page">
+        <span class="tab-icon" aria-hidden="true">◐</span>
+        <span>Overview</span>
+      </button>
+      <button class="tab-button" type="button" data-tab="activity">
+        <span class="tab-icon" aria-hidden="true">☰</span>
+        <span>Activity</span>
+      </button>
+      <button class="tab-button" type="button" data-tab="settings">
+        <span class="tab-icon" aria-hidden="true">⚙</span>
         <span>Settings</span>
-        <strong>Edit budgets</strong>
       </button>
     </nav>
+
+    <!-- Compatibility aliases for older JS helpers -->
+    <div id="homeView" hidden></div>
+    <div id="settingsView" hidden></div>
+    <div id="bottomDock" hidden></div>
+    <button id="openSetupBtn" type="button" hidden>Settings</button>
+    <button id="closeSettingsBtn" type="button" hidden>Back</button>
 
     <section id="setupWizard" class="wizard-overlay" aria-label="Budget setup" aria-modal="true" role="dialog" hidden>
       <div class="wizard-card">
@@ -362,8 +381,8 @@
     <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
     <section id="authGate" class="wizard-overlay" aria-label="Sign in to Budget Studio" aria-modal="true" role="dialog" hidden>
-      <div class="edit-card profile-card">
-        <img class="app-logo" src="./icons/icon-192.png" width="72" height="72" alt="" />
+      <div class="edit-card profile-card auth-card">
+        <img class="app-logo" src="./icons/icon-192.png" width="88" height="88" alt="" />
         <p class="eyebrow">Budget Studio</p>
         <h2 id="authTitle">Welcome back</h2>
         <p id="authCopy" class="wizard-copy">

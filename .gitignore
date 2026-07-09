@@ -5,3 +5,5 @@ outputs/
 node_modules/
 .DS_Store
 supabase/
+ios/BudgetStudio.xcodeproj/
+ios/DerivedData/
