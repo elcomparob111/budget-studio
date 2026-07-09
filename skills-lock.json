@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "swiftui-design": {
+      "source": "harperhhh/swiftui-design-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "3b03f95988faba027720fb71dfa41302ba418a42388fa906457336ec1bac9e34"
+    }
+  }
+}

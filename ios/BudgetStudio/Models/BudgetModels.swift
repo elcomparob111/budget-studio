@@ -1,0 +1,142 @@
+import Foundation
+
+struct BudgetCategory: Codable, Identifiable, Hashable {
+    var id: String { name }
+    var name: String
+    var type: String
+    var group: String
+    var budget: Double
+}
+
+struct BudgetTransaction: Codable, Identifiable, Hashable {
+    var id: String
+    var date: String
+    var type: String
+    var category: String
+    var description: String
+    var account: String
+    var amount: Double
+}
+
+struct SetupProfile: Codable, Hashable {
+    var presetId: String
+    var income: Double
+    var payAmount: Double
+    var payFrequency: String
+    var nextPayDate: String
+    var completedAt: String?
+    var demo: Bool?
+}
+
+struct BudgetState: Codable, Hashable {
+    var categories: [BudgetCategory]
+    var transactions: [BudgetTransaction]
+    var setupComplete: Bool
+    var setupProfile: SetupProfile?
+}
+
+struct MonthSummary {
+    var income: Double
+    var spent: Double
+    var budgeted: Double
+    var left: Double
+    var usedRatio: Double
+}
+
+struct PayPeriodSummary {
+    var rangeLabel: String
+    var income: Double
+    var spent: Double
+    var left: Double
+}
+
+enum BudgetDefaults {
+    static let accounts = ["Checking", "Credit Card", "Savings", "Cash", "Investment", "Venmo", "Other"]
+
+    static func emptyState() -> BudgetState {
+        BudgetState(
+            categories: defaultCategories.map {
+                BudgetCategory(
+                    name: $0.name,
+                    type: $0.type,
+                    group: $0.group,
+                    budget: $0.type == "Expense" ? 0 : $0.budget
+                )
+            },
+            transactions: [],
+            setupComplete: false,
+            setupProfile: nil
+        )
+    }
+
+    static func demoState() -> BudgetState {
+        BudgetState(
+            categories: defaultCategories,
+            transactions: demoTransactions,
+            setupComplete: true,
+            setupProfile: SetupProfile(
+                presetId: "single",
+                income: 4550,
+                payAmount: 2100,
+                payFrequency: "biweekly",
+                nextPayDate: "2026-07-10",
+                completedAt: ISO8601DateFormatter().string(from: Date()),
+                demo: true
+            )
+        )
+    }
+
+    private static let defaultCategories: [BudgetCategory] = [
+        .init(name: "Salary", type: "Income", group: "Income", budget: 0),
+        .init(name: "Side Income", type: "Income", group: "Income", budget: 0),
+        .init(name: "Interest", type: "Income", group: "Income", budget: 0),
+        .init(name: "Refund", type: "Income", group: "Income", budget: 0),
+        .init(name: "Housing", type: "Expense", group: "Needs", budget: 1800),
+        .init(name: "Utilities", type: "Expense", group: "Needs", budget: 250),
+        .init(name: "Cell Phone", type: "Expense", group: "Needs", budget: 90),
+        .init(name: "Groceries", type: "Expense", group: "Needs", budget: 650),
+        .init(name: "Transportation", type: "Expense", group: "Needs", budget: 400),
+        .init(name: "Insurance", type: "Expense", group: "Needs", budget: 250),
+        .init(name: "Healthcare", type: "Expense", group: "Needs", budget: 200),
+        .init(name: "Debt Payments", type: "Expense", group: "Needs", budget: 300),
+        .init(name: "Dining Out", type: "Expense", group: "Wants", budget: 350),
+        .init(name: "Subscriptions", type: "Expense", group: "Wants", budget: 100),
+        .init(name: "Shopping", type: "Expense", group: "Wants", budget: 300),
+        .init(name: "Entertainment", type: "Expense", group: "Wants", budget: 200),
+        .init(name: "Travel", type: "Expense", group: "Wants", budget: 250),
+        .init(name: "Personal Care", type: "Expense", group: "Wants", budget: 150),
+        .init(name: "Education", type: "Expense", group: "Wants", budget: 100),
+        .init(name: "Savings/Investing", type: "Expense", group: "Savings", budget: 500),
+        .init(name: "Emergency Fund", type: "Expense", group: "Savings", budget: 300),
+    ]
+
+    private static let demoTransactions: [BudgetTransaction] = [
+        .init(id: UUID().uuidString, date: "2026-07-01", type: "Income", category: "Salary", description: "Paycheck", account: "Checking", amount: 4200),
+        .init(id: UUID().uuidString, date: "2026-07-01", type: "Expense", category: "Housing", description: "Rent", account: "Checking", amount: 1800),
+        .init(id: UUID().uuidString, date: "2026-07-02", type: "Expense", category: "Groceries", description: "Weekly groceries", account: "Credit Card", amount: 128.47),
+        .init(id: UUID().uuidString, date: "2026-07-05", type: "Expense", category: "Cell Phone", description: "Mobile phone bill", account: "Checking", amount: 92.45),
+        .init(id: UUID().uuidString, date: "2026-07-07", type: "Income", category: "Side Income", description: "Freelance project", account: "Checking", amount: 350),
+        .init(id: UUID().uuidString, date: "2026-07-08", type: "Expense", category: "Emergency Fund", description: "Savings transfer", account: "Savings", amount: 300),
+    ]
+}
+
+extension BudgetState {
+    static func makeTransaction(
+        date: String,
+        type: String,
+        category: String,
+        description: String,
+        account: String,
+        amount: Double
+    ) -> BudgetTransaction {
+        BudgetTransaction(
+            id: UUID().uuidString,
+            date: date,
+            type: type,
+            category: category,
+            description: description,
+            account: account,
+            amount: amount
+        )
+    }
+}
