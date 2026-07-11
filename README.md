@@ -57,6 +57,10 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) and [`LAUNCH_CHECKLIST.md`](LAUNCH_CH
 - CSV export and JSON backup/restore
 - Dark mode and offline support (PWA on web)
 
+## For AI agents
+
+See [`AGENTS.md`](AGENTS.md) for a short project onboarding (read docs before code).
+
 ## Documentation
 
 | Doc | Description |
