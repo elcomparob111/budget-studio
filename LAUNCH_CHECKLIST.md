@@ -11,9 +11,9 @@ Details: [docs/SECURITY.md](docs/SECURITY.md) (root [SECURITY.md](SECURITY.md) i
 - [x] Privacy / Terms pages linked from auth + Settings
 - [x] RLS SQL ready: [`supabase/rls.sql`](supabase/rls.sql)
 
-## You must do in Supabase (≈5 minutes)
+## Supabase operator steps
 
-> **Status (2026-07-10):** Sections 1–2 applied and verified via dashboard: RLS enabled with 4 policies confirmed; Site URL + 3 redirect URLs set; email confirmation ON; password min length 8 with letters+digits. Leaked-password protection unavailable on Free plan; CAPTCHA left off until clients integrate a captcha widget; rate limits at defaults. Smoke test (section 3) still pending.
+> **Status (2026-07-10):** Sections 1–2 applied and verified via dashboard: RLS enabled with 4 policies confirmed; Site URL + 3 redirect URLs set; email confirmation ON; password min length 8 with letters+digits. Leaked-password protection unavailable on Free plan; CAPTCHA left off until clients integrate a captcha widget; rate limits at defaults. **Remaining:** smoke test (section 3).
 
 ### 1. Run RLS
 

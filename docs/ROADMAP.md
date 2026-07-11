@@ -1,6 +1,6 @@
 # Roadmap — Budget Studio
 
-**Last updated:** July 9, 2026  
+**Last updated:** July 10, 2026  
 **North star:** Production-ready commercial personal budgeting (web + iOS), acquisition-clean IP, honest scale path.
 
 ---
@@ -11,7 +11,7 @@
 - [x] Privacy / Terms drafts + links
 - [x] RLS SQL + launch checklists
 - [x] Proprietary LICENSE + legal/docs pack (this audit)
-- [ ] Operator: apply RLS + Auth dashboard settings ([`../LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md))
+- [x] Operator: apply RLS + Auth dashboard settings ([`../LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md)) — done 2026-07-10; smoke test still pending
 - [ ] Clear dog logo provenance or replace ([`../legal/AI_ASSETS.md`](../legal/AI_ASSETS.md))
 - [ ] Trademark search ([`../legal/TRADEMARK.md`](../legal/TRADEMARK.md))
 - [ ] Counsel review of legal pages
