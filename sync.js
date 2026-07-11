@@ -119,7 +119,29 @@ export async function signUp(name, email, password) {
     throw error;
   }
   clearAuthFailures();
-  return toAppUser(data.user);
+  return {
+    user: toAppUser(data.user),
+    // Supabase obfuscates duplicate signups: user comes back with no identities.
+    existingAccount: Array.isArray(data.user?.identities) && data.user.identities.length === 0,
+    // Confirm-email is on: no session until the link is clicked.
+    confirmationRequired: !data.session,
+  };
+}
+
+export async function resendConfirmation(email) {
+  assertNotLocked();
+  const emailCheck = validateEmail(email);
+  if (!emailCheck.ok) throw new Error(emailCheck.message);
+  const client = requireClient();
+  const { error } = await client.auth.resend({
+    type: "signup",
+    email: emailCheck.value,
+    options: { emailRedirectTo: authEmailRedirectTo() },
+  });
+  if (error) {
+    safeLog("warn", "Resend confirmation failed", { code: error.code || "auth_error" });
+    throw error;
+  }
 }
 
 export async function signIn(email, password) {
@@ -253,6 +275,12 @@ export async function deleteOwnBudgetAndSignOut() {
 export function friendlyAuthError(error) {
   if (error?.code === "client_lockout") {
     return String(error.message || "Too many attempts. Wait a minute and try again.");
+  }
+  if (error?.code === "email_not_confirmed" || /email not confirmed/i.test(String(error?.message || ""))) {
+    return "Your email isn't confirmed yet. Check your inbox for the link, or resend it.";
+  }
+  if (error?.code === "over_email_send_rate_limit" || /rate limit/i.test(String(error?.message || ""))) {
+    return "Too many emails sent recently. Wait a few minutes and try again.";
   }
   // Prefer client validation messages we threw ourselves.
   const raw = String(error?.message || "");

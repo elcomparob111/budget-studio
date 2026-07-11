@@ -4,6 +4,7 @@ import {
   signIn,
   signOutUser,
   resetPassword,
+  resendConfirmation,
   updatePassword,
   isPasswordRecoveryLink,
   fetchCloudBudget,
@@ -459,6 +460,7 @@ const elements = {
   authPasswordLabelText: document.querySelector("#authPasswordLabelText"),
   authPasswordInput: document.querySelector("#authPasswordInput"),
   authSubmitBtn: document.querySelector("#authSubmitBtn"),
+  authResendBtn: document.querySelector("#authResendBtn"),
   authModeToggleBtn: document.querySelector("#authModeToggleBtn"),
   authForgotBtn: document.querySelector("#authForgotBtn"),
   authMessage: document.querySelector("#authMessage"),
@@ -792,6 +794,7 @@ function attachEvents() {
     setAuthMode(authMode === "signin" ? "signup" : "signin");
   });
   elements.authForgotBtn.addEventListener("click", handleForgotPassword);
+  elements.authResendBtn.addEventListener("click", handleResendConfirmation);
   elements.signOutBtn.addEventListener("click", async () => {
     await handleSignOut();
   });
@@ -1724,29 +1727,83 @@ function setAuthMode(mode) {
   authMode = mode;
   const signup = mode === "signup";
   const recovery = mode === "recovery";
+  const confirm = mode === "confirm";
 
-  elements.authTitle.textContent = recovery
-    ? "Choose a new password"
-    : signup
-      ? "Create your account"
-      : "Welcome back";
-  elements.authCopy.textContent = recovery
-    ? `Enter a new password for your Budget Studio account. ${AUTH_PASSWORD_HINT}.`
-    : "Sign in and your budget follows you on every device — private to your account only.";
+  elements.authTitle.textContent = confirm
+    ? "Check your email"
+    : recovery
+      ? "Choose a new password"
+      : signup
+        ? "Create your account"
+        : "Welcome back";
+  elements.authCopy.textContent = confirm
+    ? `We sent a confirmation link to ${pendingConfirmEmail}. Open it on this device, then come back and sign in. Nothing there? Check spam, or make sure the address above is right.`
+    : recovery
+      ? `Enter a new password for your Budget Studio account. ${AUTH_PASSWORD_HINT}.`
+      : "Sign in and your budget follows you on every device — private to your account only.";
 
   elements.authNameLabel.hidden = !signup;
   elements.authNameInput.required = signup;
-  elements.authEmailLabel.hidden = recovery;
-  elements.authEmailInput.required = !recovery;
+  elements.authEmailLabel.hidden = recovery || confirm;
+  elements.authEmailInput.required = !recovery && !confirm;
+  elements.authPasswordLabel.hidden = confirm;
+  elements.authPasswordInput.required = !confirm;
   elements.authPasswordLabelText.textContent = recovery ? "New password" : "Password";
   elements.authPasswordInput.placeholder = AUTH_PASSWORD_HINT;
   elements.authPasswordInput.minLength = signup || recovery ? 8 : 1;
   elements.authPasswordInput.autocomplete = signup || recovery ? "new-password" : "current-password";
+  elements.authSubmitBtn.hidden = confirm;
   elements.authSubmitBtn.textContent = recovery ? "Save new password" : signup ? "Create account" : "Sign in";
+  elements.authResendBtn.hidden = !confirm;
   elements.authModeToggleBtn.hidden = recovery;
-  elements.authForgotBtn.hidden = signup || recovery;
-  elements.authModeToggleBtn.textContent = signup ? "Already have an account? Sign in" : "New here? Create an account";
+  elements.authForgotBtn.hidden = signup || recovery || confirm;
+  elements.authModeToggleBtn.textContent = confirm
+    ? "Back to sign in"
+    : signup
+      ? "Already have an account? Sign in"
+      : "New here? Create an account";
   setAuthMessage("");
+}
+
+let pendingConfirmEmail = "";
+let resendCooldownTimer = null;
+
+function showConfirmEmailState(email, message = "") {
+  pendingConfirmEmail = email;
+  setAuthMode("confirm");
+  if (message) setAuthMessage(message);
+}
+
+function startResendCooldown(seconds = 60) {
+  if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+  let left = seconds;
+  elements.authResendBtn.disabled = true;
+  elements.authResendBtn.textContent = `Resend email (${left}s)`;
+  resendCooldownTimer = setInterval(() => {
+    left -= 1;
+    if (left <= 0) {
+      clearInterval(resendCooldownTimer);
+      resendCooldownTimer = null;
+      elements.authResendBtn.disabled = false;
+      elements.authResendBtn.textContent = "Resend confirmation email";
+    } else {
+      elements.authResendBtn.textContent = `Resend email (${left}s)`;
+    }
+  }, 1000);
+}
+
+async function handleResendConfirmation() {
+  if (!pendingConfirmEmail || elements.authResendBtn.disabled) return;
+  elements.authResendBtn.disabled = true;
+  setAuthMessage("Sending a new confirmation email...");
+  try {
+    await resendConfirmation(pendingConfirmEmail);
+    setAuthMessage("New email sent. Give it a minute, and check spam too.");
+  } catch (error) {
+    setAuthMessage(friendlyAuthError(error), true);
+  }
+  // Cooldown either way — the free email service allows only a couple of sends per hour.
+  startResendCooldown();
 }
 
 async function handleForgotPassword() {
@@ -1781,6 +1838,7 @@ function setAuthMessage(message, isError = false) {
 
 async function handleAuthSubmit(event) {
   event.preventDefault();
+  if (authMode === "confirm") return; // no submit action in the check-your-email state
   const lock = getAuthLockout();
   if (lock.locked) {
     setAuthMessage(`Too many attempts. Wait ${Math.ceil(lock.retryAfterMs / 1000)}s and try again.`, true);
@@ -1848,16 +1906,32 @@ async function handleAuthSubmit(event) {
   setAuthMessage(authMode === "signup" ? "Creating your account..." : "Signing in...");
   try {
     if (authMode === "signup") {
-      await signUp(name, emailCheck.value, password);
+      const result = await signUp(name, emailCheck.value, password);
+      elements.authPasswordInput.value = "";
+      clearAuthFailures();
+      if (result.existingAccount) {
+        setAuthMode("signin");
+        elements.authEmailInput.value = emailCheck.value;
+        setAuthMessage("That email is already registered. Sign in below, or tap Forgot password.", true);
+      } else if (result.confirmationRequired) {
+        showConfirmEmailState(emailCheck.value);
+        // A confirmation email just went out with the signup; hold resend briefly.
+        startResendCooldown();
+      }
+      // Otherwise onAuthStateChanged drives the rest.
     } else {
       await signIn(emailCheck.value, password);
+      elements.authPasswordInput.value = "";
+      clearAuthFailures();
+      // onAuthStateChanged drives the rest
     }
-    elements.authPasswordInput.value = "";
-    clearAuthFailures();
-    // onAuthStateChanged drives the rest
   } catch (error) {
     safeLog("warn", "Auth submit failed", { mode: authMode });
-    setAuthMessage(friendlyAuthError(error), true);
+    if (error?.code === "email_not_confirmed" || /email not confirmed/i.test(String(error?.message || ""))) {
+      showConfirmEmailState(emailCheck.value, "Your email isn't confirmed yet — find the link in your inbox, or resend it below.");
+    } else {
+      setAuthMessage(friendlyAuthError(error), true);
+    }
   } finally {
     elements.authSubmitBtn.disabled = false;
   }
