@@ -52,8 +52,10 @@ Expect `rowsecurity = true` and SELECT/INSERT/UPDATE/DELETE policies scoped to `
 2. **Email** → enable **Confirm email** for production (recommended).
 3. **Password** → minimum length **8**; require letters + digits if the UI offers it (match client rules in `security.js`).
 4. **Rate limits** → keep defaults or tighten sign-in / sign-up / recovery limits.
-5. **URL configuration**
-   - Site URL: `https://elcomparob111.github.io/budget-studio/`
+5. **URL configuration** (critical for email confirm + password reset)
+   - **Site URL** must be exactly: `https://elcomparob111.github.io/budget-studio/`
+     - Include the trailing `/budget-studio/` path. A bare `https://elcomparob111.github.io` lands on a GitHub Pages **404** (no site at the user root).
+     - Confirmation emails use Site URL when the client omits `emailRedirectTo` (web signup now always passes it).
    - Redirect URLs allowlist:
      - `https://elcomparob111.github.io/budget-studio/`
      - `https://elcomparob111.github.io/budget-studio/**`
@@ -67,7 +69,7 @@ Allowed browser origins for this app:
 - `https://elcomparob111.github.io`
 - `http://localhost:3000` (local `npm start`)
 
-Supabase Auth redirect allowlist (step 3) is the critical control for password-recovery links.
+Supabase Auth **Site URL + redirect allowlist** (step 5) control where confirm/recovery links land. Both must include `/budget-studio/`.
 
 ### 5. GitHub Pages limits
 

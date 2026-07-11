@@ -13,7 +13,7 @@ Details: [docs/SECURITY.md](docs/SECURITY.md) (root [SECURITY.md](SECURITY.md) i
 
 ## Supabase operator steps
 
-> **Status (2026-07-10):** Sections 1–2 applied and verified via dashboard: RLS enabled with 4 policies confirmed; Site URL + 3 redirect URLs set; email confirmation ON; password min length 8 with letters+digits. Leaked-password protection unavailable on Free plan; CAPTCHA left off until clients integrate a captcha widget; rate limits at defaults. **Remaining:** smoke test (section 3).
+> **Status (2026-07-10):** Sections 1–2 applied (RLS, email confirm, password policy). Smoke test found confirm links landing on `https://elcomparob111.github.io` (Pages 404) — **re-check Site URL** is exactly `https://elcomparob111.github.io/budget-studio/` (with path). Web signup now passes `emailRedirectTo` with that path. **Remaining:** re-run smoke test (section 3) after dashboard fix.
 
 ### 1. Run RLS
 
@@ -32,7 +32,7 @@ Expect `rowsecurity = true` and four policies (SELECT / INSERT / UPDATE / DELETE
 
 | Setting | URL | Action |
 | --- | --- | --- |
-| URL config | [Auth → URL Configuration](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/url-configuration) | **Site URL** = `https://elcomparob111.github.io/budget-studio/` · Redirect allowlist: that URL, `https://elcomparob111.github.io/budget-studio/**`, and `http://localhost:3000/**` for local dev |
+| URL config | [Auth → URL Configuration](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/url-configuration) | **Site URL** = `https://elcomparob111.github.io/budget-studio/` (must include `/budget-studio/` — bare `*.github.io` → Pages 404) · Redirect allowlist: that URL, `https://elcomparob111.github.io/budget-studio/**`, and `http://localhost:3000/**` for local dev |
 | Email confirm | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) | Enable **Confirm email** for production |
 | Password | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) (or Password settings) | Min length **8**; prefer letters + digits (matches app) |
 | Rate limits | [Auth → Rate Limits](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/rate-limits) | Keep defaults or tighten sign-in / sign-up / recovery |

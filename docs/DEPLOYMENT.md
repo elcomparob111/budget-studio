@@ -51,7 +51,9 @@ Configs already in repo (Pages ignores them):
 - [`../vercel.json`](../vercel.json)
 - [`../public/_headers`](../public/_headers)
 
-Point DNS / project to the same static files; update Supabase Auth Site URL + redirect allowlist to the new origin.
+Point DNS / project to the same static files; update Supabase Auth **Site URL** + redirect allowlist to the new app URL (full path, not just the host).
+
+For GitHub Pages project sites, Site URL must be `https://elcomparob111.github.io/budget-studio/` — not `https://elcomparob111.github.io` (that root returns Pages 404).
 
 ---
 

@@ -15,10 +15,10 @@ Used by web (`sync.js`) and iOS (`SupabaseService`).
 
 | Operation | Client method | Notes |
 |-----------|---------------|-------|
-| Sign up | `auth.signUp({ email, password, options.data.name })` | Client validates email/password strength first |
+| Sign up | `auth.signUp` + `options.emailRedirectTo` | Redirect → app URL including `/budget-studio/` on Pages |
 | Sign in | `auth.signInWithPassword` | |
 | Sign out | `auth.signOut` | Clears session; UI clears local caches |
-| Password reset email | `auth.resetPasswordForEmail` | Redirect → live GitHub Pages URL |
+| Password reset email | `auth.resetPasswordForEmail` | Redirect → live GitHub Pages app URL |
 | Update password | `auth.updateUser({ password })` | After recovery link |
 | Session | `auth.getSession` / `onAuthStateChange` | JWT in client storage |
 

@@ -18,6 +18,30 @@ import {
 let supabase = null;
 let lastUid = null;
 
+/** Live GitHub Pages app (project site — not the user Pages root). */
+const PROD_APP_URL = "https://elcomparob111.github.io/budget-studio/";
+
+/**
+ * Where Auth confirmation / recovery emails should send the user.
+ * Must include `/budget-studio/` on GitHub Pages; bare `*.github.io` is a 404.
+ * Localhost uses the current origin; otherwise prefer the production app URL.
+ */
+function authEmailRedirectTo({ preferProduction = false } = {}) {
+  if (preferProduction) return PROD_APP_URL;
+  try {
+    const { origin, pathname } = window.location;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+      return `${origin}/`;
+    }
+    if (pathname.startsWith("/budget-studio")) {
+      return `${origin}/budget-studio/`;
+    }
+  } catch (_) {
+    /* non-browser */
+  }
+  return PROD_APP_URL;
+}
+
 function toAppUser(user) {
   if (!user) return null;
   return { uid: user.id, displayName: user.user_metadata?.name || "" };
@@ -83,7 +107,11 @@ export async function signUp(name, email, password) {
   const { data, error } = await client.auth.signUp({
     email: emailCheck.value,
     password: passwordCheck.value,
-    options: { data: { name: String(name || "").trim().slice(0, 40) } },
+    options: {
+      data: { name: String(name || "").trim().slice(0, 40) },
+      // Without this, Supabase falls back to dashboard Site URL (must include /budget-studio/).
+      emailRedirectTo: authEmailRedirectTo(),
+    },
   });
   if (error) {
     recordAuthFailure();
@@ -131,8 +159,8 @@ export async function resetPassword(email) {
   const emailCheck = validateEmail(email);
   if (!emailCheck.ok) throw new Error(emailCheck.message);
 
-  // Always send people to the live site — localhost only works if a local server is running.
-  const redirectTo = "https://elcomparob111.github.io/budget-studio/";
+  // Prefer production: reset emails are often opened later when localhost is not running.
+  const redirectTo = authEmailRedirectTo({ preferProduction: true });
   const client = requireClient();
   const { error } = await client.auth.resetPasswordForEmail(emailCheck.value, { redirectTo });
   if (error) {
