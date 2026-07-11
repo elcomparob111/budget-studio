@@ -14,6 +14,8 @@ Details: [docs/SECURITY.md](docs/SECURITY.md) (root [SECURITY.md](SECURITY.md) i
 ## Supabase operator steps
 
 > **Status (2026-07-10):** Sections 1–2 applied (RLS, email confirm, password policy). Smoke test found confirm links landing on `https://elcomparob111.github.io` (Pages 404) — **re-check Site URL** is exactly `https://elcomparob111.github.io/budget-studio/` (with path). Web signup now passes `emailRedirectTo` with that path. **Remaining:** re-run smoke test (section 3) after dashboard fix.
+>
+> **Old emails keep old redirects.** Confirmation / recovery links bake the redirect URL at send time. After fixing Site URL + Redirect URLs, do **not** reuse an old email — resend confirmation (Authentication → Users) or sign up again. Hard-refresh the app first so SW `budget-studio-v31+` is loaded before a new signup.
 
 ### 1. Run RLS
 
@@ -32,7 +34,7 @@ Expect `rowsecurity = true` and four policies (SELECT / INSERT / UPDATE / DELETE
 
 | Setting | URL | Action |
 | --- | --- | --- |
-| URL config | [Auth → URL Configuration](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/url-configuration) | **Site URL** = `https://elcomparob111.github.io/budget-studio/` (must include `/budget-studio/` — bare `*.github.io` → Pages 404) · Redirect allowlist: that URL, `https://elcomparob111.github.io/budget-studio/**`, and `http://localhost:3000/**` for local dev |
+| URL config | [Auth → URL Configuration](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/url-configuration) | **Site URL** = `https://elcomparob111.github.io/budget-studio/` (WITH `/budget-studio/` — bare root 404s unless the user-site redirect repo is live) · **Redirect URLs** must include that exact URL **and** `https://elcomparob111.github.io/budget-studio/**` (plus `http://localhost:3000/**` for local). If `emailRedirectTo` is not allowlisted, Supabase falls back to Site URL. |
 | Email confirm | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) | Enable **Confirm email** for production |
 | Password | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) (or Password settings) | Min length **8**; prefer letters + digits (matches app) |
 | Rate limits | [Auth → Rate Limits](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/rate-limits) | Keep defaults or tighten sign-in / sign-up / recovery |
