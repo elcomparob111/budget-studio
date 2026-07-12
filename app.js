@@ -461,6 +461,7 @@ const elements = {
   authPasswordInput: document.querySelector("#authPasswordInput"),
   authSubmitBtn: document.querySelector("#authSubmitBtn"),
   authResendBtn: document.querySelector("#authResendBtn"),
+  authConfirmedBtn: document.querySelector("#authConfirmedBtn"),
   authModeToggleBtn: document.querySelector("#authModeToggleBtn"),
   authForgotBtn: document.querySelector("#authForgotBtn"),
   authMessage: document.querySelector("#authMessage"),
@@ -795,6 +796,10 @@ function attachEvents() {
   });
   elements.authForgotBtn.addEventListener("click", handleForgotPassword);
   elements.authResendBtn.addEventListener("click", handleResendConfirmation);
+  elements.authConfirmedBtn.addEventListener("click", () => attemptConfirmedSignIn(false));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && authMode === "confirm") attemptConfirmedSignIn(true);
+  });
   elements.signOutBtn.addEventListener("click", async () => {
     await handleSignOut();
   });
@@ -1754,7 +1759,9 @@ function setAuthMode(mode) {
   elements.authPasswordInput.autocomplete = signup || recovery ? "new-password" : "current-password";
   elements.authSubmitBtn.hidden = confirm;
   elements.authSubmitBtn.textContent = recovery ? "Save new password" : signup ? "Create account" : "Sign in";
+  elements.authConfirmedBtn.hidden = !confirm;
   elements.authResendBtn.hidden = !confirm;
+  if (!confirm) stopConfirmWatch();
   elements.authModeToggleBtn.hidden = recovery;
   elements.authForgotBtn.hidden = signup || recovery || confirm;
   elements.authModeToggleBtn.textContent = confirm
@@ -1766,12 +1773,70 @@ function setAuthMode(mode) {
 }
 
 let pendingConfirmEmail = "";
+let pendingConfirmPassword = ""; // memory only, never persisted; enables auto sign-in once confirmed
 let resendCooldownTimer = null;
+let confirmWatchTimer = null;
+let confirmWatchBusy = false;
 
-function showConfirmEmailState(email, message = "") {
+function showConfirmEmailState(email, message = "", password = "") {
   pendingConfirmEmail = email;
+  pendingConfirmPassword = password;
   setAuthMode("confirm");
   if (message) setAuthMessage(message);
+  startConfirmWatch();
+}
+
+function stopConfirmWatch() {
+  if (confirmWatchTimer) clearInterval(confirmWatchTimer);
+  confirmWatchTimer = null;
+  pendingConfirmPassword = "";
+}
+
+function startConfirmWatch() {
+  if (confirmWatchTimer) clearInterval(confirmWatchTimer);
+  if (!pendingConfirmPassword) return;
+  // Quietly retry sign-in while this screen waits; succeeds the moment the
+  // link is clicked on any device. Unconfirmed attempts don't count toward lockout.
+  confirmWatchTimer = setInterval(() => {
+    if (document.visibilityState === "visible") attemptConfirmedSignIn(true);
+  }, 15000);
+}
+
+async function attemptConfirmedSignIn(silent = false) {
+  if (authMode !== "confirm" || confirmWatchBusy) return;
+  if (!pendingConfirmPassword) {
+    if (!silent) {
+      // No retained password (e.g. page was reloaded) — hand off to normal sign-in.
+      const email = pendingConfirmEmail;
+      setAuthMode("signin");
+      elements.authEmailInput.value = email;
+      setAuthMessage("Enter your password to sign in.");
+      elements.authPasswordInput.focus();
+    }
+    return;
+  }
+  confirmWatchBusy = true;
+  if (!silent) setAuthMessage("Signing you in...");
+  try {
+    await signIn(pendingConfirmEmail, pendingConfirmPassword);
+    stopConfirmWatch();
+    // onAuthStateChanged drives the rest
+  } catch (error) {
+    const unconfirmed = error?.code === "email_not_confirmed" || /email not confirmed/i.test(String(error?.message || ""));
+    if (!silent) {
+      setAuthMessage(
+        unconfirmed
+          ? "Not confirmed yet — the link may take a minute to register. Try again shortly."
+          : friendlyAuthError(error),
+        true,
+      );
+    } else if (!unconfirmed) {
+      // Silent retry hit a real error (lockout, network) — stop hammering.
+      stopConfirmWatch();
+    }
+  } finally {
+    confirmWatchBusy = false;
+  }
 }
 
 function startResendCooldown(seconds = 60) {
@@ -1914,7 +1979,7 @@ async function handleAuthSubmit(event) {
         elements.authEmailInput.value = emailCheck.value;
         setAuthMessage("That email is already registered. Sign in below, or tap Forgot password.", true);
       } else if (result.confirmationRequired) {
-        showConfirmEmailState(emailCheck.value);
+        showConfirmEmailState(emailCheck.value, "", password);
         // A confirmation email just went out with the signup; hold resend briefly.
         startResendCooldown();
       }
@@ -1928,7 +1993,7 @@ async function handleAuthSubmit(event) {
   } catch (error) {
     safeLog("warn", "Auth submit failed", { mode: authMode });
     if (error?.code === "email_not_confirmed" || /email not confirmed/i.test(String(error?.message || ""))) {
-      showConfirmEmailState(emailCheck.value, "Your email isn't confirmed yet — find the link in your inbox, or resend it below.");
+      showConfirmEmailState(emailCheck.value, "Your email isn't confirmed yet — find the link in your inbox, or resend it below.", password);
     } else {
       setAuthMessage(friendlyAuthError(error), true);
     }

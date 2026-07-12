@@ -157,7 +157,9 @@ export async function signIn(email, password) {
     password: String(password),
   });
   if (error) {
-    recordAuthFailure();
+    // Unconfirmed email is not a credential guess — don't count it toward lockout,
+    // so the confirm screen can retry sign-in while waiting for the link click.
+    if (error.code !== "email_not_confirmed") recordAuthFailure();
     safeLog("warn", "Sign-in failed", { code: error.code || "auth_error" });
     throw error;
   }
