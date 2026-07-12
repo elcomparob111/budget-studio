@@ -198,7 +198,7 @@ private struct ConfirmEmailCard: View {
                 await store.retryConfirmedSignIn(silent: true)
             }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await store.retryConfirmedSignIn(silent: true) }
             }
