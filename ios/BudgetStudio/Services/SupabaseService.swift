@@ -36,13 +36,44 @@ final class SupabaseService {
         currentUser = try? await client.auth.session.user
     }
 
-    func signUp(name: String, email: String, password: String) async throws {
-        _ = try await client.auth.signUp(
+    enum SignUpOutcome {
+        case signedIn
+        case confirmationRequired
+        case existingAccount
+    }
+
+    /// Confirm links open the web app; any device can finish the confirmation.
+    private static let emailRedirectURL = URL(string: "https://elcomparob111.github.io/budget-studio/")
+
+    func signUp(name: String, email: String, password: String) async throws -> SignUpOutcome {
+        let response = try await client.auth.signUp(
             email: email,
             password: password,
-            data: ["name": .string(name)]
+            data: ["name": .string(name)],
+            redirectTo: Self.emailRedirectURL
         )
-        currentUser = try await client.auth.session.user
+        // Supabase obfuscates duplicate signups: the returned user has no identities.
+        if (response.user.identities ?? []).isEmpty {
+            return .existingAccount
+        }
+        guard let session = response.session else {
+            // Confirm-email is on: no session until the link is clicked.
+            return .confirmationRequired
+        }
+        currentUser = session.user
+        return .signedIn
+    }
+
+    func resendConfirmationEmail(email: String) async throws {
+        try await client.auth.resend(
+            email: email,
+            type: .signup,
+            emailRedirectTo: Self.emailRedirectURL
+        )
+    }
+
+    func isEmailNotConfirmed(_ error: Error) -> Bool {
+        error.localizedDescription.lowercased().contains("not confirmed")
     }
 
     func signIn(email: String, password: String) async throws {
@@ -163,6 +194,9 @@ final class SupabaseService {
 
     func friendlyAuthError(_ error: Error) -> String {
         let message = error.localizedDescription.lowercased()
+        if message.contains("not confirmed") {
+            return "Your email isn't confirmed yet. Check your inbox for the link, or resend it."
+        }
         if message.contains("rate limit") || message.contains("too many") {
             return "Too many attempts. Wait a minute and try again."
         }

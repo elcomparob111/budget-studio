@@ -10,6 +10,10 @@ final class BudgetStore: ObservableObject {
     @Published var userName = ""
     @Published var authError: String?
     @Published var isLoading = false
+    /// Non-nil while waiting for the signup confirmation link to be clicked.
+    @Published var pendingConfirmEmail: String?
+    /// Memory only, never persisted; enables auto sign-in once confirmed.
+    private var pendingConfirmPassword = ""
     @Published var toastMessage: String?
     @Published var faceIDEnabled: Bool {
         didSet { UserDefaults.standard.set(faceIDEnabled, forKey: "budget-studio-face-id") }
@@ -65,14 +69,21 @@ final class BudgetStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            try await supabase.signUp(name: name, email: email, password: password)
-            isAuthenticated = true
-            isUnlocked = true
-            userName = name
-            state = BudgetDefaults.emptyState()
-            saveLocal()
-            await pushCloud()
-            offerFaceID(email: email, password: password)
+            switch try await supabase.signUp(name: name, email: email, password: password) {
+            case .existingAccount:
+                authError = "That email is already registered. Sign in, or use Forgot password."
+            case .confirmationRequired:
+                pendingConfirmEmail = email
+                pendingConfirmPassword = password
+            case .signedIn:
+                isAuthenticated = true
+                isUnlocked = true
+                userName = name
+                state = BudgetDefaults.emptyState()
+                saveLocal()
+                await pushCloud()
+                offerFaceID(email: email, password: password)
+            }
         } catch {
             authError = supabase.friendlyAuthError(error)
         }
@@ -84,6 +95,8 @@ final class BudgetStore: ObservableObject {
         defer { isLoading = false }
         do {
             try await supabase.signIn(email: email, password: password)
+            pendingConfirmEmail = nil
+            pendingConfirmPassword = ""
             userName = supabase.displayName
             // Load cloud before unlocking so MainTabView does not flash setup
             // against the empty default state (setupComplete: false).
@@ -92,8 +105,48 @@ final class BudgetStore: ObservableObject {
             isUnlocked = true
             offerFaceID(email: email, password: password)
         } catch {
+            if supabase.isEmailNotConfirmed(error) {
+                pendingConfirmEmail = email
+                pendingConfirmPassword = password
+            } else {
+                authError = supabase.friendlyAuthError(error)
+            }
+        }
+    }
+
+    /// Retry sign-in from the check-your-email screen. Succeeds once the
+    /// confirmation link has been clicked on any device.
+    func retryConfirmedSignIn(silent: Bool = false) async {
+        guard let email = pendingConfirmEmail else { return }
+        guard !pendingConfirmPassword.isEmpty else {
+            if !silent {
+                cancelPendingConfirmation()
+                authError = "Enter your password to sign in."
+            }
+            return
+        }
+        await signIn(email: email, password: pendingConfirmPassword)
+        if silent, !isAuthenticated {
+            authError = nil
+        } else if !silent, pendingConfirmEmail != nil {
+            authError = "Not confirmed yet — the link may take a minute to register. Try again shortly."
+        }
+    }
+
+    func resendConfirmation() async {
+        guard let email = pendingConfirmEmail else { return }
+        authError = nil
+        do {
+            try await supabase.resendConfirmationEmail(email: email)
+        } catch {
             authError = supabase.friendlyAuthError(error)
         }
+    }
+
+    func cancelPendingConfirmation() {
+        pendingConfirmEmail = nil
+        pendingConfirmPassword = ""
+        authError = nil
     }
 
     func unlockWithFaceID() async {

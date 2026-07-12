@@ -33,17 +33,24 @@ struct AuthView: View {
                             .textCase(.uppercase)
                             .tracking(1.2)
 
-                        Text(mode == .signUp ? "Create your account" : "Welcome back")
+                        Text(store.pendingConfirmEmail != nil
+                            ? "Check your email"
+                            : mode == .signUp ? "Create your account" : "Welcome back")
                             .font(.app(28, weight: .bold))
                             .foregroundStyle(AppTheme.primaryText)
 
-                        Text("Your budget stays private and syncs across your devices.")
+                        Text(store.pendingConfirmEmail != nil
+                            ? "One tap in your inbox and you're in."
+                            : "Your budget stays private and syncs across your devices.")
                             .font(.app(15, weight: .medium))
                             .foregroundStyle(AppTheme.secondaryText)
                             .multilineTextAlignment(.center)
                     }
                     .padding(.top, max(AppTheme.xxl, (geo.size.height - 520) * 0.18))
 
+                    if store.pendingConfirmEmail != nil {
+                        ConfirmEmailCard()
+                    } else {
                     VStack(spacing: AppTheme.md) {
                         if mode == .signUp {
                             AuthField(title: "Your name", text: $name, placeholder: "Rob, Mom, Alex...")
@@ -115,6 +122,7 @@ struct AuthView: View {
                         .foregroundStyle(AppTheme.primaryText)
                     }
                     .appCard()
+                    }
                 }
                 .padding(.horizontal, AppTheme.pagePadding)
                 .padding(.bottom, AppTheme.xxl)
@@ -122,6 +130,79 @@ struct AuthView: View {
             }
         }
         .background(AppTheme.background.ignoresSafeArea())
+    }
+}
+
+private struct ConfirmEmailCard: View {
+    @EnvironmentObject private var store: BudgetStore
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var resendCooldown = 0
+
+    var body: some View {
+        VStack(spacing: AppTheme.md) {
+            Text("We sent a confirmation link to \(store.pendingConfirmEmail ?? "your email"). Open it on any device, then come back here. Nothing arriving? Check spam, and make sure the address is right.")
+                .font(.app(14, weight: .medium))
+                .foregroundStyle(AppTheme.secondaryText)
+                .multilineTextAlignment(.center)
+
+            if let error = store.authError {
+                Text(error)
+                    .font(.app(13, weight: .medium))
+                    .foregroundStyle(AppTheme.expense)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Button {
+                Task { await store.retryConfirmedSignIn() }
+            } label: {
+                Group {
+                    if store.isLoading {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text("I clicked the link — sign me in")
+                    }
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle(disabled: store.isLoading))
+            .disabled(store.isLoading)
+
+            Button(resendCooldown > 0 ? "Resend email (\(resendCooldown)s)" : "Resend confirmation email") {
+                Task {
+                    await store.resendConfirmation()
+                    resendCooldown = 60
+                }
+            }
+            .font(.app(14, weight: .semibold))
+            .foregroundStyle(AppTheme.primaryText)
+            .disabled(resendCooldown > 0 || store.isLoading)
+
+            Button("Back to sign in") {
+                store.cancelPendingConfirmation()
+            }
+            .font(.app(14, weight: .semibold))
+            .foregroundStyle(AppTheme.secondaryText)
+        }
+        .appCard()
+        .task {
+            // The signup email just went out — hold resend briefly.
+            resendCooldown = 60
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if resendCooldown > 0 { resendCooldown -= 1 }
+            }
+        }
+        .task {
+            // Quietly retry sign-in; succeeds the moment the link is clicked anywhere.
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 15_000_000_000)
+                await store.retryConfirmedSignIn(silent: true)
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active {
+                Task { await store.retryConfirmedSignIn(silent: true) }
+            }
+        }
     }
 }
 
