@@ -1394,3 +1394,17 @@ td.amount { font-weight: 700; color: var(--ink); }
   background: var(--soft-amber);
   color: #f0c27a;
 }
+
+/* Theme-aware chart colors (SVGs previously hardcoded light-theme hex). */
+.chart-svg .svg-label { fill: var(--ink); font: 700 13px system-ui; }
+.chart-svg .svg-value { fill: var(--muted); font: 800 12px system-ui; }
+.chart-svg .axis { fill: var(--muted); font: 700 11px system-ui; }
+.chart-svg .legend { fill: var(--ink); font: 800 12px system-ui; }
+.chart-svg .grid-line { stroke: var(--line); }
+.chart-svg .zero-line { stroke: var(--muted); }
+.chart-svg .series-income { stroke: var(--green); }
+.chart-svg .series-expense { stroke: var(--red); }
+.chart-svg .series-net { stroke: var(--ink); }
+.chart-svg .dot-income { fill: var(--green); }
+.chart-svg .dot-expense { fill: var(--red); }
+.chart-svg .dot-net { fill: var(--ink); }

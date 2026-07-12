@@ -94,6 +94,26 @@ const defaultCategories = [
   { name: "Emergency Fund", type: "Expense", group: "Savings", budget: 300 },
 ];
 
+// Shared formatters (declared before init() runs at module eval — TDZ):
+// Intl.NumberFormat construction is expensive and these run hundreds of times per render.
+const MONEY_WHOLE_FORMAT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+const MONEY_CENTS_FORMAT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 2,
+});
+const MONEY_COMPACT_FORMAT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+const PERCENT_FORMAT = new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 0 });
+
 const defaultTransactions = [
   transaction("2026-07-01", "Income", "Salary", "Paycheck", "Checking", 4200),
   transaction("2026-07-01", "Expense", "Housing", "Rent", "Checking", 1800),
@@ -831,6 +851,7 @@ function switchTab(tab) {
     else button.removeAttribute("aria-current");
   });
   if (activeTab === "settings") updatePayScheduleSummary();
+  else render();
   renderIdentityUI();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1228,9 +1249,12 @@ function createWizardDraft(useCurrentState) {
 }
 
 function render() {
-  renderDashboard();
-  renderTransactions();
-  renderBudgetEditor();
+  // Month label lives in the shared header; keep it fresh on every render.
+  syncMonthLabel(elements.monthInput.value);
+  // Only the visible tab is rendered; switchTab() re-renders on switch.
+  if (activeTab === "activity") renderTransactions();
+  else if (activeTab === "budgets") renderBudgetEditor();
+  else if (activeTab === "overview") renderDashboard();
 }
 
 function renderDashboard() {
@@ -1359,11 +1383,7 @@ function renderBarChart(rows) {
     .join("");
 
   elements.categoryChart.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Spending by category">
-      <style>
-        .svg-label { fill: #334155; font: 700 13px system-ui; }
-        .svg-value { fill: #64748b; font: 800 12px system-ui; }
-      </style>
+    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Spending by category">
       ${rowsSvg}
     </svg>
   `;
@@ -1371,14 +1391,22 @@ function renderBarChart(rows) {
 
 function renderTrendChart(selectedMonth) {
   const months = monthRange(selectedMonth, 11);
+  // One pass over all transactions instead of 12 full getMonthSummary() scans.
+  const byMonth = new Map(months.map((month) => [month, { income: 0, expenses: 0 }]));
+  for (const item of state.transactions) {
+    const bucket = byMonth.get(monthKeyFromDate(item.date));
+    if (!bucket) continue;
+    if (item.type === "Income") bucket.income += item.amount;
+    else if (item.type === "Expense") bucket.expenses += item.amount;
+  }
   const points = months.map((month) => {
-    const summary = getMonthSummary(month);
+    const { income, expenses } = byMonth.get(month);
     return {
       month,
       label: shortMonth(month),
-      income: summary.income,
-      expenses: summary.expenses,
-      net: summary.income - summary.expenses,
+      income,
+      expenses,
+      net: income - expenses,
     };
   });
 
@@ -1400,7 +1428,7 @@ function renderTrendChart(selectedMonth) {
       const lineY = padding.top + ratio * chartHeight;
       const value = max - ratio * span;
       return `
-        <line x1="${padding.left}" x2="${width - padding.right}" y1="${lineY}" y2="${lineY}" stroke="#e2e8f0" />
+        <line class="grid-line" x1="${padding.left}" x2="${width - padding.right}" y1="${lineY}" y2="${lineY}" />
         <text x="8" y="${lineY + 4}" class="axis">${compactMoney(value)}</text>
       `;
     })
@@ -1410,20 +1438,16 @@ function renderTrendChart(selectedMonth) {
     .join("");
 
   elements.trendChart.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Income, spending, and cash flow trend">
-      <style>
-        .axis { fill: #64748b; font: 700 11px system-ui; }
-        .legend { fill: #334155; font: 800 12px system-ui; }
-      </style>
+    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Income, spending, and cash flow trend">
       ${grid}
-      <line x1="${padding.left}" x2="${width - padding.right}" y1="${y(0)}" y2="${y(0)}" stroke="#94a3b8" />
-      <path d="${pathFor("income")}" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" />
-      <path d="${pathFor("expenses")}" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round" />
-      <path d="${pathFor("net")}" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" />
+      <line class="zero-line" x1="${padding.left}" x2="${width - padding.right}" y1="${y(0)}" y2="${y(0)}" />
+      <path class="series-income" d="${pathFor("income")}" fill="none" stroke-width="3" stroke-linecap="round" />
+      <path class="series-expense" d="${pathFor("expenses")}" fill="none" stroke-width="3" stroke-linecap="round" />
+      <path class="series-net" d="${pathFor("net")}" fill="none" stroke-width="3" stroke-linecap="round" />
       ${labels}
-      <circle cx="610" cy="18" r="5" fill="#16a34a"></circle><text x="620" y="22" class="legend">Income</text>
-      <circle cx="690" cy="18" r="5" fill="#dc2626"></circle><text x="700" y="22" class="legend">Spent</text>
-      <circle cx="760" cy="18" r="5" fill="#2563eb"></circle><text x="770" y="22" class="legend">Net</text>
+      <circle class="dot-income" cx="610" cy="18" r="5"></circle><text x="620" y="22" class="legend">Income</text>
+      <circle class="dot-expense" cx="690" cy="18" r="5"></circle><text x="700" y="22" class="legend">Spent</text>
+      <circle class="dot-net" cx="760" cy="18" r="5"></circle><text x="770" y="22" class="legend">Net</text>
     </svg>
   `;
 }
@@ -1538,31 +1562,43 @@ function populateCategorySelect() {
 }
 
 function getMonthSummary(month) {
-  const monthTransactions = state.transactions.filter((item) => monthKeyFromDate(item.date) === month);
-  const incomeItems = monthTransactions.filter((item) => item.type === "Income");
-  const expenseItems = monthTransactions.filter((item) => item.type === "Expense");
-  const income = sum(incomeItems.map((item) => item.amount));
-  const expenses = sum(expenseItems.map((item) => item.amount));
-  const expenseCategories = state.categories.filter((category) => category.type === "Expense");
-  const totalBudget = sum(expenseCategories.map((category) => category.budget));
-  const categoryRows = expenseCategories
-    .map((category) => {
-      const spent = sum(expenseItems.filter((item) => item.category === category.name).map((item) => item.amount));
-      return {
-        ...category,
-        spent,
-        left: category.budget - spent,
-      };
-    })
-    .sort((a, b) => b.spent - a.spent || b.budget - a.budget);
+  // Single pass over transactions; same results as the old per-category filters.
+  const monthTransactions = [];
+  let income = 0;
+  let expenses = 0;
+  let incomeCount = 0;
+  let expenseCount = 0;
+  const spentByCategory = new Map();
+  for (const item of state.transactions) {
+    if (monthKeyFromDate(item.date) !== month) continue;
+    monthTransactions.push(item);
+    if (item.type === "Income") {
+      income += item.amount;
+      incomeCount += 1;
+    } else if (item.type === "Expense") {
+      expenses += item.amount;
+      expenseCount += 1;
+      spentByCategory.set(item.category, (spentByCategory.get(item.category) || 0) + item.amount);
+    }
+  }
+
+  let totalBudget = 0;
+  const categoryRows = [];
+  for (const category of state.categories) {
+    if (category.type !== "Expense") continue;
+    totalBudget += category.budget;
+    const spent = spentByCategory.get(category.name) || 0;
+    categoryRows.push({ ...category, spent, left: category.budget - spent });
+  }
+  categoryRows.sort((a, b) => b.spent - a.spent || b.budget - a.budget);
 
   return {
     monthTransactions,
     income,
     expenses,
     totalBudget,
-    incomeCount: incomeItems.length,
-    expenseCount: expenseItems.length,
+    incomeCount,
+    expenseCount,
     categoryRows,
   };
 }
@@ -2588,24 +2624,15 @@ function formatDate(dateString) {
 }
 
 function money(value) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: value % 1 ? 2 : 0,
-  }).format(value || 0);
+  return (value % 1 ? MONEY_CENTS_FORMAT : MONEY_WHOLE_FORMAT).format(value || 0);
 }
 
 function compactMoney(value) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value || 0);
+  return MONEY_COMPACT_FORMAT.format(value || 0);
 }
 
 function percent(value) {
-  return new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 0 }).format(value || 0);
+  return PERCENT_FORMAT.format(value || 0);
 }
 
 function statusCopy(value) {
