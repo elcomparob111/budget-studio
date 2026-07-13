@@ -39,6 +39,12 @@ const QUICK_ADD_PREFS_KEY = "budget-studio-quick-add-prefs";
 // Quick-add sheet state (declared before init() runs at module eval — TDZ).
 const quickAdd = { open: false, type: "Expense", amount: "" };
 
+// Header theme-toggle icons (Feather, MIT). Declared before init() — TDZ.
+const ICON_MOON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>';
+const ICON_SUN =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>';
+
 const groupChartColors = {
   Needs: ["#2563eb", "#0ea5e9", "#0284c7", "#0891b2"],
   Wants: ["#7c3aed", "#9333ea", "#c026d3", "#db2777"],
@@ -2572,7 +2578,7 @@ function applyTheme(theme) {
   }
   localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
   if (elements.themeToggleBtn) {
-    elements.themeToggleBtn.textContent = isDark ? "☀" : "◐";
+    elements.themeToggleBtn.innerHTML = isDark ? ICON_SUN : ICON_MOON;
     elements.themeToggleBtn.title = isDark ? "Switch to light mode" : "Toggle dark mode";
     elements.themeToggleBtn.setAttribute("aria-label", elements.themeToggleBtn.title);
   }

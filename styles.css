@@ -682,7 +682,9 @@ td.amount { font-weight: 700; color: var(--ink); }
   font-size: 11px;
   font-weight: 600;
 }
-.tab-button .tab-icon { font-size: 18px; line-height: 1; }
+.tab-button .tab-icon { font-size: 18px; line-height: 1; display: inline-grid; place-items: center; }
+.tab-button .tab-icon svg { width: 20px; height: 20px; }
+.icon-button svg { width: 20px; height: 20px; }
 .tab-button.is-active { color: var(--ink); }
 
 #authGate.wizard-overlay {
