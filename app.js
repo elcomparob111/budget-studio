@@ -369,15 +369,10 @@ const elements = {
   prevMonthBtn: document.querySelector("#prevMonthBtn"),
   nextMonthBtn: document.querySelector("#nextMonthBtn"),
   incomeMetric: document.querySelector("#incomeMetric"),
-  incomeSubtext: document.querySelector("#incomeSubtext"),
   spentMetric: document.querySelector("#spentMetric"),
-  spentSubtext: document.querySelector("#spentSubtext"),
-  leftMetric: document.querySelector("#leftMetric"),
-  leftSubtext: document.querySelector("#leftSubtext"),
   budgetRing: document.querySelector("#budgetRing"),
   budgetUsedMetric: document.querySelector("#budgetUsedMetric"),
   ringSubtext: document.querySelector("#ringSubtext"),
-  cashLeftSubtext: document.querySelector("#cashLeftSubtext"),
   payPeriodBadge: document.querySelector("#payPeriodBadge"),
   payPeriodRange: document.querySelector("#payPeriodRange"),
   paycheckIncomeMetric: document.querySelector("#paycheckIncomeMetric"),
@@ -1350,19 +1345,11 @@ function renderDashboard() {
   const topCategory = summary.categoryRows.find((row) => row.spent > 0);
 
   elements.incomeMetric.textContent = money(summary.income);
-  elements.incomeSubtext.textContent = "This month";
   elements.spentMetric.textContent = money(summary.expenses);
-  elements.spentSubtext.textContent = "This month";
-  elements.leftMetric.textContent = money(left);
-  elements.leftMetric.classList.toggle("is-negative", left < 0);
-  elements.leftSubtext.textContent = "Of your plan";
   elements.budgetUsedMetric.textContent = percent(usedPercent);
   elements.budgetRing.style.setProperty("--used", `${Math.min(100, Math.max(0, usedPercent * 100))}%`);
   elements.budgetRing.classList.toggle("over", usedPercent > 1);
   elements.ringSubtext.textContent = statusCopy(usedPercent);
-  if (elements.cashLeftSubtext) {
-    elements.cashLeftSubtext.textContent = money(net);
-  }
   elements.netMetric.textContent = `${money(net)} left from income`;
   elements.netMetric.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
   elements.savingsMetric.textContent = `${percent(savingsRate)} saved`;

@@ -48,31 +48,22 @@
       </header>
 
       <section id="overviewTab" class="tab-panel" data-tab-panel="overview">
-        <section class="summary-grid" aria-label="Budget summary">
-          <article class="metric-card">
-            <span class="metric-label"><span aria-hidden="true">💵</span> Income</span>
+        <section class="stat-row" aria-label="Budget summary">
+          <article class="stat-chip">
+            <span class="stat-label">Income</span>
             <strong id="incomeMetric">$0</strong>
-            <small id="incomeSubtext">This month</small>
           </article>
-          <article class="metric-card">
-            <span class="metric-label"><span aria-hidden="true">🧾</span> Spent</span>
+          <article class="stat-chip">
+            <span class="stat-label">Spent</span>
             <strong id="spentMetric">$0</strong>
-            <small id="spentSubtext">This month</small>
           </article>
-          <article class="metric-card">
-            <span class="metric-label"><span aria-hidden="true">🎯</span> Plan left</span>
-            <strong id="leftMetric">$0</strong>
-            <small id="leftSubtext">Of your plan</small>
-          </article>
-          <article class="metric-card compact">
+          <article class="stat-chip stat-chip-ring">
             <div id="budgetRing" class="budget-ring" role="img" aria-label="Budget used">
               <span id="budgetUsedMetric">0%</span>
             </div>
             <div>
-              <span>Budget used</span>
+              <span class="stat-label">Budget used</span>
               <small id="ringSubtext">Healthy pace</small>
-              <span class="cash-left-label">Cash left</span>
-              <small id="cashLeftSubtext">$0</small>
             </div>
           </article>
         </section>

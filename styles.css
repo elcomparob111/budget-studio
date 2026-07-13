@@ -312,13 +312,65 @@ body.wizard-open { overflow: hidden; }
 .tab-panel { display: grid; gap: 16px; }
 .tab-panel[hidden] { display: none !important; }
 
-.summary-grid {
+/* Demoted summary stats — the hero number lives in the header. */
+.stat-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-chip {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stat-chip strong {
+  font-size: 18px;
+  line-height: 1.1;
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-chip small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stat-chip-ring {
+  grid-column: 1 / -1;
+  grid-template-columns: auto 1fr;
+  align-items: center;
   gap: 12px;
 }
 
-.metric-card,
+.stat-chip-ring > div {
+  display: grid;
+  gap: 2px;
+}
+
+.stat-chip .budget-ring {
+  width: 54px;
+  height: 54px;
+}
+
+.stat-chip .budget-ring span {
+  font-size: 12px;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -326,47 +378,10 @@ body.wizard-open { overflow: hidden; }
   box-shadow: var(--shadow);
 }
 
-.metric-card {
-  min-height: 110px;
-  display: grid;
-  align-content: space-between;
-  gap: 8px;
-  padding: 16px;
-}
-
-.metric-label,
-.metric-card span,
-.metric-card small,
 .transaction-form span {
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
-}
-
-.metric-card strong {
-  font-size: clamp(22px, 4vw, 28px);
-  line-height: 1;
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.metric-card.compact {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 14px;
-}
-
-.metric-card.compact > div {
-  display: grid;
-  gap: 4px;
-  align-content: center;
-}
-
-.cash-left-label {
-  margin-top: 6px;
-  color: var(--ink) !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
 }
 
 .paycheck-grid article small {
@@ -1209,7 +1224,8 @@ td.amount { font-weight: 700; color: var(--ink); }
 
 
 @media (min-width: 900px) {
-  .summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stat-row { grid-template-columns: 1fr 1fr 1.6fr; }
+  .stat-chip-ring { grid-column: auto; }
   .budget-editor { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .paycheck-grid { grid-template-columns: 1.3fr repeat(3, 1fr); }
 }
@@ -1222,7 +1238,6 @@ td.amount { font-weight: 700; color: var(--ink); }
   .app-header { align-items: start; flex-direction: column; }
   .header-actions { width: 100%; justify-content: start; align-items: center; }
   .month-stepper { flex: 1; min-width: 0; }
-  .summary-grid,
   .transaction-form,
   .budget-editor,
   .category-builder,
@@ -1232,7 +1247,6 @@ td.amount { font-weight: 700; color: var(--ink); }
   .pay-frequency-grid {
     grid-template-columns: 1fr;
   }
-  .metric-card.compact { grid-template-columns: auto 1fr; }
   .progress-row,
   .paycheck-breakdown-row { grid-template-columns: 1fr; }
   .wizard-card { padding: 16px; }
@@ -1436,7 +1450,7 @@ td.amount { font-weight: 700; color: var(--ink); }
 
 /* Semantic money colors */
 .money-chip.is-positive { color: var(--green); }
-.money-chip.is-negative, .metric-value.is-negative, #leftMetric.is-negative { color: var(--red); }
+.money-chip.is-negative { color: var(--red); }
 
 /* Quick-add bottom sheet */
 .sheet-overlay {
