@@ -1372,6 +1372,7 @@ function renderDashboard() {
   renderBarChart(summary.categoryRows);
   renderTrendChart(month);
   renderPaycheckView(month);
+  renderIdentityUI();
 }
 
 function renderPaycheckView(month) {
@@ -2341,27 +2342,29 @@ async function handleDeleteAccount() {
   }
 }
 
-function formatFriendlyToday() {
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
-}
-
 function renderIdentityUI() {
-  const name = currentUser?.displayName ? cleanProfileName(currentUser.displayName) : "";
   const titles = {
-    overview: name ? `Welcome ${name}!` : "Welcome!",
+    overview: "",
     activity: "Activity",
     budgets: "Budgets",
     settings: "Settings",
   };
-  elements.appTitle.textContent = titles[activeTab] || titles.overview;
+  const onOverview = !titles[activeTab];
+  if (onOverview) {
+    // Safe-to-spend hero: what's left of the plan for the selected month.
+    const month = elements.monthInput.value;
+    const summary = getMonthSummary(month);
+    const left = summary.totalBudget - summary.expenses;
+    elements.appTitle.textContent = money(left);
+    elements.appTitle.classList.toggle("is-negative", left < 0);
+  } else {
+    elements.appTitle.textContent = titles[activeTab];
+    elements.appTitle.classList.remove("is-negative");
+  }
+  elements.appTitle.classList.toggle("hero-number", onOverview);
   if (elements.appSubtitle) {
-    const showToday = activeTab === "overview";
-    elements.appSubtitle.hidden = !showToday;
-    if (showToday) elements.appSubtitle.textContent = formatFriendlyToday();
+    elements.appSubtitle.hidden = !onOverview;
+    if (onOverview) elements.appSubtitle.textContent = `Safe to spend in ${formatMonthLabel(elements.monthInput.value)}`;
   }
   elements.signOutBtn.hidden = localOnlyMode || !currentUser;
   if (elements.deleteAccountBtn) {
