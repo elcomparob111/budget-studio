@@ -421,6 +421,17 @@ const elements = {
   qaDescriptionInput: document.querySelector("#qaDescriptionInput"),
   qaSubmitBtn: document.querySelector("#qaSubmitBtn"),
   qaMessage: document.querySelector("#qaMessage"),
+  upcomingPanel: document.querySelector("#upcomingPanel"),
+  upcomingList: document.querySelector("#upcomingList"),
+  recurringList: document.querySelector("#recurringList"),
+  recurringForm: document.querySelector("#recurringForm"),
+  recTypeInput: document.querySelector("#recTypeInput"),
+  recCategoryInput: document.querySelector("#recCategoryInput"),
+  recAccountInput: document.querySelector("#recAccountInput"),
+  recDayInput: document.querySelector("#recDayInput"),
+  recDescriptionInput: document.querySelector("#recDescriptionInput"),
+  recAmountInput: document.querySelector("#recAmountInput"),
+  recurringMessage: document.querySelector("#recurringMessage"),
   transactionsBody: document.querySelector("#transactionsBody"),
   searchInput: document.querySelector("#searchInput"),
   typeFilter: document.querySelector("#typeFilter"),
@@ -525,7 +536,11 @@ function init() {
   elements.dateInput.value = defaultDateForMonth(elements.monthInput.value);
   elements.accountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
   elements.editAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
+  if (elements.recAccountInput) {
+    elements.recAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
+  }
   populateCategorySelect();
+  populateRecurringCategorySelect();
   attachEvents();
   installGlobalKeyboard();
   render();
@@ -544,6 +559,7 @@ async function handleUserChanged(user, info) {
     renderIdentityUI();
     render();
     if (!state.setupComplete) openWizard(false);
+    postDueRecurring();
     return;
   }
 
@@ -632,6 +648,9 @@ async function handleUserChanged(user, info) {
   if (!state.setupComplete) {
     openWizard(false);
   }
+
+  // After local/cloud state has settled, post any recurring items now due.
+  postDueRecurring();
 }
 
 function attachEvents() {
@@ -755,6 +774,31 @@ function attachEvents() {
   elements.categoryBuilderAddBtn.addEventListener("click", (event) => {
     event.preventDefault();
     addCategoryFromBudgetPanel();
+  });
+
+  elements.recurringForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    addRecurringFromForm();
+  });
+  elements.recTypeInput?.addEventListener("change", populateRecurringCategorySelect);
+  elements.recurringList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-recurring-id]");
+    if (!button) return;
+    const index = (state.recurring || []).findIndex((item) => item.id === button.dataset.recurringId);
+    if (index === -1) return;
+    const [removed] = state.recurring.splice(index, 1);
+    saveState();
+    renderRecurringList();
+    showToast(`${removed.description} removed.`, "success", {
+      actionLabel: "Undo",
+      duration: 5000,
+      onAction: () => {
+        state.recurring.splice(Math.min(index, state.recurring.length), 0, removed);
+        saveState();
+        renderRecurringList();
+        showToast("Recurring item restored.");
+      },
+    });
   });
 
   elements.resetBtn.addEventListener("click", () => openWizard(true));
@@ -933,8 +977,13 @@ function switchTab(tab) {
     if (selected) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
-  if (activeTab === "settings") updatePayScheduleSummary();
-  else render();
+  if (activeTab === "settings") {
+    updatePayScheduleSummary();
+    populateRecurringCategorySelect();
+    renderRecurringList();
+  } else {
+    render();
+  }
   renderIdentityUI();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1366,6 +1415,7 @@ function renderDashboard() {
   renderBarChart(summary.categoryRows);
   renderTrendChart(month);
   renderPaycheckView(month);
+  renderUpcoming();
   renderIdentityUI();
 }
 
@@ -1796,6 +1846,152 @@ function submitQuickAdd() {
   showToast(`Added ${MONEY_CENTS_FORMAT.format(item.amount)} — ${item.category}.`);
 }
 
+function clampedRecurringDay(item, year, monthNumber) {
+  return Math.min(item.dayOfMonth, new Date(year, monthNumber, 0).getDate());
+}
+
+/** Post any recurring items due in the CURRENT real month that haven't posted yet. */
+function postDueRecurring() {
+  const monthKey = currentMonthKey();
+  const [year, monthNumber] = monthKey.split("-").map(Number);
+  const today = new Date().getDate();
+  let posted = 0;
+  for (const item of state.recurring || []) {
+    const day = clampedRecurringDay(item, year, monthNumber);
+    if (item.lastPostedMonth === monthKey || today < day) continue;
+    const date = `${monthKey}-${String(day).padStart(2, "0")}`;
+    state.transactions.push(
+      transaction(date, item.type, item.category, item.description, item.account, item.amount),
+    );
+    item.lastPostedMonth = monthKey;
+    posted += 1;
+  }
+  if (posted) {
+    saveState();
+    render();
+    showToast(posted === 1 ? "Posted 1 recurring transaction." : `Posted ${posted} recurring transactions.`);
+  }
+}
+
+function nextRecurringDate(item) {
+  const monthKey = currentMonthKey();
+  const [year, monthNumber] = monthKey.split("-").map(Number);
+  const today = new Date().getDate();
+  if (item.lastPostedMonth !== monthKey && today <= clampedRecurringDay(item, year, monthNumber)) {
+    return new Date(year, monthNumber - 1, clampedRecurringDay(item, year, monthNumber));
+  }
+  const nextYear = monthNumber === 12 ? year + 1 : year;
+  const nextMonth = monthNumber === 12 ? 1 : monthNumber + 1;
+  return new Date(nextYear, nextMonth - 1, clampedRecurringDay(item, nextYear, nextMonth));
+}
+
+function renderUpcoming() {
+  if (!elements.upcomingPanel) return;
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + 14);
+  const due = (state.recurring || [])
+    .map((item) => ({ item, date: nextRecurringDate(item) }))
+    .filter((entry) => entry.date <= horizon)
+    .sort((a, b) => a.date - b.date);
+  elements.upcomingPanel.hidden = !due.length;
+  if (!due.length) return;
+  const dayFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  elements.upcomingList.innerHTML = due
+    .map(
+      ({ item, date }) => `
+        <div class="upcoming-row">
+          <span class="upcoming-date">${dayFormat.format(date)}</span>
+          <span class="upcoming-name">${escapeHtml(item.description)}</span>
+          <span class="upcoming-amount ${item.type === "Income" ? "is-income" : ""}">${item.type === "Income" ? "+" : ""}${money(item.amount)}</span>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function renderRecurringList() {
+  if (!elements.recurringList) return;
+  const items = state.recurring || [];
+  if (!items.length) {
+    elements.recurringList.innerHTML = `<p class="recurring-empty">Nothing recurring yet — add your rent, subscriptions, or paycheck below.</p>`;
+    return;
+  }
+  elements.recurringList.innerHTML = items
+    .map(
+      (item) => `
+        <div class="recurring-row">
+          <div class="recurring-copy">
+            <strong>${escapeHtml(item.description)}</strong>
+            <small>${escapeHtml(item.category)} · ${escapeHtml(item.account)} · day ${item.dayOfMonth}</small>
+          </div>
+          <span class="upcoming-amount ${item.type === "Income" ? "is-income" : ""}">${item.type === "Income" ? "+" : ""}${money(item.amount)}</span>
+          <button class="delete-button" data-recurring-id="${escapeHtml(item.id)}" type="button">Delete</button>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function populateRecurringCategorySelect() {
+  if (!elements.recCategoryInput) return;
+  const type = elements.recTypeInput.value;
+  const categories = state.categories.filter((category) => category.type === type);
+  elements.recCategoryInput.innerHTML = categories
+    .map((category) => `<option>${escapeHtml(category.name)}</option>`)
+    .join("");
+}
+
+function setRecurringMessage(message, isError = false) {
+  elements.recurringMessage.textContent = message;
+  elements.recurringMessage.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function addRecurringFromForm() {
+  const typeCheck = validateTransactionType(elements.recTypeInput.value);
+  const categoryCheck = validateCategoryName(elements.recCategoryInput.value);
+  const amountCheck = validateAmount(elements.recAmountInput.value);
+  const descriptionCheck = validateDescription(
+    elements.recDescriptionInput.value.trim() || elements.recCategoryInput.value,
+  );
+  const day = Math.round(Number(elements.recDayInput.value));
+  if (!Number.isFinite(day) || day < 1 || day > 31) {
+    setRecurringMessage("Day of month must be between 1 and 31.", true);
+    return;
+  }
+  if (!typeCheck.ok || !categoryCheck.ok || !amountCheck.ok || !descriptionCheck.ok) {
+    setRecurringMessage(
+      typeCheck.message || categoryCheck.message || amountCheck.message || descriptionCheck.message,
+      true,
+    );
+    return;
+  }
+
+  const monthKey = currentMonthKey();
+  const [year, monthNumber] = monthKey.split("-").map(Number);
+  const item = {
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    type: typeCheck.value,
+    category: categoryCheck.value,
+    description: descriptionCheck.value,
+    account: elements.recAccountInput.value,
+    amount: amountCheck.value,
+    dayOfMonth: day,
+    // Past this month's day already? Start next month so we don't double a bill
+    // the user probably logged by hand.
+    lastPostedMonth:
+      new Date().getDate() > Math.min(day, new Date(year, monthNumber, 0).getDate()) ? monthKey : "",
+  };
+  state.recurring = state.recurring || [];
+  state.recurring.push(item);
+  saveState();
+  elements.recurringForm.reset();
+  elements.recDayInput.value = "1";
+  populateRecurringCategorySelect();
+  setRecurringMessage(`${item.description} will post on day ${item.dayOfMonth} each month.`);
+  renderRecurringList();
+  postDueRecurring();
+}
+
 function getMonthSummary(month) {
   // Single pass over transactions; same results as the old per-category filters.
   const monthTransactions = [];
@@ -1877,6 +2073,7 @@ function createEmptyState() {
       budget: category.type === "Expense" ? 0 : category.budget,
     })),
     transactions: [],
+    recurring: [],
     setupComplete: false,
     setupProfile: null,
   };
@@ -1886,6 +2083,29 @@ function createDemoState() {
   return {
     categories: structuredClone(defaultCategories),
     transactions: structuredClone(defaultTransactions),
+    // lastPostedMonth = current month so demo data doesn't auto-post on load.
+    recurring: [
+      {
+        id: "demo-recurring-rent",
+        type: "Expense",
+        category: "Housing",
+        description: "Rent",
+        account: "Checking",
+        amount: 1800,
+        dayOfMonth: 1,
+        lastPostedMonth: currentMonthKey(),
+      },
+      {
+        id: "demo-recurring-internet",
+        type: "Expense",
+        category: "Utilities",
+        description: "Internet bill",
+        account: "Checking",
+        amount: 60,
+        dayOfMonth: 25,
+        lastPostedMonth: "",
+      },
+    ],
     setupComplete: true,
     setupProfile: {
       presetId: "single",
@@ -1978,6 +2198,7 @@ function normalizeState(raw) {
   return {
     categories,
     transactions,
+    recurring: sanitized.recurring || [],
     setupComplete: sanitized.setupComplete ?? true,
     setupProfile,
   };

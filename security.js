@@ -128,6 +128,7 @@ export const BUDGET_LIMITS = {
   maxImportBytes: 2_000_000,
   maxCategories: 200,
   maxTransactions: 20_000,
+  maxRecurring: 100,
   maxNameLength: 40,
   maxDescriptionLength: 120,
   maxGroupLength: 40,
@@ -206,6 +207,44 @@ function sanitizeTransaction(raw) {
   };
 }
 
+function sanitizeRecurringItem(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const type = ALLOWED_TX_TYPES.has(raw.type) ? raw.type : null;
+  if (!type) return null;
+  const category = String(raw.category || "")
+    .trim()
+    .replace(/[<>]/g, "")
+    .slice(0, BUDGET_LIMITS.maxNameLength);
+  if (!category) return null;
+  const description = String(raw.description || "")
+    .trim()
+    .replace(/[<>]/g, "")
+    .slice(0, BUDGET_LIMITS.maxDescriptionLength);
+  const account = String(raw.account || "Checking")
+    .trim()
+    .slice(0, BUDGET_LIMITS.maxAccountLength);
+  let amount = Number(raw.amount);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) return null;
+  amount = Math.round(amount * 100) / 100;
+  const dayOfMonth = Math.min(31, Math.max(1, Math.round(Number(raw.dayOfMonth)) || 1));
+  const lastPostedMonth = /^\d{4}-\d{2}$/.test(String(raw.lastPostedMonth || ""))
+    ? String(raw.lastPostedMonth)
+    : "";
+  const id = String(raw.id || "")
+    .trim()
+    .slice(0, BUDGET_LIMITS.maxIdLength);
+  return {
+    id: id || `recurring-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    type,
+    category,
+    description: description || category,
+    account: account || "Checking",
+    amount,
+    dayOfMonth,
+    lastPostedMonth,
+  };
+}
+
 function sanitizeSetupProfile(profile) {
   if (!profile || typeof profile !== "object") return null;
   const payFrequency = ["weekly", "biweekly", "semimonthly", "monthly"].includes(profile.payFrequency)
@@ -244,9 +283,16 @@ export function sanitizeBudgetState(raw) {
         .map(sanitizeTransaction)
         .filter(Boolean)
     : [];
+  const recurring = Array.isArray(safe.recurring)
+    ? safe.recurring
+        .slice(0, BUDGET_LIMITS.maxRecurring)
+        .map(sanitizeRecurringItem)
+        .filter(Boolean)
+    : [];
   return {
     categories,
     transactions,
+    recurring,
     setupComplete: Boolean(safe.setupComplete ?? true),
     setupProfile: sanitizeSetupProfile(safe.setupProfile),
   };
