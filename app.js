@@ -494,6 +494,7 @@ const elements = {
   authPasswordLabel: document.querySelector("#authPasswordLabel"),
   authPasswordLabelText: document.querySelector("#authPasswordLabelText"),
   authPasswordInput: document.querySelector("#authPasswordInput"),
+  authPasswordHelp: document.querySelector("#authPasswordHelp"),
   authSubmitBtn: document.querySelector("#authSubmitBtn"),
   authResendBtn: document.querySelector("#authResendBtn"),
   authConfirmedBtn: document.querySelector("#authConfirmedBtn"),
@@ -2031,7 +2032,12 @@ function setAuthMode(mode) {
   elements.authPasswordLabel.hidden = confirm;
   elements.authPasswordInput.required = !confirm;
   elements.authPasswordLabelText.textContent = recovery ? "New password" : "Password";
-  elements.authPasswordInput.placeholder = AUTH_PASSWORD_HINT;
+  elements.authPasswordInput.placeholder = signup || recovery ? AUTH_PASSWORD_HINT : "Your password";
+  if (elements.authPasswordHelp) {
+    // Persistent rule text — the placeholder disappears as soon as typing starts.
+    elements.authPasswordHelp.textContent = AUTH_PASSWORD_HINT;
+    elements.authPasswordHelp.hidden = !(signup || recovery);
+  }
   elements.authPasswordInput.minLength = signup || recovery ? 8 : 1;
   elements.authPasswordInput.autocomplete = signup || recovery ? "new-password" : "current-password";
   elements.authSubmitBtn.hidden = confirm;

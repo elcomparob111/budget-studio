@@ -1624,3 +1624,11 @@ td.amount { font-weight: 700; color: var(--ink); }
 }
 
 .brand-lockup h1.hero-number.is-negative { color: var(--red); }
+
+.auth-password-help {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
