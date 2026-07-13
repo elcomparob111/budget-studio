@@ -626,6 +626,15 @@ function attachEvents() {
 
   elements.prevMonthBtn?.addEventListener("click", () => shiftMonth(-1));
   elements.nextMonthBtn?.addEventListener("click", () => shiftMonth(1));
+  elements.monthLabel?.addEventListener("click", () => {
+    try {
+      elements.monthInput.showPicker();
+    } catch {
+      // showPicker needs a user gesture + support; fall back to focusing the input.
+      elements.monthInput.focus();
+      elements.monthInput.click();
+    }
+  });
 
   elements.typeInput.addEventListener("change", populateCategorySelect);
   elements.searchInput.addEventListener("input", renderTransactions);
@@ -677,10 +686,21 @@ function attachEvents() {
     const deleteButton = event.target.closest("[data-delete-id]");
     if (deleteButton) {
       const id = deleteButton.dataset.deleteId;
-      state.transactions = state.transactions.filter((item) => item.id !== id);
+      const index = state.transactions.findIndex((item) => item.id === id);
+      if (index === -1) return;
+      const [removed] = state.transactions.splice(index, 1);
       saveState();
       render();
-      showToast("Transaction deleted.");
+      showToast("Transaction deleted.", "success", {
+        actionLabel: "Undo",
+        duration: 5000,
+        onAction: () => {
+          state.transactions.splice(Math.min(index, state.transactions.length), 0, removed);
+          saveState();
+          render();
+          showToast("Transaction restored.");
+        },
+      });
       return;
     }
 
@@ -1272,6 +1292,7 @@ function renderDashboard() {
   elements.spentMetric.textContent = money(summary.expenses);
   elements.spentSubtext.textContent = "This month";
   elements.leftMetric.textContent = money(left);
+  elements.leftMetric.classList.toggle("is-negative", left < 0);
   elements.leftSubtext.textContent = "Of your plan";
   elements.budgetUsedMetric.textContent = percent(usedPercent);
   elements.budgetRing.style.setProperty("--used", `${Math.min(100, Math.max(0, usedPercent * 100))}%`);
@@ -1281,9 +1302,9 @@ function renderDashboard() {
     elements.cashLeftSubtext.textContent = money(net);
   }
   elements.netMetric.textContent = `${money(net)} left from income`;
-  elements.netMetric.className = "money-chip";
+  elements.netMetric.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
   elements.savingsMetric.textContent = `${percent(savingsRate)} saved`;
-  elements.savingsMetric.className = "money-chip";
+  elements.savingsMetric.className = `money-chip ${savingsRate < 0 ? "is-negative" : ""}`;
   elements.topCategoryBadge.textContent = topCategory ? `${topCategory.name}: ${money(topCategory.spent)}` : "No spending yet";
 
   renderProgress(summary.categoryRows);
@@ -2297,15 +2318,28 @@ function setMessage(message, isError = false) {
   if (message) showToast(message, isError ? "error" : "success");
 }
 
-function showToast(message, type = "success") {
+function showToast(message, type = "success", options = {}) {
   if (!elements.toastStack || !message) return;
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
-  toast.textContent = message;
+  const text = document.createElement("span");
+  text.textContent = message;
+  toast.appendChild(text);
+  if (options.actionLabel && typeof options.onAction === "function") {
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "toast-action";
+    action.textContent = options.actionLabel;
+    action.addEventListener("click", () => {
+      toast.remove();
+      options.onAction();
+    });
+    toast.appendChild(action);
+  }
   elements.toastStack.appendChild(toast);
   window.setTimeout(() => {
     toast.remove();
-  }, 3200);
+  }, options.duration || 3200);
 }
 
 function initTheme() {

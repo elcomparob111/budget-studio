@@ -182,10 +182,10 @@ body.wizard-open { overflow: hidden; }
 }
 
 .month-stepper-btn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: inline-grid;
   place-items: center;
   border: 0;
@@ -208,6 +208,11 @@ body.wizard-open { overflow: hidden; }
 }
 
 .month-stepper-label {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
   min-width: 7.5rem;
   text-align: center;
   color: var(--ink);
@@ -272,8 +277,9 @@ body.wizard-open { overflow: hidden; }
 }
 
 .icon-button {
-  width: 42px;
-  min-width: 42px;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   display: inline-grid;
   place-items: center;
@@ -290,10 +296,10 @@ body.wizard-open { overflow: hidden; }
 
 .ghost-button { background: transparent; }
 .edit-button, .delete-button {
-  min-height: 32px;
-  height: 32px;
-  padding: 0 10px;
-  font-size: 12px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
 }
 .edit-button { margin-right: 6px; }
 
@@ -1408,3 +1414,26 @@ td.amount { font-weight: 700; color: var(--ink); }
 .chart-svg .dot-income { fill: var(--green); }
 .chart-svg .dot-expense { fill: var(--red); }
 .chart-svg .dot-net { fill: var(--ink); }
+
+/* Undo-capable toasts */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.toast-action {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 4px;
+}
+
+/* Semantic money colors */
+.money-chip.is-positive { color: var(--green); }
+.money-chip.is-negative, .metric-value.is-negative, #leftMetric.is-negative { color: var(--red); }
