@@ -72,6 +72,15 @@ struct AddTransactionSheet: View {
 
                         typeChips
 
+                        fieldLabel("Amount") {
+                            TextField("0.00", text: $amount)
+                                .font(.app(16, weight: .medium))
+                                .keyboardType(.decimalPad)
+                                .appInputText()
+                                .focused($amountFocused)
+                        }
+                        .id("amount-field")
+
                         fieldLabel("Date") {
                             DatePicker("", selection: $date, displayedComponents: .date)
                                 .labelsHidden()
@@ -98,15 +107,6 @@ struct AddTransactionSheet: View {
                                 .font(.app(16, weight: .medium))
                                 .appInputText()
                         }
-
-                        fieldLabel("Amount") {
-                            TextField("0.00", text: $amount)
-                                .font(.app(16, weight: .medium))
-                                .keyboardType(.decimalPad)
-                                .appInputText()
-                                .focused($amountFocused)
-                        }
-                        .id("amount-field")
 
                         Button(existing == nil ? "Add transaction" : "Save changes") {
                             save()

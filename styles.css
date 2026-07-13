@@ -1437,3 +1437,157 @@ td.amount { font-weight: 700; color: var(--ink); }
 /* Semantic money colors */
 .money-chip.is-positive { color: var(--green); }
 .money-chip.is-negative, .metric-value.is-negative, #leftMetric.is-negative { color: var(--red); }
+
+/* Quick-add bottom sheet */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  background: rgba(45, 45, 45, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .sheet-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sheet-card {
+  width: min(440px, 100%);
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow-elevated);
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  animation: sheet-up 0.24s cubic-bezier(0.32, 0.72, 0.28, 1);
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(24px); opacity: 0.4; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-card { animation: none; }
+}
+
+.sheet-grabber {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line);
+  margin: 0 auto 10px;
+}
+
+.qa-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.qa-type-toggle {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--input);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.qa-type-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 16px;
+  min-height: 36px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.qa-type-btn.is-active {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.qa-amount {
+  margin: 14px 0 10px;
+  text-align: center;
+  font-size: clamp(38px, 11vw, 48px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.qa-amount.is-empty { color: var(--muted); }
+
+.qa-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.qa-keypad button {
+  border: 0;
+  background: var(--input);
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  min-height: 52px;
+  border-radius: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.qa-keypad button:active {
+  background: var(--line);
+}
+
+.qa-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.qa-fields label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.qa-fields label em {
+  font-style: normal;
+  font-weight: 500;
+}
+
+.qa-fields input,
+.qa-fields select {
+  border: 1px solid var(--line);
+  background: var(--input);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.sheet-card .primary-button {
+  margin-top: 12px;
+  width: 100%;
+}

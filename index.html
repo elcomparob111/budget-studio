@@ -537,6 +537,54 @@
       </div>
     </section>
 
+    <section id="quickAddSheet" class="sheet-overlay" aria-label="Quick add transaction" aria-modal="true" role="dialog" hidden>
+      <div class="sheet-card">
+        <div class="sheet-grabber" aria-hidden="true"></div>
+        <div class="qa-top">
+          <div id="qaTypeToggle" class="qa-type-toggle" role="group" aria-label="Transaction type">
+            <button class="qa-type-btn is-active" type="button" data-qa-type="Expense">Expense</button>
+            <button class="qa-type-btn" type="button" data-qa-type="Income">Income</button>
+          </div>
+          <button id="qaCloseBtn" class="ghost-button" type="button" aria-label="Close quick add">Close</button>
+        </div>
+        <p id="qaAmountDisplay" class="qa-amount" aria-live="polite">$0</p>
+        <div id="qaKeypad" class="qa-keypad" aria-label="Amount keypad">
+          <button type="button" data-qa-key="1">1</button>
+          <button type="button" data-qa-key="2">2</button>
+          <button type="button" data-qa-key="3">3</button>
+          <button type="button" data-qa-key="4">4</button>
+          <button type="button" data-qa-key="5">5</button>
+          <button type="button" data-qa-key="6">6</button>
+          <button type="button" data-qa-key="7">7</button>
+          <button type="button" data-qa-key="8">8</button>
+          <button type="button" data-qa-key="9">9</button>
+          <button type="button" data-qa-key=".">.</button>
+          <button type="button" data-qa-key="0">0</button>
+          <button type="button" data-qa-key="back" aria-label="Delete last digit">⌫</button>
+        </div>
+        <div class="qa-fields">
+          <label>
+            <span>Category</span>
+            <select id="qaCategoryInput"></select>
+          </label>
+          <label>
+            <span>Account</span>
+            <select id="qaAccountInput"></select>
+          </label>
+          <label>
+            <span>Date</span>
+            <input id="qaDateInput" type="date" />
+          </label>
+          <label>
+            <span>Note <em>(optional)</em></span>
+            <input id="qaDescriptionInput" type="text" placeholder="Coffee, gas..." />
+          </label>
+        </div>
+        <button id="qaSubmitBtn" class="primary-button wide" type="button">Add expense</button>
+        <p id="qaMessage" class="form-message" role="status"></p>
+      </div>
+    </section>
+
     <script type="module" src="./app.js"></script>
     <script>
       if ("serviceWorker" in navigator) {

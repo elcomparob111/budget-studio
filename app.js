@@ -34,6 +34,10 @@ const SELECTED_MONTH_KEY = "budget-studio-selected-month";
 const THEME_KEY = "budget-studio-theme";
 const PROFILES_KEY = "budget-studio-profiles";
 const CLOUD_DIRTY_KEY = "budget-studio-cloud-dirty";
+const QUICK_ADD_PREFS_KEY = "budget-studio-quick-add-prefs";
+
+// Quick-add sheet state (declared before init() runs at module eval — TDZ).
+const quickAdd = { open: false, type: "Expense", amount: "" };
 
 const groupChartColors = {
   Needs: ["#2563eb", "#0ea5e9", "#0284c7", "#0891b2"],
@@ -405,6 +409,17 @@ const elements = {
   amountInput: document.querySelector("#amountInput"),
   formMessage: document.querySelector("#formMessage"),
   clearFormBtn: document.querySelector("#clearFormBtn"),
+  quickAddSheet: document.querySelector("#quickAddSheet"),
+  qaTypeToggle: document.querySelector("#qaTypeToggle"),
+  qaCloseBtn: document.querySelector("#qaCloseBtn"),
+  qaAmountDisplay: document.querySelector("#qaAmountDisplay"),
+  qaKeypad: document.querySelector("#qaKeypad"),
+  qaCategoryInput: document.querySelector("#qaCategoryInput"),
+  qaAccountInput: document.querySelector("#qaAccountInput"),
+  qaDateInput: document.querySelector("#qaDateInput"),
+  qaDescriptionInput: document.querySelector("#qaDescriptionInput"),
+  qaSubmitBtn: document.querySelector("#qaSubmitBtn"),
+  qaMessage: document.querySelector("#qaMessage"),
   transactionsBody: document.querySelector("#transactionsBody"),
   searchInput: document.querySelector("#searchInput"),
   typeFilter: document.querySelector("#typeFilter"),
@@ -751,9 +766,43 @@ function attachEvents() {
     const button = event.target.closest("[data-tab]");
     if (button) switchTab(button.dataset.tab);
   });
-  elements.addTransactionBtn?.addEventListener("click", () => {
-    switchTab("activity");
-    elements.amountInput?.focus();
+  elements.addTransactionBtn?.addEventListener("click", openQuickAdd);
+
+  elements.qaCloseBtn?.addEventListener("click", closeQuickAdd);
+  elements.quickAddSheet?.addEventListener("click", (event) => {
+    if (event.target === elements.quickAddSheet) closeQuickAdd();
+  });
+  elements.qaTypeToggle?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-qa-type]");
+    if (button) setQuickAddType(button.dataset.qaType);
+  });
+  elements.qaKeypad?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-qa-key]");
+    if (button) pressQuickAddKey(button.dataset.qaKey);
+  });
+  elements.qaSubmitBtn?.addEventListener("click", submitQuickAdd);
+  elements.qaDescriptionInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") submitQuickAdd();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (!quickAdd.open) return;
+    if (event.key === "Escape") {
+      closeQuickAdd();
+      return;
+    }
+    // Physical-keyboard amount entry, unless the user is typing in a field.
+    const tag = event.target.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    if (/^[0-9.]$/.test(event.key)) {
+      pressQuickAddKey(event.key);
+      event.preventDefault();
+    } else if (event.key === "Backspace") {
+      pressQuickAddKey("back");
+      event.preventDefault();
+    } else if (event.key === "Enter" && tag !== "BUTTON") {
+      // Focused buttons already submit/press via their native click.
+      submitQuickAdd();
+    }
   });
   elements.closeWizardBtn.addEventListener("click", closeWizard);
   elements.startWizardBtn.addEventListener("click", () => {
@@ -1580,6 +1629,150 @@ function populateCategorySelect() {
   if (categories.some((category) => category.name === preferred)) {
     elements.categoryInput.value = preferred;
   }
+}
+
+function loadQuickAddPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(QUICK_ADD_PREFS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveQuickAddPrefs(prefs) {
+  try {
+    localStorage.setItem(QUICK_ADD_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // Storage blocked — defaults still apply next open.
+  }
+}
+
+function openQuickAdd() {
+  quickAdd.open = true;
+  quickAdd.amount = "";
+  quickAdd.type = "Expense";
+  elements.qaDateInput.value = defaultDateForMonth(elements.monthInput.value);
+  elements.qaDescriptionInput.value = "";
+  elements.qaAccountInput.innerHTML = accounts
+    .map((account) => `<option>${escapeHtml(account)}</option>`)
+    .join("");
+  const prefs = loadQuickAddPrefs();
+  if (accounts.includes(prefs.account)) elements.qaAccountInput.value = prefs.account;
+  syncQuickAddTypeButtons();
+  populateQuickAddCategories();
+  renderQuickAddAmount();
+  setQuickAddMessage("");
+  elements.quickAddSheet.hidden = false;
+  elements.qaSubmitBtn.focus({ preventScroll: true });
+}
+
+function closeQuickAdd() {
+  quickAdd.open = false;
+  elements.quickAddSheet.hidden = true;
+}
+
+function setQuickAddType(type) {
+  if (type !== "Expense" && type !== "Income") return;
+  quickAdd.type = type;
+  syncQuickAddTypeButtons();
+  populateQuickAddCategories();
+}
+
+function syncQuickAddTypeButtons() {
+  elements.qaTypeToggle.querySelectorAll("[data-qa-type]").forEach((node) => {
+    node.classList.toggle("is-active", node.dataset.qaType === quickAdd.type);
+  });
+  elements.qaSubmitBtn.textContent = quickAdd.type === "Income" ? "Add income" : "Add expense";
+}
+
+function populateQuickAddCategories() {
+  const categories = state.categories.filter((category) => category.type === quickAdd.type);
+  elements.qaCategoryInput.innerHTML = categories
+    .map((category) => `<option>${escapeHtml(category.name)}</option>`)
+    .join("");
+  const lastUsed = loadQuickAddPrefs().categories?.[quickAdd.type];
+  const preferred = categories.some((category) => category.name === lastUsed)
+    ? lastUsed
+    : quickAdd.type === "Income"
+      ? "Salary"
+      : "Groceries";
+  if (categories.some((category) => category.name === preferred)) {
+    elements.qaCategoryInput.value = preferred;
+  }
+}
+
+function pressQuickAddKey(key) {
+  let next = quickAdd.amount;
+  if (key === "back") {
+    next = next.slice(0, -1);
+  } else if (key === ".") {
+    if (next.includes(".")) return;
+    next = next ? `${next}.` : "0.";
+  } else if (/^[0-9]$/.test(key)) {
+    const decimals = next.split(".")[1];
+    if (decimals !== undefined && decimals.length >= 2) return;
+    if (next === "0") {
+      next = key;
+    } else {
+      if (next.replace(".", "").length >= 9) return;
+      next += key;
+    }
+  } else {
+    return;
+  }
+  quickAdd.amount = next;
+  renderQuickAddAmount();
+  setQuickAddMessage("");
+}
+
+function renderQuickAddAmount() {
+  const [whole = "", decimals] = quickAdd.amount.split(".");
+  const grouped = whole ? Number(whole).toLocaleString("en-US") : "0";
+  elements.qaAmountDisplay.textContent =
+    decimals === undefined ? `$${grouped}` : `$${grouped}.${decimals}`;
+  elements.qaAmountDisplay.classList.toggle("is-empty", !quickAdd.amount);
+}
+
+function setQuickAddMessage(message, isError = false) {
+  elements.qaMessage.textContent = message;
+  elements.qaMessage.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function submitQuickAdd() {
+  const dateCheck = validateDate(elements.qaDateInput.value);
+  const amountCheck = validateAmount(quickAdd.amount);
+  const typeCheck = validateTransactionType(quickAdd.type);
+  const categoryCheck = validateCategoryName(elements.qaCategoryInput.value);
+  const descriptionCheck = validateDescription(
+    elements.qaDescriptionInput.value.trim() || elements.qaCategoryInput.value,
+  );
+  if (!dateCheck.ok || !amountCheck.ok || !typeCheck.ok || !categoryCheck.ok || !descriptionCheck.ok) {
+    setQuickAddMessage(
+      amountCheck.message || dateCheck.message || typeCheck.message || categoryCheck.message || descriptionCheck.message,
+      true,
+    );
+    return;
+  }
+
+  const item = transaction(
+    dateCheck.value,
+    typeCheck.value,
+    categoryCheck.value,
+    descriptionCheck.value,
+    elements.qaAccountInput.value,
+    amountCheck.value,
+  );
+  state.transactions.push(item);
+  saveState();
+
+  const prefs = loadQuickAddPrefs();
+  prefs.account = elements.qaAccountInput.value;
+  prefs.categories = { ...prefs.categories, [quickAdd.type]: categoryCheck.value };
+  saveQuickAddPrefs(prefs);
+
+  closeQuickAdd();
+  render();
+  showToast(`Added ${MONEY_CENTS_FORMAT.format(item.amount)} — ${item.category}.`);
 }
 
 function getMonthSummary(month) {

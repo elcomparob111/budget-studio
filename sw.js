@@ -1,4 +1,4 @@
-const CACHE = "budget-studio-v35";
+const CACHE = "budget-studio-v36";
 const ASSETS = [
   "./",
   "./index.html",
