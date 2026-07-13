@@ -698,6 +698,18 @@ function attachEvents() {
   });
 
   elements.transactionsBody.addEventListener("click", (event) => {
+    const emptyAction = event.target.closest("[data-empty-action]");
+    if (emptyAction) {
+      if (emptyAction.dataset.emptyAction === "clear-filters") {
+        elements.searchInput.value = "";
+        elements.typeFilter.value = "All";
+        renderTransactions();
+      } else {
+        openQuickAdd();
+      }
+      return;
+    }
+
     const deleteButton = event.target.closest("[data-delete-id]");
     if (deleteButton) {
       const id = deleteButton.dataset.deleteId;
@@ -1539,9 +1551,23 @@ function renderTransactions() {
     .sort((a, b) => b.date.localeCompare(a.date));
 
   if (!rows.length) {
-    elements.transactionsBody.innerHTML = `
+    const filtersActive = Boolean(query) || type !== "All";
+    const monthLabel = formatMonthLabel(selectedMonth);
+    elements.transactionsBody.innerHTML = filtersActive
+      ? `
       <tr>
-        <td colspan="7">No transactions match this month and filter.</td>
+        <td colspan="7" class="table-empty">
+          <p>No transactions match your search or filter.</p>
+          <button class="ghost-button" data-empty-action="clear-filters" type="button">Clear filters</button>
+        </td>
+      </tr>
+    `
+      : `
+      <tr>
+        <td colspan="7" class="table-empty">
+          <p>Nothing logged in ${escapeHtml(monthLabel)} yet.</p>
+          <button class="primary-button" data-empty-action="quick-add" type="button">Add your first transaction</button>
+        </td>
       </tr>
     `;
     return;
