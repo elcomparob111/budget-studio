@@ -301,9 +301,11 @@ export async function pushSharedBudget(budgetId, payload) {
   const client = requireClient();
   await requireSessionUid();
   const safe = sanitizeCloudPayload(payload);
+  // Deliberately not updating `name`: the payload carries the saver's display
+  // name, which would rename the shared budget on every partner save.
   const { error } = await client
     .from("shared_budgets")
-    .update({ state: safe.state, updated_at: safe.updatedAt, name: safe.name })
+    .update({ state: safe.state, updated_at: safe.updatedAt })
     .eq("id", budgetId);
   if (error) throw error;
 }
