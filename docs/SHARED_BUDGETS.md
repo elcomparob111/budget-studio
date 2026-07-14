@@ -44,12 +44,14 @@ budget is simply a second row both clients point at.
    (after auth), and a subtle “synced with <partner>” indicator.
 3. iOS: same RPCs through supabase-swift; realtime channel on the row.
 
-## Open questions for Rob
+## Decisions (Rob, 2026-07-13)
 
-- Seed the shared budget from the inviter's current state (assumed yes)?
-- Should leaving copy the latest shared state back into the leaver's personal
-  budget, or leave their old personal state as-is?
-- One shared budget per user for v1 (assumed yes — simplifies the switcher)?
+- **Seed from inviter's state**: yes — partner joins into a copy of the
+  inviter's current budget.
+- **On leave**: leaver's old personal budget is untouched; they simply stop
+  seeing the shared one. No copy-back.
+- **V1 scope**: one shared budget per user — no switcher UI; you're solo or
+  in one shared budget.
 
 ## Rollout
 
