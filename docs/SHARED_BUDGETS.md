@@ -1,8 +1,8 @@
 # Shared/couples budgets — design (P0)
 
-Status: **designed, not applied**. Schema in [`supabase/shared-budgets.sql`](../supabase/shared-budgets.sql)
-is ready for review; nothing has been run against the live Supabase project and
-no client code ships until the schema is applied and smoke-tested.
+Status: **schema applied (Rob, 2026-07-13), client layer built**. Anon-role
+lockout verified live (all tables/RPCs return 42501 for anon). Awaiting the
+two-account smoke test below before announcing the feature.
 
 ## Why this shape
 

@@ -11,6 +11,15 @@ import {
   pushCloudBudget,
   friendlyAuthError,
   deleteOwnBudgetAndSignOut,
+  fetchMySharedMembership,
+  fetchSharedBudget,
+  pushSharedBudget,
+  createSharedBudget,
+  createBudgetInvite,
+  acceptBudgetInvite,
+  listBudgetMembers,
+  leaveSharedBudget,
+  subscribeSharedBudget,
 } from "./sync.js";
 import {
   AUTH_PASSWORD_HINT,
@@ -35,6 +44,13 @@ const THEME_KEY = "budget-studio-theme";
 const PROFILES_KEY = "budget-studio-profiles";
 const CLOUD_DIRTY_KEY = "budget-studio-cloud-dirty";
 const QUICK_ADD_PREFS_KEY = "budget-studio-quick-add-prefs";
+const PENDING_JOIN_KEY = "budget-studio-pending-join";
+
+// Shared/couples budget session state (declared before init() — TDZ).
+// sharedBudget = { id, role } while the signed-in user is in a shared budget.
+let sharedBudget = null;
+let unsubscribeSharedChannel = null;
+let lastSharedAppliedAt = 0;
 
 // Quick-add sheet state (declared before init() runs at module eval — TDZ).
 const quickAdd = { open: false, type: "Expense", amount: "" };
@@ -432,6 +448,17 @@ const elements = {
   recDescriptionInput: document.querySelector("#recDescriptionInput"),
   recAmountInput: document.querySelector("#recAmountInput"),
   recurringMessage: document.querySelector("#recurringMessage"),
+  sharedPanel: document.querySelector("#sharedPanel"),
+  sharedSolo: document.querySelector("#sharedSolo"),
+  sharedActive: document.querySelector("#sharedActive"),
+  sharedMembersLine: document.querySelector("#sharedMembersLine"),
+  shareBudgetBtn: document.querySelector("#shareBudgetBtn"),
+  inviteRow: document.querySelector("#inviteRow"),
+  inviteLinkInput: document.querySelector("#inviteLinkInput"),
+  copyInviteBtn: document.querySelector("#copyInviteBtn"),
+  newInviteBtn: document.querySelector("#newInviteBtn"),
+  leaveSharedBtn: document.querySelector("#leaveSharedBtn"),
+  sharedMessage: document.querySelector("#sharedMessage"),
   transactionsBody: document.querySelector("#transactionsBody"),
   searchInput: document.querySelector("#searchInput"),
   typeFilter: document.querySelector("#typeFilter"),
@@ -532,6 +559,7 @@ init();
 
 function init() {
   initTheme();
+  capturePendingJoinToken();
   setSelectedMonth(localStorage.getItem(SELECTED_MONTH_KEY) || currentMonthKey());
   elements.dateInput.value = defaultDateForMonth(elements.monthInput.value);
   elements.accountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
@@ -566,6 +594,7 @@ async function handleUserChanged(user, info) {
   localOnlyMode = false;
   currentUser = user;
   if (!user) {
+    teardownShared();
     state = createEmptyState();
     renderIdentityUI();
     render();
@@ -589,6 +618,18 @@ async function handleUserChanged(user, info) {
   populateCategorySelect();
   renderIdentityUI();
   render();
+
+  // Shared budgets: redeem a pending invite, then check membership. When in a
+  // shared budget, its row replaces the personal cloud flow entirely.
+  await resolveSharedMembership();
+  if (sharedBudget) {
+    await loadSharedState();
+    renderSharedPanel();
+    if (!state.setupComplete) openWizard(false);
+    postDueRecurring();
+    return;
+  }
+  renderSharedPanel();
 
   try {
     const cloud = await fetchCloudBudget(user.uid);
@@ -651,6 +692,218 @@ async function handleUserChanged(user, info) {
 
   // After local/cloud state has settled, post any recurring items now due.
   postDueRecurring();
+}
+
+// ---------------------------------------------------------------------------
+// Shared/couples budgets (docs/SHARED_BUDGETS.md). V1: one shared budget per
+// user; shared row is last-write-wins, kept live via Supabase Realtime.
+// ---------------------------------------------------------------------------
+
+function teardownShared() {
+  if (unsubscribeSharedChannel) {
+    try {
+      unsubscribeSharedChannel();
+    } catch {
+      /* channel already gone */
+    }
+  }
+  unsubscribeSharedChannel = null;
+  sharedBudget = null;
+  lastSharedAppliedAt = 0;
+}
+
+/** Stash ?join=<token> from the URL so it survives the sign-in/confirm dance. */
+function capturePendingJoinToken() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("join");
+    if (!token) return;
+    sessionStorage.setItem(PENDING_JOIN_KEY, token);
+    params.delete("join");
+    const query = params.toString();
+    history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+    );
+  } catch {
+    /* sessionStorage blocked — join just won't survive a redirect */
+  }
+}
+
+async function resolveSharedMembership() {
+  teardownShared();
+  const pending = sessionStorage.getItem(PENDING_JOIN_KEY);
+  if (pending) {
+    try {
+      const budgetId = await acceptBudgetInvite(pending);
+      sharedBudget = { id: budgetId, role: "member" };
+      showToast("You joined the shared budget!");
+    } catch (error) {
+      const raw = String(error?.message || "");
+      showToast(
+        /expired/i.test(raw)
+          ? "That invite link expired — ask for a new one."
+          : /used/i.test(raw)
+            ? "That invite link was already used."
+            : "That invite didn't work — ask for a fresh link.",
+        "error",
+      );
+    }
+    sessionStorage.removeItem(PENDING_JOIN_KEY);
+  }
+  if (!sharedBudget) {
+    try {
+      sharedBudget = await fetchMySharedMembership();
+    } catch {
+      sharedBudget = null; // offline — personal flow covers this session
+    }
+  }
+  if (sharedBudget) startSharedSubscription();
+}
+
+async function loadSharedState() {
+  try {
+    const remote = await fetchSharedBudget(sharedBudget.id);
+    const local = readCachePayload(currentUser.uid);
+    if (remote && (!local || remote.updatedAt >= (local.updatedAt || 0))) {
+      lastSharedAppliedAt = remote.updatedAt;
+      state = normalizeState(remote.state);
+      writeCachePayload(currentUser.uid, { state, updatedAt: remote.updatedAt, name: remote.name });
+    } else if (local) {
+      // This device edited offline more recently — push it up (last write wins).
+      state = normalizeState(local.state);
+      lastSharedAppliedAt = local.updatedAt || Date.now();
+      await pushSharedBudget(sharedBudget.id, local);
+    }
+    populateCategorySelect();
+    render();
+    flushDirtyCloudSave();
+  } catch {
+    localStorage.setItem(CLOUD_DIRTY_KEY, "1");
+    if (!didNotifySyncFailure) {
+      didNotifySyncFailure = true;
+      showToast("Working offline — changes save on this device.", "error");
+    }
+  }
+}
+
+function startSharedSubscription() {
+  if (!sharedBudget || unsubscribeSharedChannel) return;
+  try {
+    unsubscribeSharedChannel = subscribeSharedBudget(sharedBudget.id, applyRemoteSharedChange);
+  } catch {
+    /* realtime unavailable — edits still land on reload */
+  }
+}
+
+async function applyRemoteSharedChange() {
+  if (!sharedBudget) return;
+  try {
+    const remote = await fetchSharedBudget(sharedBudget.id);
+    // Skip our own write echoes and stale events.
+    if (!remote || remote.updatedAt <= lastSharedAppliedAt) return;
+    lastSharedAppliedAt = remote.updatedAt;
+    state = normalizeState(remote.state);
+    writeCachePayload(currentUser.uid, { state, updatedAt: remote.updatedAt, name: remote.name });
+    populateCategorySelect();
+    render();
+    if (activeTab === "settings") renderRecurringList();
+    showToast("Budget updated by your partner.");
+  } catch {
+    /* transient fetch failure — next event or reload catches up */
+  }
+}
+
+function setSharedMessage(message, isError = false) {
+  if (!elements.sharedMessage) return;
+  elements.sharedMessage.textContent = message;
+  elements.sharedMessage.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function renderSharedPanel() {
+  if (!elements.sharedPanel) return;
+  const eligible = !localOnlyMode && currentUser && currentUser.uid !== "local";
+  elements.sharedPanel.hidden = !eligible;
+  if (!eligible) return;
+  elements.sharedSolo.hidden = Boolean(sharedBudget);
+  elements.sharedActive.hidden = !sharedBudget;
+  if (!sharedBudget) {
+    elements.inviteRow.hidden = true;
+    return;
+  }
+  elements.newInviteBtn.hidden = sharedBudget.role !== "owner";
+  elements.sharedMembersLine.textContent =
+    sharedBudget.role === "owner" ? "You own this shared budget." : "You're in a shared budget.";
+  listBudgetMembers(sharedBudget.id)
+    .then((members) => {
+      if (!sharedBudget) return;
+      const count =
+        members.length === 1
+          ? "Just you so far — send the invite link!"
+          : `${members.length} people share this budget.`;
+      elements.sharedMembersLine.textContent = `${count} You're the ${sharedBudget.role}.`;
+    })
+    .catch(() => {});
+}
+
+async function mintInviteLink() {
+  const token = await createBudgetInvite(sharedBudget.id);
+  elements.inviteLinkInput.value = `${window.location.origin}${window.location.pathname}?join=${token}`;
+  elements.inviteRow.hidden = false;
+}
+
+async function shareBudgetFlow() {
+  if (sharedBudget || !currentUser) return;
+  elements.shareBudgetBtn.disabled = true;
+  setSharedMessage("Setting up your shared budget…");
+  try {
+    const first = (currentUser.displayName || "").trim().split(/\s+/)[0];
+    const name = first ? `${first}'s shared budget` : "Shared budget";
+    const budgetId = await createSharedBudget(state, name);
+    sharedBudget = { id: budgetId, role: "owner" };
+    lastSharedAppliedAt = Date.now();
+    writeCachePayload(currentUser.uid, { state, updatedAt: lastSharedAppliedAt, name });
+    startSharedSubscription();
+    await mintInviteLink();
+    setSharedMessage("Done — send your partner the link below. It works once and expires in 7 days.");
+    renderSharedPanel();
+  } catch (error) {
+    setSharedMessage(friendlyAuthError(error) || "Couldn't create the shared budget. Try again.", true);
+  } finally {
+    elements.shareBudgetBtn.disabled = false;
+  }
+}
+
+async function leaveSharedFlow() {
+  if (!sharedBudget) return;
+  const sure = window.confirm(
+    "Leave the shared budget? You'll go back to your personal budget — the shared one stays with your partner.",
+  );
+  if (!sure) return;
+  try {
+    await leaveSharedBudget(sharedBudget.id);
+    teardownShared();
+    let restored = null;
+    try {
+      restored = await fetchCloudBudget(currentUser.uid);
+    } catch {
+      /* offline — empty personal state below; cloud copy is still intact */
+    }
+    state = restored ? normalizeState(restored.state) : createEmptyState();
+    writeCachePayload(currentUser.uid, {
+      state,
+      updatedAt: restored?.updatedAt || Date.now(),
+      name: currentUser.displayName || "",
+    });
+    populateCategorySelect();
+    render();
+    renderSharedPanel();
+    setSharedMessage("");
+    showToast("Left the shared budget — back to your personal one.");
+  } catch (error) {
+    setSharedMessage(friendlyAuthError(error) || "Couldn't leave right now. Try again.", true);
+  }
 }
 
 function attachEvents() {
@@ -800,6 +1053,26 @@ function attachEvents() {
       },
     });
   });
+
+  elements.shareBudgetBtn?.addEventListener("click", shareBudgetFlow);
+  elements.newInviteBtn?.addEventListener("click", async () => {
+    try {
+      await mintInviteLink();
+      setSharedMessage("Fresh link ready — single use, expires in 7 days.");
+    } catch (error) {
+      setSharedMessage(friendlyAuthError(error) || "Couldn't create an invite link. Try again.", true);
+    }
+  });
+  elements.copyInviteBtn?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(elements.inviteLinkInput.value);
+      setSharedMessage("Link copied — text it to your partner.");
+    } catch {
+      elements.inviteLinkInput.select();
+      setSharedMessage("Copy blocked — the link is selected, press ⌘C / Ctrl+C.");
+    }
+  });
+  elements.leaveSharedBtn?.addEventListener("click", leaveSharedFlow);
 
   elements.resetBtn.addEventListener("click", () => openWizard(true));
   elements.openSetupBtn.addEventListener("click", () => switchTab("settings"));
@@ -981,6 +1254,7 @@ function switchTab(tab) {
     updatePayScheduleSummary();
     populateRecurringCategorySelect();
     renderRecurringList();
+    renderSharedPanel();
   } else {
     render();
   }
@@ -2206,6 +2480,9 @@ function normalizeState(raw) {
 
 function openAuthGate() {
   setAuthMode("signin");
+  if (sessionStorage.getItem(PENDING_JOIN_KEY)) {
+    setAuthMessage("Sign in — or create an account — to join the shared budget.");
+  }
   elements.authGate.hidden = false;
   document.body.classList.add("wizard-open");
   if (elements.tabBar) elements.tabBar.hidden = true;
@@ -2602,7 +2879,9 @@ function flushDirtyCloudSave() {
     localStorage.removeItem(CLOUD_DIRTY_KEY);
     return;
   }
-  pushCloudBudget(currentUser.uid, { ...payload, name: currentUser.displayName || "" })
+  (sharedBudget
+    ? pushSharedBudget(sharedBudget.id, payload)
+    : pushCloudBudget(currentUser.uid, { ...payload, name: currentUser.displayName || "" }))
     .then(() => {
       localStorage.removeItem(CLOUD_DIRTY_KEY);
       didNotifySyncFailure = false;
@@ -2633,11 +2912,12 @@ function saveState() {
 
   const payload = { state, updatedAt: Date.now(), name: currentUser.displayName || "" };
   writeCachePayload(currentUser.uid, payload);
+  if (sharedBudget) lastSharedAppliedAt = payload.updatedAt; // our own realtime echo gets skipped
   clearTimeout(cloudSaveTimer);
   // Debounce cloud push so rapid budget edits don't spam sync failures.
   cloudSaveTimer = setTimeout(() => {
     if (localOnlyMode || !currentUser || currentUser.uid === "local") return;
-    pushCloudBudget(currentUser.uid, payload)
+    (sharedBudget ? pushSharedBudget(sharedBudget.id, payload) : pushCloudBudget(currentUser.uid, payload))
       .then(() => {
         localStorage.removeItem(CLOUD_DIRTY_KEY);
         didNotifySyncFailure = false;

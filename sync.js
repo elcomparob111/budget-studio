@@ -252,6 +252,144 @@ export async function pushCloudBudget(uid, payload) {
   if (error) throw error;
 }
 
+// ---------------------------------------------------------------------------
+// Shared/couples budgets (see docs/SHARED_BUDGETS.md). One shared budget per
+// user in v1. All rows are RLS-guarded server-side; membership and invite
+// redemption go through security-definer RPCs.
+// ---------------------------------------------------------------------------
+
+async function requireSessionUid() {
+  const client = requireClient();
+  const { data } = await client.auth.getSession();
+  const uid = data.session?.user?.id;
+  if (!uid) throw new Error("You must be signed in to do that.");
+  return uid;
+}
+
+/** The caller's shared-budget membership, or null when solo. */
+export async function fetchMySharedMembership() {
+  const client = requireClient();
+  const uid = await requireSessionUid();
+  const { data, error } = await client
+    .from("budget_members")
+    .select("budget_id, role")
+    .eq("user_id", uid)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { id: data.budget_id, role: data.role } : null;
+}
+
+export async function fetchSharedBudget(budgetId) {
+  const client = requireClient();
+  await requireSessionUid();
+  const { data, error } = await client
+    .from("shared_budgets")
+    .select("state, updated_at, name")
+    .eq("id", budgetId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    state: sanitizeBudgetState(data.state),
+    updatedAt: Number(data.updated_at) || 0,
+    name: String(data.name || "").slice(0, 80),
+  };
+}
+
+export async function pushSharedBudget(budgetId, payload) {
+  const client = requireClient();
+  await requireSessionUid();
+  const safe = sanitizeCloudPayload(payload);
+  const { error } = await client
+    .from("shared_budgets")
+    .update({ state: safe.state, updated_at: safe.updatedAt, name: safe.name })
+    .eq("id", budgetId);
+  if (error) throw error;
+}
+
+/** Create a shared budget seeded from `state`; caller becomes owner. Returns budget id. */
+export async function createSharedBudget(state, name) {
+  const client = requireClient();
+  await requireSessionUid();
+  const { data, error } = await client.rpc("create_shared_budget", {
+    initial_state: sanitizeBudgetState(state),
+    budget_name: String(name || "").slice(0, 80),
+  });
+  if (error) throw error;
+  return data;
+}
+
+/** Mint a single-use invite link token (owner only, enforced by RLS). */
+export async function createBudgetInvite(budgetId) {
+  const client = requireClient();
+  const uid = await requireSessionUid();
+  const { data, error } = await client
+    .from("budget_invites")
+    .insert({ budget_id: budgetId, created_by: uid })
+    .select("token")
+    .single();
+  if (error) throw error;
+  return data.token;
+}
+
+/** Redeem an invite token; returns the shared budget id to switch to. */
+export async function acceptBudgetInvite(token) {
+  const client = requireClient();
+  await requireSessionUid();
+  const clean = String(token || "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)) {
+    throw new Error("That invite link looks invalid.");
+  }
+  const { data, error } = await client.rpc("accept_budget_invite", { invite_token: clean });
+  if (error) throw error;
+  return data;
+}
+
+export async function listBudgetMembers(budgetId) {
+  const client = requireClient();
+  await requireSessionUid();
+  const { data, error } = await client
+    .from("budget_members")
+    .select("user_id, role, joined_at")
+    .eq("budget_id", budgetId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+/** Remove the caller's own membership (their personal budget is untouched). */
+export async function leaveSharedBudget(budgetId) {
+  const client = requireClient();
+  const uid = await requireSessionUid();
+  const { error } = await client
+    .from("budget_members")
+    .delete()
+    .eq("budget_id", budgetId)
+    .eq("user_id", uid);
+  if (error) throw error;
+}
+
+/**
+ * Realtime: notify on any update to the shared budget row. The callback gets
+ * no payload — callers refetch, so event size limits and trust don't matter.
+ * Returns an unsubscribe function.
+ */
+export function subscribeSharedBudget(budgetId, onRemoteChange) {
+  const client = requireClient();
+  const channel = client
+    .channel(`shared-budget-${budgetId}`)
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "shared_budgets", filter: `id=eq.${budgetId}` },
+      () => onRemoteChange(),
+    )
+    .subscribe();
+  return () => {
+    client.removeChannel(channel);
+  };
+}
+
 /**
  * Best-effort account deletion placeholder.
  * Supabase client apps cannot call admin deleteUser without a privileged key.

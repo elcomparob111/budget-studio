@@ -1712,3 +1712,28 @@ td.amount { font-weight: 700; color: var(--ink); }
 }
 
 .recurring-list { margin-bottom: 14px; }
+
+/* Shared budget card */
+.invite-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.invite-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--input);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.shared-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
