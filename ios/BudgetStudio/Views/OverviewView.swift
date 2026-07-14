@@ -38,12 +38,6 @@ struct OverviewView: View {
                             valueColor: AppTheme.expense,
                             emoji: "🧾"
                         )
-                        MetricCard(
-                            title: "Plan left",
-                            value: currency(store.monthSummary.left),
-                            subtitle: "Of your plan",
-                            emoji: "🎯"
-                        )
                         HStack(spacing: AppTheme.md) {
                             BudgetRingView(progress: store.monthSummary.usedRatio, label: "\(Int(store.monthSummary.usedRatio * 100))%")
                             VStack(alignment: .leading, spacing: AppTheme.xs) {
@@ -179,29 +173,19 @@ struct OverviewView: View {
         .appCard()
     }
 
+    /// Safe-to-spend hero: plan remaining for the selected month (matches web header).
     private var welcomeHeader: some View {
         VStack(alignment: .leading, spacing: AppTheme.xs) {
-            Text(welcomeTitle)
-                .font(.app(28, weight: .bold))
-                .foregroundStyle(AppTheme.primaryText)
-            Text(todaySubtitle)
+            Text(currency(store.monthSummary.left))
+                .font(.app(30, weight: .bold))
+                .foregroundStyle(store.monthSummary.left < 0 ? AppTheme.expense : AppTheme.primaryText)
+                .monospacedDigit()
+            Text("Safe to spend in \(monthYearLabel)")
                 .font(.app(15, weight: .medium))
                 .foregroundStyle(AppTheme.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-
-    private var welcomeTitle: String {
-        let name = store.userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "Welcome!" : "Welcome \(name)!"
-    }
-
-    private var todaySubtitle: String {
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("EEEE, MMMM d")
-        return formatter.string(from: Date())
     }
 
     private var monthPicker: some View {
