@@ -28,11 +28,30 @@ struct SetupProfile: Codable, Hashable {
     var demo: Bool?
 }
 
+/// Mirrors the web app's recurring shape exactly (field names are the JSON contract).
+struct RecurringItem: Codable, Identifiable, Hashable {
+    var id: String
+    var type: String
+    var category: String
+    var description: String
+    var account: String
+    var amount: Double
+    var dayOfMonth: Int
+    var lastPostedMonth: String
+}
+
 struct BudgetState: Codable, Hashable {
     var categories: [BudgetCategory]
     var transactions: [BudgetTransaction]
+    /// Optional so caches written before recurring existed still decode.
+    var recurring: [RecurringItem]?
     var setupComplete: Bool
     var setupProfile: SetupProfile?
+
+    var recurringItems: [RecurringItem] {
+        get { recurring ?? [] }
+        set { recurring = newValue }
+    }
 }
 
 struct MonthSummary {
@@ -73,10 +92,39 @@ enum BudgetDefaults {
         )
     }
 
+    static func currentMonthKey(_ date: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM"
+        return formatter.string(from: date)
+    }
+
     static func demoState() -> BudgetState {
         BudgetState(
             categories: defaultCategories,
             transactions: demoTransactions,
+            // lastPostedMonth = current month so demo data doesn't auto-post on load.
+            recurring: [
+                RecurringItem(
+                    id: "demo-recurring-rent",
+                    type: "Expense",
+                    category: "Housing",
+                    description: "Rent",
+                    account: "Checking",
+                    amount: 1800,
+                    dayOfMonth: 1,
+                    lastPostedMonth: currentMonthKey()
+                ),
+                RecurringItem(
+                    id: "demo-recurring-internet",
+                    type: "Expense",
+                    category: "Utilities",
+                    description: "Internet bill",
+                    account: "Checking",
+                    amount: 60,
+                    dayOfMonth: 25,
+                    lastPostedMonth: ""
+                ),
+            ],
             setupComplete: true,
             setupProfile: SetupProfile(
                 presetId: "single",

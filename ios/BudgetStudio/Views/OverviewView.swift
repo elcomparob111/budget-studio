@@ -65,6 +65,10 @@ struct OverviewView: View {
                         .appCard()
                     }
 
+                    if !upcomingBills.isEmpty {
+                        upcomingSection
+                    }
+
                     if let pay = store.payPeriodSummary {
                         payPeriodCard(pay)
                     }
@@ -139,6 +143,40 @@ struct OverviewView: View {
                 }
             }
         }
+    }
+
+    /// Recurring items due within the next 14 days, soonest first (mirrors web).
+    private var upcomingBills: [(item: RecurringItem, date: Date)] {
+        let horizon = Calendar.current.date(byAdding: .day, value: 14, to: Date()) ?? Date()
+        return store.state.recurringItems
+            .map { (item: $0, date: store.nextRecurringDate($0)) }
+            .filter { $0.date <= horizon }
+            .sorted { $0.date < $1.date }
+    }
+
+    private var upcomingSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            Text("Upcoming bills")
+                .font(.app(16, weight: .semibold))
+                .foregroundStyle(AppTheme.primaryText)
+            ForEach(upcomingBills, id: \.item.id) { entry in
+                HStack(spacing: AppTheme.md) {
+                    Text(entry.date.formatted(.dateTime.month(.abbreviated).day()))
+                        .font(.app(13, weight: .bold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .frame(width: 56, alignment: .leading)
+                    Text(entry.item.description)
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .lineLimit(1)
+                    Spacer()
+                    Text("\(entry.item.type == "Income" ? "+" : "")\(currency(entry.item.amount))")
+                        .font(.app(15, weight: .bold))
+                        .foregroundStyle(entry.item.type == "Income" ? AppTheme.income : AppTheme.primaryText)
+                }
+            }
+        }
+        .appCard()
     }
 
     private var welcomeHeader: some View {

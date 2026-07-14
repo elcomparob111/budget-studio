@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Binding var showSetup: Bool
 
     @State private var showPayScheduleEditor = false
+    @State private var showRecurringEditor = false
     @State private var payAmountText = ""
     @State private var payFrequency = "biweekly"
     @State private var nextPayDate = Date()
@@ -41,6 +42,8 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
                     payScheduleSummaryRow
+
+                    recurringSection
 
                     VStack(spacing: AppTheme.sm) {
                         settingsButton(title: "Setup wizard", emoji: "🪄") { showSetup = true }
@@ -101,6 +104,10 @@ struct SettingsView: View {
             }
             .background(AppTheme.background.ignoresSafeArea())
             .navigationTitle("Settings")
+            .sheet(isPresented: $showRecurringEditor) {
+                RecurringEditorSheet(onDone: { showRecurringEditor = false })
+                    .appSheetChrome(detents: [.medium, .large])
+            }
             .sheet(isPresented: $showPayScheduleEditor) {
                 PayScheduleEditorSheet(
                     payAmountText: $payAmountText,
@@ -120,6 +127,68 @@ struct SettingsView: View {
                 if !isShowing { loadPayScheduleFromStore() }
             }
         }
+    }
+
+    private var recurringSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Recurring transactions")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text("Bills and income that post themselves monthly.")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer()
+                Button {
+                    showRecurringEditor = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .frame(width: 36, height: 36)
+                        .background(AppTheme.pastelGreen.opacity(0.5), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add recurring transaction")
+            }
+
+            ForEach(store.state.recurringItems) { item in
+                HStack(spacing: AppTheme.md) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.description)
+                            .font(.app(15, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryText)
+                        Text("\(item.category) · \(item.account) · day \(item.dayOfMonth)")
+                            .font(.app(12, weight: .medium))
+                            .foregroundStyle(AppTheme.secondaryText)
+                    }
+                    Spacer()
+                    Text("\(item.type == "Income" ? "+" : "")\(currency(item.amount))")
+                        .font(.app(15, weight: .bold))
+                        .foregroundStyle(item.type == "Income" ? AppTheme.income : AppTheme.primaryText)
+                    Button {
+                        store.deleteRecurring(id: item.id)
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(AppTheme.expense)
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Delete \(item.description)")
+                }
+                .padding(.vertical, 6)
+            }
+
+            if store.state.recurringItems.isEmpty {
+                Text("Nothing recurring yet — add your rent, subscriptions, or paycheck.")
+                    .font(.app(13, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+        }
+        .appCard()
     }
 
     private var payScheduleSummaryRow: some View {
@@ -310,6 +379,142 @@ private struct FlowFrequencyChips: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+}
+
+private struct RecurringEditorSheet: View {
+    @EnvironmentObject private var store: BudgetStore
+    var onDone: () -> Void
+
+    @State private var type = "Expense"
+    @State private var category = ""
+    @State private var account = BudgetDefaults.accounts[0]
+    @State private var description = ""
+    @State private var amount = ""
+    @State private var dayOfMonth = 1
+
+    private var categories: [BudgetCategory] {
+        store.state.categories.filter { $0.type == type }
+    }
+
+    private var canSave: Bool {
+        Double(amount) ?? 0 > 0 && !category.isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.lg) {
+                    HStack(spacing: AppTheme.sm) {
+                        ForEach(["Expense", "Income"], id: \.self) { value in
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { type = value }
+                            } label: {
+                                Text(value)
+                                    .font(.app(13, weight: .semibold))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(type == value ? AppTheme.pastelBlue.opacity(0.55) : Color.gray.opacity(0.08))
+                                    .clipShape(Capsule())
+                                    .foregroundStyle(AppTheme.primaryText)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Spacer()
+                    }
+
+                    field("Amount") {
+                        TextField("0.00", text: $amount)
+                            .font(.app(16, weight: .medium))
+                            .keyboardType(.decimalPad)
+                            .appInputText()
+                    }
+
+                    field("Category") {
+                        Picker("", selection: $category) {
+                            ForEach(categories, id: \.id) { Text($0.name).tag($0.name) }
+                        }
+                        .labelsHidden()
+                    }
+
+                    field("Account") {
+                        Picker("", selection: $account) {
+                            ForEach(BudgetDefaults.accounts, id: \.self) { Text($0).tag($0) }
+                        }
+                        .labelsHidden()
+                    }
+
+                    field("Day of month") {
+                        Picker("", selection: $dayOfMonth) {
+                            ForEach(1...31, id: \.self) { Text("Day \($0)").tag($0) }
+                        }
+                        .labelsHidden()
+                    }
+
+                    field("Description") {
+                        TextField("Rent, Netflix, paycheck...", text: $description)
+                            .font(.app(16, weight: .medium))
+                            .appInputText()
+                    }
+
+                    Text("Already past this month's day? It starts next month.")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+
+                    Button("Add recurring") {
+                        store.addRecurring(
+                            type: type,
+                            category: category,
+                            description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+                            account: account,
+                            amount: Double(amount) ?? 0,
+                            dayOfMonth: dayOfMonth
+                        )
+                        onDone()
+                    }
+                    .buttonStyle(PrimaryButtonStyle(disabled: !canSave))
+                    .disabled(!canSave)
+                }
+                .padding(.horizontal, AppTheme.pagePadding)
+                .padding(.top, AppTheme.lg)
+                .padding(.bottom, AppTheme.xl)
+                .readableWidth(AdaptiveLayout.formMaxWidth)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(AppTheme.background.ignoresSafeArea())
+            .navigationTitle("New recurring")
+            .navigationBarTitleDisplayMode(.inline)
+            .decimalPadDoneToolbar()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onDone() }
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+            }
+            .onAppear {
+                if category.isEmpty { category = categories.first?.name ?? "" }
+            }
+            .onChange(of: type) { _, _ in
+                if !categories.contains(where: { $0.name == category }) {
+                    category = categories.first?.name ?? ""
+                }
+            }
+        }
+    }
+
+    private func field<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.sm) {
+            Text(title)
+                .font(.app(13, weight: .semibold))
+                .foregroundStyle(AppTheme.secondaryText)
+            content()
+                .padding(.horizontal, AppTheme.lg)
+                .padding(.vertical, AppTheme.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppTheme.inputFill)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 }

@@ -280,6 +280,98 @@ final class BudgetStore: ObservableObject {
         showToast("Transaction deleted.")
     }
 
+    // MARK: - Recurring transactions (mirrors web postDueRecurring rules)
+
+    private static func clampedDay(_ item: RecurringItem, year: Int, month: Int) -> Int {
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month
+        let calendar = Calendar.current
+        let daysInMonth = calendar.range(of: .day, in: .month, for: calendar.date(from: comps) ?? Date())?.count ?? 28
+        return min(item.dayOfMonth, daysInMonth)
+    }
+
+    /// Post recurring items due in the current real month that haven't posted yet.
+    func postDueRecurring() {
+        let monthKey = BudgetDefaults.currentMonthKey()
+        let parts = monthKey.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 2 else { return }
+        let today = Calendar.current.component(.day, from: Date())
+        var posted = 0
+        var items = state.recurringItems
+        for index in items.indices {
+            let day = Self.clampedDay(items[index], year: parts[0], month: parts[1])
+            if items[index].lastPostedMonth == monthKey || today < day { continue }
+            let date = String(format: "%@-%02d", monthKey, day)
+            state.transactions.insert(
+                BudgetState.makeTransaction(
+                    date: date,
+                    type: items[index].type,
+                    category: items[index].category,
+                    description: items[index].description,
+                    account: items[index].account,
+                    amount: items[index].amount
+                ),
+                at: 0
+            )
+            items[index].lastPostedMonth = monthKey
+            posted += 1
+        }
+        guard posted > 0 else { return }
+        state.recurringItems = items
+        saveLocal()
+        scheduleCloudSave()
+        showToast(posted == 1 ? "Posted 1 recurring transaction." : "Posted \(posted) recurring transactions.")
+    }
+
+    func nextRecurringDate(_ item: RecurringItem) -> Date {
+        let monthKey = BudgetDefaults.currentMonthKey()
+        let parts = monthKey.split(separator: "-").compactMap { Int($0) }
+        let calendar = Calendar.current
+        let today = calendar.component(.day, from: Date())
+        guard parts.count == 2 else { return Date() }
+        let (year, month) = (parts[0], parts[1])
+        if item.lastPostedMonth != monthKey, today <= Self.clampedDay(item, year: year, month: month) {
+            return calendar.date(from: DateComponents(year: year, month: month, day: Self.clampedDay(item, year: year, month: month))) ?? Date()
+        }
+        let nextYear = month == 12 ? year + 1 : year
+        let nextMonth = month == 12 ? 1 : month + 1
+        return calendar.date(from: DateComponents(year: nextYear, month: nextMonth, day: Self.clampedDay(item, year: nextYear, month: nextMonth))) ?? Date()
+    }
+
+    func addRecurring(type: String, category: String, description: String, account: String, amount: Double, dayOfMonth: Int) {
+        let monthKey = BudgetDefaults.currentMonthKey()
+        let parts = monthKey.split(separator: "-").compactMap { Int($0) }
+        let today = Calendar.current.component(.day, from: Date())
+        let item = RecurringItem(
+            id: UUID().uuidString,
+            type: type,
+            category: category,
+            description: description.isEmpty ? category : description,
+            account: account,
+            amount: amount,
+            dayOfMonth: min(31, max(1, dayOfMonth)),
+            // Past this month's day already? Start next month so we don't double a
+            // bill the user probably logged by hand.
+            lastPostedMonth: parts.count == 2 && today > Self.clampedDay(
+                RecurringItem(id: "", type: type, category: category, description: description, account: account, amount: amount, dayOfMonth: min(31, max(1, dayOfMonth)), lastPostedMonth: ""),
+                year: parts[0], month: parts[1]
+            ) ? monthKey : ""
+        )
+        state.recurringItems.append(item)
+        saveLocal()
+        scheduleCloudSave()
+        showToast("\(item.description) will post on day \(item.dayOfMonth) each month.")
+        postDueRecurring()
+    }
+
+    func deleteRecurring(id: String) {
+        state.recurringItems.removeAll { $0.id == id }
+        saveLocal()
+        scheduleCloudSave()
+        showToast("Recurring item removed.")
+    }
+
     func updateCategoryBudget(name: String, budget: Double) {
         guard let index = state.categories.firstIndex(where: { $0.name == name }) else { return }
         state.categories[index].budget = max(0, budget)
@@ -418,9 +510,11 @@ final class BudgetStore: ObservableObject {
             if cloudDirty {
                 await pushCloud(notifyOnFailure: false)
             }
+            postDueRecurring()
         } catch {
             if let local = loadLocal(userId: userId) {
                 applyLoadedState(local.state, updatedAt: local.updatedAt, persistCleanup: false)
+                postDueRecurring()
             }
             cloudDirty = true
             // One soft notice on launch — never blocks local editing.
