@@ -1763,6 +1763,7 @@ function render() {
   // Only the visible tab is rendered; switchTab() re-renders on switch.
   if (activeTab === "activity") {
     renderActivityCashflow();
+    renderActivityCharts();
     renderTransactions();
   } else if (activeTab === "goals") renderGoals();
   else if (activeTab === "overview") renderDashboard();
@@ -1774,10 +1775,7 @@ function renderDashboard() {
   syncMonthLabel(month);
   const summary = getMonthSummary(month);
   const usedPercent = summary.totalBudget ? summary.expenses / summary.totalBudget : 0;
-  const left = summary.totalBudget - summary.expenses;
   const net = summary.income - summary.expenses;
-  const savingsRate = summary.income ? net / summary.income : 0;
-  const topCategory = summary.categoryRows.find((row) => row.spent > 0);
 
   elements.incomeMetric.textContent = money(summary.income);
   elements.spentMetric.textContent = money(summary.expenses);
@@ -1787,16 +1785,32 @@ function renderDashboard() {
   elements.ringSubtext.textContent = statusCopy(usedPercent);
   elements.netMetric.textContent = `${money(net)} left from income`;
   elements.netMetric.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
-  elements.savingsMetric.textContent = `${percent(savingsRate)} saved`;
-  elements.savingsMetric.className = `money-chip ${savingsRate < 0 ? "is-negative" : ""}`;
-  elements.topCategoryBadge.textContent = topCategory ? `${topCategory.name}: ${money(topCategory.spent)}` : "No spending yet";
 
   renderProgress(summary.categoryRows);
-  renderBarChart(summary.categoryRows);
-  renderTrendChart(month);
   renderPaycheckView(month);
   renderUpcoming();
   renderIdentityUI();
+}
+
+function renderActivityCharts() {
+  const month = elements.monthInput.value;
+  const summary = getMonthSummary(month);
+  const net = summary.income - summary.expenses;
+  const savingsRate = summary.income ? net / summary.income : 0;
+  const topCategory = summary.categoryRows.find((row) => row.spent > 0);
+
+  if (elements.savingsMetric) {
+    elements.savingsMetric.textContent = `${percent(savingsRate)} saved`;
+    elements.savingsMetric.className = `money-chip ${savingsRate < 0 ? "is-negative" : ""}`;
+  }
+  if (elements.topCategoryBadge) {
+    elements.topCategoryBadge.textContent = topCategory
+      ? `${topCategory.name}: ${money(topCategory.spent)}`
+      : "No spending yet";
+  }
+
+  renderBarChart(summary.categoryRows);
+  renderTrendChart(month);
 }
 
 function renderPaycheckView(month) {
@@ -1863,6 +1877,7 @@ function renderProgress(rows) {
 }
 
 function renderBarChart(rows) {
+  if (!elements.categoryChart) return;
   const data = rows.filter((row) => row.spent > 0).slice(0, 8);
   if (!data.length) {
     elements.categoryChart.innerHTML = `<div class="empty-state">No spending logged for this month.</div>`;
@@ -1897,6 +1912,7 @@ function renderBarChart(rows) {
 }
 
 function renderTrendChart(selectedMonth) {
+  if (!elements.trendChart) return;
   const months = monthRange(selectedMonth, 11);
   // One pass over all transactions instead of 12 full getMonthSummary() scans.
   const byMonth = new Map(months.map((month) => [month, { income: 0, expenses: 0 }]));

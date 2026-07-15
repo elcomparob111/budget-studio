@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=56" />
+    <link rel="stylesheet" href="./styles.css?v=57" />
   </head>
   <body>
     <main class="app-shell">
@@ -122,28 +122,6 @@
           </div>
           <div id="categoryProgress" class="category-progress"></div>
         </section>
-
-        <section class="panel chart-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Spending</p>
-              <h2>Category breakdown</h2>
-            </div>
-            <span id="topCategoryBadge" class="status-pill">No spending yet</span>
-          </div>
-          <div id="categoryChart" class="chart-area"></div>
-        </section>
-
-        <section class="panel trend-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Trend</p>
-              <h2>Cash flow</h2>
-            </div>
-            <span id="savingsMetric" class="money-chip">0% saved</span>
-          </div>
-          <div id="trendChart" class="chart-area trend"></div>
-        </section>
       </section>
 
       <section id="activityTab" class="tab-panel" data-tab-panel="activity" hidden>
@@ -170,6 +148,28 @@
             </article>
           </div>
           <div id="activityCashflowChart" class="chart-area activity-cashflow-chart"></div>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Spending</p>
+              <h2>Category breakdown</h2>
+            </div>
+            <span id="topCategoryBadge" class="status-pill">No spending yet</span>
+          </div>
+          <div id="categoryChart" class="chart-area"></div>
+        </section>
+
+        <section class="panel trend-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Trend</p>
+              <h2>Cash flow</h2>
+            </div>
+            <span id="savingsMetric" class="money-chip">0% saved</span>
+          </div>
+          <div id="trendChart" class="chart-area trend"></div>
         </section>
 
         <section class="panel add-panel">
@@ -747,10 +747,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=56"></script>
+    <script type="module" src="./app.js?v=57"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=56").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=57").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;
