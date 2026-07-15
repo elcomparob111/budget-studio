@@ -2313,8 +2313,19 @@ function getMonthSummary(month) {
 
 function getPayPeriodSummary(month) {
   const profile = normalizeSetupProfile(state.setupProfile);
-  const referenceDate = month === currentMonthKey() ? todayString() : `${month}-01`;
-  const period = getPayPeriodForDate(referenceDate, profile);
+  const firstOfMonth = `${month}-01`;
+  const isCurrentMonth = month === currentMonthKey();
+  const referenceDate = isCurrentMonth ? todayString() : firstOfMonth;
+  let period = getPayPeriodForDate(referenceDate, profile);
+  // When browsing a non-current month, a pay period that started in the prior
+  // month belongs to that month, not this one — advance to the first period
+  // that actually starts within the viewed month. Only interval schedules
+  // (weekly/biweekly) straddle; monthly/semimonthly periods start on the 1st,
+  // so this never fires for them.
+  if (!isCurrentMonth && period.start < firstOfMonth) {
+    const dayAfterPeriod = toDateString(addDays(parseLocalDate(period.end), 1));
+    period = getPayPeriodForDate(dayAfterPeriod, profile);
+  }
   const periodTransactions = state.transactions.filter((item) => dateInRange(item.date, period.start, period.end));
   const incomeItems = periodTransactions.filter((item) => item.type === "Income");
   const expenseItems = periodTransactions.filter((item) => item.type === "Expense");
