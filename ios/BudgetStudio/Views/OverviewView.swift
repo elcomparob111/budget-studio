@@ -61,7 +61,6 @@ struct OverviewView: View {
 
                     if let pay = store.payPeriodSummary {
                         payPeriodCard(pay)
-                        payPeriodPreviewSection
                     }
 
                     categoryProgressSection
@@ -261,41 +260,18 @@ struct OverviewView: View {
                 // Date range under Check left so month vs paycheck windows are obvious at a glance.
                 miniStat("Check left", currency(pay.left), AppTheme.primaryText, subtitle: pay.rangeLabel)
             }
+
+            let previews = store.payPeriodPreviews
+            if !previews.isEmpty {
+                Divider().opacity(0.35)
+                PayPeriodScheduleView(
+                    periods: previews,
+                    expectedCheckAmount: store.state.setupProfile?.payAmount,
+                    showNote: true
+                )
+            }
         }
         .appCard()
-    }
-
-    @ViewBuilder
-    private var payPeriodPreviewSection: some View {
-        let previews = store.payPeriodPreviews
-        if !previews.isEmpty {
-            VStack(alignment: .leading, spacing: AppTheme.sm) {
-                Text("Pay periods this month")
-                    .font(.app(13, weight: .semibold))
-                    .foregroundStyle(AppTheme.secondaryText)
-                ForEach(previews) { period in
-                    HStack {
-                        Text(period.rangeLabel)
-                            .font(.app(14, weight: .semibold))
-                            .foregroundStyle(AppTheme.primaryText)
-                        Spacer()
-                        if period.isCurrent {
-                            Text("Current")
-                                .font(.app(12, weight: .bold))
-                                .foregroundStyle(AppTheme.accent)
-                        }
-                    }
-                    .padding(.horizontal, AppTheme.md)
-                    .padding(.vertical, 10)
-                    .background(AppTheme.inputFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                Text("Log income on payday — paychecks aren't added automatically.")
-                    .font(.app(12, weight: .medium))
-                    .foregroundStyle(AppTheme.secondaryText)
-            }
-            .appCard()
-        }
     }
 
     private func miniStat(_ title: String, _ value: String, _ color: Color, subtitle: String? = nil) -> some View {

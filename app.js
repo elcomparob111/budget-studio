@@ -2899,19 +2899,29 @@ function renderPayPeriodPreview(month, container, { compact = false } = {}) {
   }
   container.hidden = false;
   if (showNote && container === elements.payPeriodPreview) showNote.hidden = false;
-  container.innerHTML = periods
+  const payAmount = Number(state.setupProfile?.payAmount) || 0;
+  const expectedLine = !compact && payAmount > 0
+    ? `<p class="pay-period-expected">Expected check · ${money(payAmount)}</p>`
+    : "";
+  const rows = periods
     .map((period) => {
-      const current = period.isCurrent ? `<span class="pay-period-current">Current</span>` : "";
-      const amount = compact ? "" : `<span class="pay-period-amount">${money(state.setupProfile?.payAmount || 0)}</span>`;
+      const currentChip = period.isCurrent
+        ? `<span class="status-pill pay-period-chip">Current</span>`
+        : "";
       return `
-        <div class="pay-period-row${period.isCurrent ? " is-current" : ""}">
+        <li class="pay-period-item${period.isCurrent ? " is-current" : ""}">
           <span class="pay-period-range">${escapeHtml(period.rangeLabel)}</span>
-          ${current}
-          ${amount}
-        </div>
-      `;
+          ${currentChip}
+        </li>`;
     })
     .join("");
+  container.innerHTML = `
+    <div class="pay-period-schedule">
+      <p class="pay-period-schedule-heading">Pay periods this month</p>
+      ${expectedLine}
+      <ul class="pay-period-list">${rows}</ul>
+    </div>
+  `;
 }
 
 function getPayPeriodSummary(month) {
