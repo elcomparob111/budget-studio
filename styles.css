@@ -2391,7 +2391,168 @@ td.amount { font-weight: 700; color: var(--ink); }
 .upcoming-list,
 .recurring-list {
   display: grid;
+  gap: 0;
+}
+
+.recurring-panel-heading {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.recurring-panel-heading h2 {
+  font-size: 16px;
+}
+
+.recurring-panel-subtitle {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.recurring-add-button {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--soft-green) 50%, transparent);
+  color: var(--ink);
+}
+
+.recurring-add-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.recurring-add-button:hover {
+  background: color-mix(in srgb, var(--soft-green) 70%, transparent);
+}
+
+.recurring-reminders-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.recurring-reminders-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--soft-amber) 50%, transparent);
+  color: var(--ink);
+}
+
+.recurring-reminders-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.recurring-reminders-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.recurring-reminders-copy strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.recurring-reminders-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.toggle-switch {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  width: 51px;
+  height: 31px;
+}
+
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--input);
+  transition: background 0.2s ease;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--ink);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+.recurring-type-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.recurring-type-chip {
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(45, 45, 45, 0.08);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .recurring-type-chip {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.recurring-type-chip.selected {
+  background: color-mix(in srgb, var(--soft-blue) 55%, transparent);
+}
+
+.recurring-form-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .upcoming-row,
@@ -2399,9 +2560,36 @@ td.amount { font-weight: 700; color: var(--ink); }
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 6px 0;
+}
+
+.upcoming-row {
   padding: 10px 12px;
   background: var(--input);
   border-radius: 12px;
+}
+
+.recurring-delete-btn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  display: inline-grid;
+  place-items: center;
+  background: transparent;
+  color: var(--red);
+}
+
+.recurring-delete-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.recurring-delete-btn:hover {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
 }
 
 .upcoming-date {
@@ -2443,13 +2631,11 @@ td.amount { font-weight: 700; color: var(--ink); }
 
 .recurring-blurb,
 .recurring-empty {
-  margin: 0 0 10px;
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
   font-weight: 500;
 }
-
-.recurring-list { margin-bottom: 14px; }
 
 /* Shared budget card */
 .invite-row {

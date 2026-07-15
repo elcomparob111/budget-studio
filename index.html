@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=64" />
+    <link rel="stylesheet" href="./styles.css?v=65" />
   </head>
   <body>
     <main class="app-shell">
@@ -279,45 +279,30 @@
         </section>
 
         <section class="panel recurring-panel">
-          <div class="panel-heading">
+          <div class="panel-heading recurring-panel-heading">
             <div>
-              <p class="eyebrow">Repeat</p>
               <h2>Recurring transactions</h2>
+              <p class="recurring-panel-subtitle">Bills and income that post themselves monthly.</p>
             </div>
+            <button id="openRecurringDialogBtn" class="recurring-add-button" type="button" aria-label="Add recurring transaction">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            </button>
           </div>
-          <p class="recurring-blurb">Bills and income that post themselves each month. Already past this month's day? It starts next month.</p>
+          <div class="recurring-reminders-row">
+            <span class="recurring-reminders-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-2 2v1h18v-1l-2-2Z" /></svg>
+            </span>
+            <div class="recurring-reminders-copy">
+              <strong>Bill reminders</strong>
+              <span>Notify the morning a bill is due.</span>
+            </div>
+            <label class="toggle-switch" aria-label="Bill reminders">
+              <input id="billRemindersToggle" type="checkbox" />
+              <span class="toggle-slider" aria-hidden="true"></span>
+            </label>
+          </div>
           <div id="recurringList" class="recurring-list"></div>
-          <form id="recurringForm" class="transaction-form">
-            <label>
-              <span>Type</span>
-              <select id="recTypeInput">
-                <option>Expense</option>
-                <option>Income</option>
-              </select>
-            </label>
-            <label>
-              <span>Category</span>
-              <select id="recCategoryInput"></select>
-            </label>
-            <label>
-              <span>Account</span>
-              <select id="recAccountInput"></select>
-            </label>
-            <label>
-              <span>Day of month</span>
-              <input id="recDayInput" type="number" min="1" max="31" step="1" value="1" required />
-            </label>
-            <label class="wide">
-              <span>Description</span>
-              <input id="recDescriptionInput" type="text" placeholder="Rent, Netflix, paycheck..." />
-            </label>
-            <label>
-              <span>Amount</span>
-              <input id="recAmountInput" type="number" min="0.01" step="0.01" placeholder="0.00" required />
-            </label>
-            <button class="primary-button wide" type="submit">Add recurring</button>
-            <p id="recurringMessage" class="form-message" role="status"></p>
-          </form>
+          <p id="recurringEmpty" class="recurring-empty" hidden>Nothing recurring yet — add your rent, subscriptions, or paycheck.</p>
         </section>
 
         <section class="panel settings-actions-panel">
@@ -582,6 +567,49 @@
       </div>
     </section>
 
+    <section id="recurringDialog" class="edit-overlay" aria-label="New recurring transaction" aria-modal="true" role="dialog" hidden>
+      <div class="edit-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Repeat</p>
+            <h2>New recurring</h2>
+          </div>
+          <button id="closeRecurringBtn" class="ghost-button" type="button">Cancel</button>
+        </div>
+        <form id="recurringForm" class="transaction-form recurring-form">
+          <div class="wide recurring-type-field">
+            <div id="recTypeToggle" class="recurring-type-chips" role="group" aria-label="Transaction type">
+              <button class="recurring-type-chip selected" type="button" data-rec-type="Expense">Expense</button>
+              <button class="recurring-type-chip" type="button" data-rec-type="Income">Income</button>
+            </div>
+          </div>
+          <label>
+            <span>Amount</span>
+            <input id="recAmountInput" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+          </label>
+          <label>
+            <span>Category</span>
+            <select id="recCategoryInput"></select>
+          </label>
+          <label>
+            <span>Account</span>
+            <select id="recAccountInput"></select>
+          </label>
+          <label>
+            <span>Day of month</span>
+            <select id="recDayInput" required></select>
+          </label>
+          <label class="wide">
+            <span>Description</span>
+            <input id="recDescriptionInput" type="text" placeholder="Rent, Netflix, paycheck..." />
+          </label>
+          <p class="recurring-form-note wide">Already past this month's day? It starts next month.</p>
+          <button class="primary-button wide" type="submit">Add recurring</button>
+          <p id="recurringMessage" class="form-message" role="status"></p>
+        </form>
+      </div>
+    </section>
+
     <section id="payScheduleDialog" class="edit-overlay" aria-label="Edit pay schedule" aria-modal="true" role="dialog" hidden>
       <div class="edit-card">
         <div class="panel-heading">
@@ -758,10 +786,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=64"></script>
+    <script type="module" src="./app.js?v=65"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=64").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=65").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

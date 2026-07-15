@@ -61,6 +61,11 @@ const ICON_MOON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>';
 const ICON_SUN =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>';
+const ICON_TRASH =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>';
+
+const BILL_REMINDERS_KEY = "budget-studio-bill-reminders";
+const BILL_REMINDERS_NOTIFIED_PREFIX = "budget-studio-bill-reminders-notified";
 
 const groupChartColors = {
   Needs: ["#2563eb", "#0ea5e9", "#0284c7", "#0891b2"],
@@ -453,14 +458,19 @@ const elements = {
   upcomingPanel: document.querySelector("#upcomingPanel"),
   upcomingList: document.querySelector("#upcomingList"),
   recurringList: document.querySelector("#recurringList"),
+  recurringEmpty: document.querySelector("#recurringEmpty"),
   recurringForm: document.querySelector("#recurringForm"),
-  recTypeInput: document.querySelector("#recTypeInput"),
+  recurringDialog: document.querySelector("#recurringDialog"),
+  openRecurringDialogBtn: document.querySelector("#openRecurringDialogBtn"),
+  closeRecurringBtn: document.querySelector("#closeRecurringBtn"),
+  recTypeToggle: document.querySelector("#recTypeToggle"),
   recCategoryInput: document.querySelector("#recCategoryInput"),
   recAccountInput: document.querySelector("#recAccountInput"),
   recDayInput: document.querySelector("#recDayInput"),
   recDescriptionInput: document.querySelector("#recDescriptionInput"),
   recAmountInput: document.querySelector("#recAmountInput"),
   recurringMessage: document.querySelector("#recurringMessage"),
+  billRemindersToggle: document.querySelector("#billRemindersToggle"),
   sharedPanel: document.querySelector("#sharedPanel"),
   sharedSolo: document.querySelector("#sharedSolo"),
   sharedActive: document.querySelector("#sharedActive"),
@@ -611,7 +621,9 @@ function init() {
   if (elements.recAccountInput) {
     elements.recAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
   }
+  populateRecurringDaySelect();
   populateRecurringCategorySelect();
+  initBillRemindersToggle();
   attachEvents();
   installGlobalKeyboard();
   render();
@@ -695,6 +707,7 @@ async function handleUserChanged(user, info) {
 
   // After local/cloud state has settled, post any recurring items now due.
   postDueRecurring();
+  refreshBillReminders();
 }
 
 let lastCloudRefreshAt = 0;
@@ -1166,7 +1179,22 @@ function attachEvents() {
     event.preventDefault();
     addRecurringFromForm();
   });
-  elements.recTypeInput?.addEventListener("change", populateRecurringCategorySelect);
+  elements.openRecurringDialogBtn?.addEventListener("click", openRecurringDialog);
+  elements.closeRecurringBtn?.addEventListener("click", closeRecurringDialog);
+  elements.recurringDialog?.addEventListener("click", (event) => {
+    if (event.target === elements.recurringDialog) closeRecurringDialog();
+  });
+  elements.recTypeToggle?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-rec-type]");
+    if (!button || !elements.recTypeToggle) return;
+    elements.recTypeToggle.querySelectorAll("[data-rec-type]").forEach((node) => {
+      node.classList.toggle("selected", node === button);
+    });
+    populateRecurringCategorySelect();
+  });
+  elements.billRemindersToggle?.addEventListener("change", (event) => {
+    setBillRemindersEnabled(event.target.checked);
+  });
   elements.recurringList?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-recurring-id]");
     if (!button) return;
@@ -1175,6 +1203,7 @@ function attachEvents() {
     const [removed] = state.recurring.splice(index, 1);
     saveState();
     renderRecurringList();
+    refreshBillReminders();
     showToast(`${removed.description} removed.`, "success", {
       actionLabel: "Undo",
       duration: 5000,
@@ -1411,6 +1440,7 @@ function switchTab(tab) {
   if (activeTab === "settings") {
     updatePayScheduleSummary();
     updateBudgetsSummary();
+    syncBillRemindersToggle();
     populateRecurringCategorySelect();
     renderRecurringList();
     renderSharedPanel();
@@ -2739,9 +2769,11 @@ function renderRecurringList() {
   if (!elements.recurringList) return;
   const items = state.recurring || [];
   if (!items.length) {
-    elements.recurringList.innerHTML = `<p class="recurring-empty">Nothing recurring yet — add your rent, subscriptions, or paycheck below.</p>`;
+    elements.recurringList.innerHTML = "";
+    if (elements.recurringEmpty) elements.recurringEmpty.hidden = false;
     return;
   }
+  if (elements.recurringEmpty) elements.recurringEmpty.hidden = true;
   elements.recurringList.innerHTML = items
     .map(
       (item) => `
@@ -2751,20 +2783,111 @@ function renderRecurringList() {
             <small>${escapeHtml(item.category)} · ${escapeHtml(item.account)} · day ${item.dayOfMonth}</small>
           </div>
           <span class="upcoming-amount ${item.type === "Income" ? "is-income" : ""}">${item.type === "Income" ? "+" : ""}${money(item.amount)}</span>
-          <button class="delete-button" data-recurring-id="${escapeHtml(item.id)}" type="button">Delete</button>
+          <button class="recurring-delete-btn" data-recurring-id="${escapeHtml(item.id)}" type="button" aria-label="Delete ${escapeHtml(item.description)}">${ICON_TRASH}</button>
         </div>
       `,
     )
     .join("");
 }
 
+function getRecurringFormType() {
+  const active = elements.recTypeToggle?.querySelector(".recurring-type-chip.selected");
+  return active?.dataset.recType === "Income" ? "Income" : "Expense";
+}
+
+function populateRecurringDaySelect() {
+  if (!elements.recDayInput) return;
+  elements.recDayInput.innerHTML = Array.from({ length: 31 }, (_, index) => {
+    const day = index + 1;
+    return `<option value="${day}">Day ${day}</option>`;
+  }).join("");
+  elements.recDayInput.value = "1";
+}
+
 function populateRecurringCategorySelect() {
   if (!elements.recCategoryInput) return;
-  const type = elements.recTypeInput.value;
+  const type = getRecurringFormType();
   const categories = state.categories.filter((category) => category.type === type);
   elements.recCategoryInput.innerHTML = categories
     .map((category) => `<option>${escapeHtml(category.name)}</option>`)
     .join("");
+}
+
+function resetRecurringForm() {
+  elements.recurringForm?.reset();
+  if (elements.recDayInput) elements.recDayInput.value = "1";
+  elements.recTypeToggle?.querySelectorAll("[data-rec-type]").forEach((node) => {
+    node.classList.toggle("selected", node.dataset.recType === "Expense");
+  });
+  populateRecurringCategorySelect();
+  setRecurringMessage("");
+}
+
+function openRecurringDialog() {
+  resetRecurringForm();
+  if (elements.recurringDialog) elements.recurringDialog.hidden = false;
+  document.body.classList.add("wizard-open");
+  elements.recAmountInput?.focus();
+}
+
+function closeRecurringDialog() {
+  if (elements.recurringDialog) elements.recurringDialog.hidden = true;
+  syncOverlayBodyClass();
+  setRecurringMessage("");
+}
+
+function initBillRemindersToggle() {
+  syncBillRemindersToggle();
+}
+
+function billRemindersEnabled() {
+  return localStorage.getItem(BILL_REMINDERS_KEY) === "1";
+}
+
+function syncBillRemindersToggle() {
+  if (elements.billRemindersToggle) {
+    elements.billRemindersToggle.checked = billRemindersEnabled();
+  }
+}
+
+async function setBillRemindersEnabled(enabled) {
+  if (enabled) {
+    if (!("Notification" in window)) {
+      if (elements.billRemindersToggle) elements.billRemindersToggle.checked = false;
+      showToast("Notifications aren't supported in this browser.", "error");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      localStorage.removeItem(BILL_REMINDERS_KEY);
+      syncBillRemindersToggle();
+      showToast("Enable notifications in your browser to get bill reminders.");
+      return;
+    }
+    localStorage.setItem(BILL_REMINDERS_KEY, "1");
+  } else {
+    localStorage.removeItem(BILL_REMINDERS_KEY);
+  }
+  refreshBillReminders();
+}
+
+function refreshBillReminders() {
+  if (!billRemindersEnabled() || !("Notification" in window) || Notification.permission !== "granted") return;
+  const today = new Date();
+  const day = today.getDate();
+  const monthKey = currentMonthKey();
+  const notifiedKey = `${BILL_REMINDERS_NOTIFIED_PREFIX}-${monthKey}-${day}`;
+  if (sessionStorage.getItem(notifiedKey)) return;
+
+  const dueToday = (state.recurring || []).filter((item) => item.type === "Expense" && item.dayOfMonth === day);
+  if (!dueToday.length) return;
+
+  for (const item of dueToday) {
+    new Notification("Bill due today", {
+      body: `${item.description} · ${money(item.amount)} — open Budget Studio to log it.`,
+    });
+  }
+  sessionStorage.setItem(notifiedKey, "1");
 }
 
 function setRecurringMessage(message, isError = false) {
@@ -2773,7 +2896,7 @@ function setRecurringMessage(message, isError = false) {
 }
 
 function addRecurringFromForm() {
-  const typeCheck = validateTransactionType(elements.recTypeInput.value);
+  const typeCheck = validateTransactionType(getRecurringFormType());
   const categoryCheck = validateCategoryName(elements.recCategoryInput.value);
   const amountCheck = validateAmount(elements.recAmountInput.value);
   const descriptionCheck = validateDescription(
@@ -2810,12 +2933,11 @@ function addRecurringFromForm() {
   state.recurring = state.recurring || [];
   state.recurring.push(item);
   saveState();
-  elements.recurringForm.reset();
-  elements.recDayInput.value = "1";
-  populateRecurringCategorySelect();
-  setRecurringMessage(`${item.description} will post on day ${item.dayOfMonth} each month.`);
+  closeRecurringDialog();
+  showToast(`${item.description} will post on day ${item.dayOfMonth} each month.`);
   renderRecurringList();
   postDueRecurring();
+  refreshBillReminders();
 }
 
 function getMonthSummary(month) {
@@ -4022,6 +4144,11 @@ function installGlobalKeyboard() {
       return;
     }
     if (event.key !== "Escape") return;
+    if (elements.recurringDialog && !elements.recurringDialog.hidden) {
+      event.preventDefault();
+      closeRecurringDialog();
+      return;
+    }
     if (elements.payScheduleDialog && !elements.payScheduleDialog.hidden) {
       event.preventDefault();
       closePayScheduleDialog();
