@@ -159,6 +159,7 @@ final class BudgetStore: ObservableObject {
             signedIn: isAuthenticated
         )
         snapshot.save()
+        guard AppGroup.isAvailable else { return }
         WidgetCenter.shared.reloadTimelines(ofKind: "BudgetStudioWidget")
     }
 

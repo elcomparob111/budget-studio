@@ -5,8 +5,15 @@ enum AppGroup {
     static let snapshotKey = "widget-snapshot-v1"
     static let addExpenseURL = URL(string: "budgetstudio://add")!
 
-    static var defaults: UserDefaults {
-        UserDefaults(suiteName: id) ?? .standard
+    /// True when this process has a mounted App Group container (entitlement + provisioning).
+    static var isAvailable: Bool {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) != nil
+    }
+
+    /// Shared defaults for the widget; nil when the App Group isn't provisioned on this install.
+    static var sharedDefaults: UserDefaults? {
+        guard isAvailable else { return nil }
+        return UserDefaults(suiteName: id)
     }
 }
 
@@ -24,7 +31,8 @@ struct WidgetSnapshot: Codable, Equatable {
     )
 
     static func load() -> WidgetSnapshot {
-        guard let data = AppGroup.defaults.data(forKey: AppGroup.snapshotKey),
+        guard let defaults = AppGroup.sharedDefaults,
+              let data = defaults.data(forKey: AppGroup.snapshotKey),
               let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else {
             return .empty
         }
@@ -32,7 +40,8 @@ struct WidgetSnapshot: Codable, Equatable {
     }
 
     func save() {
-        guard let data = try? JSONEncoder().encode(self) else { return }
-        AppGroup.defaults.set(data, forKey: AppGroup.snapshotKey)
+        guard let defaults = AppGroup.sharedDefaults,
+              let data = try? JSONEncoder().encode(self) else { return }
+        defaults.set(data, forKey: AppGroup.snapshotKey)
     }
 }
