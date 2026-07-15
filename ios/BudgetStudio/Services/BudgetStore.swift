@@ -65,6 +65,8 @@ final class BudgetStore: ObservableObject {
         faceIDEnabled && BiometricAuth.isAvailable && KeychainStore.load() != nil
     }
 
+    var hasSavedFaceIDCredentials: Bool { KeychainStore.load() != nil }
+
     var biometryLabel: String { BiometricAuth.biometryLabel }
 
     init() {
@@ -295,9 +297,30 @@ final class BudgetStore: ObservableObject {
         showToast("\(biometryLabel) enabled.")
     }
 
+    /// Turn Face ID on or off from Settings. Enabling requires a successful biometric check.
+    func setFaceIDEnabled(_ enabled: Bool) async {
+        if enabled {
+            guard faceIDEnabled == false else { return }
+            guard BiometricAuth.isAvailable else {
+                showToast("\(biometryLabel) is not available on this device. Check Settings → \(biometryLabel).")
+                return
+            }
+            guard hasSavedFaceIDCredentials else {
+                showToast("Sign in with your password once, then turn \(biometryLabel) on here.")
+                return
+            }
+            let ok = await BiometricAuth.authenticate(reason: "Turn on \(biometryLabel) for Budget Studio")
+            guard ok else { return }
+            faceIDEnabled = true
+            showToast("\(biometryLabel) enabled for next launch.")
+        } else {
+            disableFaceID()
+        }
+    }
+
     func disableFaceID() {
         faceIDEnabled = false
-        KeychainStore.clear()
+        // Keep saved credentials so Settings can turn Face ID back on without re-entering password.
         showToast("\(biometryLabel) turned off.")
     }
 

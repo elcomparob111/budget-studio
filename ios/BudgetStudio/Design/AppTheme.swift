@@ -24,6 +24,8 @@ enum AppTheme {
     static let income = Color(hex: 0x34C759)
     static let expense = Color(hex: 0xFF3B30)
     static let accent = primaryText
+    /// Switch tint — green reads clearly on light and dark cards (primaryText is near-white when ON).
+    static let toggleTint = income
 
     // MARK: - Spacing
     static let xs: CGFloat = 4

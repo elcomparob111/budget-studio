@@ -64,38 +64,9 @@ struct SettingsView: View {
                     }
 
                     if BiometricAuth.isAvailable {
-                        VStack(alignment: .leading, spacing: AppTheme.md) {
-                            HStack(spacing: AppTheme.md) {
-                                Image(systemName: "faceid")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundStyle(AppTheme.primaryText)
-                                    .frame(width: 40, height: 40)
-                                    .background(AppTheme.pastelBlue.opacity(0.45), in: Circle())
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Unlock with \(store.biometryLabel)")
-                                        .font(.app(16, weight: .semibold))
-                                        .foregroundStyle(AppTheme.primaryText)
-                                    Text(store.faceIDEnabled
-                                          ? "On for next launch"
-                                          : "Sign in with password once to enable")
-                                        .font(.app(12, weight: .medium))
-                                        .foregroundStyle(AppTheme.secondaryText)
-                                }
-                                Spacer()
-                                Toggle("", isOn: Binding(
-                                    get: { store.faceIDEnabled },
-                                    set: { enabled in
-                                        if !enabled {
-                                            store.disableFaceID()
-                                        }
-                                    }
-                                ))
-                                .labelsHidden()
-                                .tint(AppTheme.primaryText)
-                                .disabled(!store.faceIDEnabled)
-                            }
-                        }
-                        .appCard()
+                        faceIDSection
+                    } else {
+                        faceIDUnavailableSection
                     }
 
                     Button {
@@ -206,6 +177,84 @@ struct SettingsView: View {
             }
             .pickerStyle(.segmented)
             .accessibilityLabel("Appearance")
+        }
+        .appCard()
+    }
+
+    private var faceIDSubtitle: String {
+        if store.faceIDEnabled {
+            return "On for next launch"
+        }
+        if store.hasSavedFaceIDCredentials {
+            return "Tap to turn on"
+        }
+        return "Sign in with password once to enable"
+    }
+
+    private var faceIDSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(spacing: AppTheme.md) {
+                Image(systemName: "faceid")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.pastelBlue.opacity(0.45), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Unlock with \(store.biometryLabel)")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text(faceIDSubtitle)
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer(minLength: 0)
+                Toggle("", isOn: Binding(
+                    get: { store.faceIDEnabled },
+                    set: { enabled in
+                        Task { await store.setFaceIDEnabled(enabled) }
+                    }
+                ))
+                .labelsHidden()
+                .tint(AppTheme.toggleTint)
+                .accessibilityLabel("Unlock with \(store.biometryLabel)")
+            }
+        }
+        .appCard()
+    }
+
+    private var faceIDUnavailableSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(spacing: AppTheme.md) {
+                Image(systemName: "faceid")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.pastelBlue.opacity(0.45), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Unlock with \(store.biometryLabel)")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text("\(store.biometryLabel) is off for this app. Turn it on in Settings.")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer(minLength: 0)
+            }
+
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Text("Open Settings")
+                    .font(.app(14, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.inputFill)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
         .appCard()
     }
