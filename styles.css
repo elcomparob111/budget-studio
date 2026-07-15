@@ -1241,12 +1241,13 @@ td.amount { font-weight: 700; color: var(--ink); }
 
 .pay-schedule-form {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .pay-schedule-form .primary-button {
-  justify-self: start;
-  min-width: 180px;
+  justify-self: stretch;
+  min-height: 48px;
+  width: 100%;
 }
 
 .pay-frequency-card {
@@ -1256,8 +1257,30 @@ td.amount { font-weight: 700; color: var(--ink); }
 .payday-input-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  align-items: end;
+  gap: 12px;
+  align-items: stretch;
+}
+
+#payScheduleForm .pay-frequency-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#payScheduleForm .pay-frequency-grid.compact .pay-frequency-card {
+  min-height: 78px;
+  padding: 14px;
+}
+
+#payScheduleForm .payday-input-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+#payScheduleDialog .edit-card {
+  width: min(440px, 100%);
+  max-height: min(90svh, 720px);
+  overflow: auto;
+  padding: 18px;
 }
 
 .wizard-estimate {
@@ -1270,6 +1293,15 @@ td.amount { font-weight: 700; color: var(--ink); }
   display: grid;
   gap: 8px;
   max-width: 420px;
+  min-width: 0;
+}
+
+#payScheduleForm .big-input {
+  max-width: none;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--input);
 }
 
 .big-input span {
@@ -1280,11 +1312,46 @@ td.amount { font-weight: 700; color: var(--ink); }
 
 .big-input input {
   height: 64px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 0 16px;
   font-size: 28px;
   font-weight: 900;
+  background: var(--panel);
+  color: var(--ink);
+  outline: none;
+}
+
+#payScheduleForm .big-input input {
+  height: 48px;
+  font-size: 22px;
+  border-radius: 12px;
+  background: var(--panel);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#payScheduleForm .big-input input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+#payScheduleForm .big-input input[type="number"]::-webkit-outer-spin-button,
+#payScheduleForm .big-input input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+#payScheduleForm .big-input input[type="date"] {
+  line-height: 48px;
+}
+
+#payScheduleForm .big-input input:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(45, 45, 45, 0.12);
 }
 
 .category-checklist {
