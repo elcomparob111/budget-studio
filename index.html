@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=55" />
+    <link rel="stylesheet" href="./styles.css?v=56" />
   </head>
   <body>
     <main class="app-shell">
@@ -659,37 +659,43 @@
       </div>
     </section>
 
-    <section id="budgetsDialog" class="edit-overlay" aria-label="Edit categories and budgets" aria-modal="true" role="dialog" hidden>
+    <section id="budgetsDialog" class="edit-overlay budgets-overlay" aria-label="Edit categories and budgets" aria-modal="true" role="dialog" hidden>
       <div class="edit-card budgets-card">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">Categories</p>
-            <h2>Categories &amp; budgets</h2>
+        <header class="budgets-sheet-header">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Categories</p>
+              <h2>Categories &amp; budgets</h2>
+            </div>
+            <button id="closeBudgetsBtn" class="ghost-button" type="button">Close</button>
           </div>
-          <button id="closeBudgetsBtn" class="ghost-button" type="button">Close</button>
+          <p class="goals-blurb">Edit monthly amounts, add categories, or remove ones you no longer track.</p>
+        </header>
+        <div class="budgets-sheet-body">
+          <div id="budgetEditor" class="budget-editor"></div>
         </div>
-        <p class="goals-blurb">Edit monthly amounts, add categories, or remove ones you no longer track.</p>
-        <div id="budgetEditor" class="budget-editor"></div>
-        <form id="categoryBuilderForm" class="category-builder">
-          <label>
-            <span>New category</span>
-            <input id="categoryBuilderNameInput" type="text" placeholder="Cell phone, pets, childcare..." autocomplete="off" />
-          </label>
-          <label>
-            <span>Group</span>
-            <select id="categoryBuilderGroupInput">
-              <option>Needs</option>
-              <option>Wants</option>
-              <option>Savings</option>
-            </select>
-          </label>
-          <label>
-            <span>Monthly budget</span>
-            <input id="categoryBuilderBudgetInput" type="number" min="0" step="10" placeholder="0" />
-          </label>
-          <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
-          <p id="categoryBuilderMessage" class="form-message" role="status"></p>
-        </form>
+        <footer class="budgets-sheet-footer">
+          <form id="categoryBuilderForm" class="category-builder">
+            <label>
+              <span>New category</span>
+              <input id="categoryBuilderNameInput" type="text" placeholder="Cell phone, pets, childcare..." autocomplete="off" />
+            </label>
+            <label>
+              <span>Group</span>
+              <select id="categoryBuilderGroupInput">
+                <option>Needs</option>
+                <option>Wants</option>
+                <option>Savings</option>
+              </select>
+            </label>
+            <label>
+              <span>Monthly budget</span>
+              <input id="categoryBuilderBudgetInput" type="number" min="0" step="10" placeholder="0" />
+            </label>
+            <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
+            <p id="categoryBuilderMessage" class="form-message" role="status"></p>
+          </form>
+        </footer>
       </div>
     </section>
 
@@ -741,10 +747,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=55"></script>
+    <script type="module" src="./app.js?v=56"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=55").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=56").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

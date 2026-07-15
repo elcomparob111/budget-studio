@@ -2216,26 +2216,25 @@ function renderBudgetEditor() {
     .map(
       (category) => `
         <div class="budget-item">
-          <div class="budget-item-head">
-            <div class="budget-item-copy">
-              <strong>${escapeHtml(category.name)}</strong>
-              <small>${escapeHtml(category.group)}</small>
-            </div>
-            <button
-              type="button"
-              class="ghost-button budget-delete-btn"
-              data-delete-category="${escapeHtml(category.name)}"
-              aria-label="Delete ${escapeHtml(category.name)}"
-            >Delete</button>
+          <div class="budget-item-copy">
+            <strong>${escapeHtml(category.name)}</strong>
+            <small>${escapeHtml(category.group)}</small>
           </div>
           <input
             type="number"
+            inputmode="decimal"
             min="0"
             step="10"
             value="${category.budget}"
             data-budget-category="${escapeHtml(category.name)}"
             aria-label="${escapeHtml(category.name)} monthly budget"
           />
+          <button
+            type="button"
+            class="ghost-button budget-delete-btn"
+            data-delete-category="${escapeHtml(category.name)}"
+            aria-label="Delete ${escapeHtml(category.name)}"
+          >Delete</button>
         </div>
       `,
     )
