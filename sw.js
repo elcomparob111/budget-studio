@@ -1,12 +1,12 @@
-const CACHE = "budget-studio-v52";
+const CACHE = "budget-studio-v53";
 const ASSETS = [
   "./",
   "./index.html",
-  "./app.js",
+  "./app.js?v=53",
   "./sync.js",
   "./sync-config.js",
   "./security.js",
-  "./styles.css",
+  "./styles.css?v=53",
   "./manifest.json",
   "./privacy.html",
   "./terms.html",
@@ -41,8 +41,8 @@ function shouldCacheResponse(request, response) {
   return request.method === "GET";
 }
 
-// Network-first so style/script changes show up on the next reload;
-// the cache is only a fallback for offline use of same-origin static assets.
+// Network-first with revalidation so GitHub Pages / browser HTTP cache cannot
+// leave HTML on a new build while serving stale app.js (which broke Goals + charts).
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
@@ -55,7 +55,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-cache" })
       .then((response) => {
         if (shouldCacheResponse(event.request, response)) {
           const copy = response.clone();

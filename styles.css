@@ -1482,7 +1482,7 @@ td.amount { font-weight: 700; color: var(--ink); }
 .chart-svg .bar-expense { fill: var(--red); }
 
 .activity-cashflow-panel .chart-area {
-  min-height: 0;
+  min-height: 120px;
 }
 
 .activity-cashflow-metrics {

@@ -1133,8 +1133,12 @@ function attachEvents() {
     });
   });
   elements.tabBar?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-tab]");
-    if (button) switchTab(button.dataset.tab);
+    const fromPath = (typeof event.composedPath === "function" ? event.composedPath() : []).find(
+      (node) => node && typeof node.getAttribute === "function" && node.getAttribute("data-tab"),
+    );
+    const button = (event.target.closest && event.target.closest("[data-tab]")) || fromPath;
+    const tab = button?.getAttribute?.("data-tab") || button?.dataset?.tab;
+    if (tab) switchTab(tab);
   });
   elements.addTransactionBtn?.addEventListener("click", openQuickAdd);
 
@@ -1274,13 +1278,14 @@ function attachEvents() {
 }
 
 function switchTab(tab) {
-  activeTab = ["activity", "goals", "settings"].includes(tab) ? tab : "overview";
   const panels = {
-    overview: elements.overviewTab,
-    activity: elements.activityTab,
-    goals: elements.goalsTab,
-    settings: elements.settingsTab,
+    overview: elements.overviewTab || document.querySelector("#overviewTab"),
+    activity: elements.activityTab || document.querySelector("#activityTab"),
+    goals: elements.goalsTab || document.querySelector("#goalsTab"),
+    settings: elements.settingsTab || document.querySelector("#settingsTab"),
   };
+  // Prefer any tab that has a real panel in the DOM (avoids stale JS whitelist bugs).
+  activeTab = panels[tab] ? tab : "overview";
   Object.entries(panels).forEach(([name, panel]) => {
     if (panel) panel.hidden = name !== activeTab;
   });
@@ -1959,19 +1964,25 @@ function renderTransactions() {
 }
 
 function renderActivityCashflow() {
-  if (!elements.activityCashflowChart) return;
+  const chart = elements.activityCashflowChart || document.querySelector("#activityCashflowChart");
+  if (!chart) return;
+  elements.activityCashflowChart = chart;
   const month = elements.monthInput.value;
   const summary = getMonthSummary(month);
   const net = summary.income - summary.expenses;
-  if (elements.activityIncomeMetric) elements.activityIncomeMetric.textContent = money(summary.income);
-  if (elements.activitySpentMetric) elements.activitySpentMetric.textContent = money(summary.expenses);
-  if (elements.activityNetMetric) {
-    elements.activityNetMetric.textContent = money(net);
-    elements.activityNetMetric.classList.toggle("is-negative", net < 0);
+  const incomeEl = elements.activityIncomeMetric || document.querySelector("#activityIncomeMetric");
+  const spentEl = elements.activitySpentMetric || document.querySelector("#activitySpentMetric");
+  const netEl = elements.activityNetMetric || document.querySelector("#activityNetMetric");
+  const chipEl = elements.activityNetChip || document.querySelector("#activityNetChip");
+  if (incomeEl) incomeEl.textContent = money(summary.income);
+  if (spentEl) spentEl.textContent = money(summary.expenses);
+  if (netEl) {
+    netEl.textContent = money(net);
+    netEl.classList.toggle("is-negative", net < 0);
   }
-  if (elements.activityNetChip) {
-    elements.activityNetChip.textContent = `${money(net)} net`;
-    elements.activityNetChip.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
+  if (chipEl) {
+    chipEl.textContent = `${money(net)} net`;
+    chipEl.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
   }
 
   const max = Math.max(summary.income, summary.expenses, 1);
@@ -1980,17 +1991,18 @@ function renderActivityCashflow() {
   const spentW = Math.max(8, (summary.expenses / max) * barMax);
 
   if (!summary.income && !summary.expenses) {
-    elements.activityCashflowChart.innerHTML = `<div class="empty-state">No income or spending logged for this month yet.</div>`;
+    chart.innerHTML = `<div class="empty-state">No income or spending logged for this month yet.</div>`;
     return;
   }
 
-  elements.activityCashflowChart.innerHTML = `
+  // Inline fills so bars stay visible even if theme CSS fails to paint SVG classes (Safari/PWA).
+  chart.innerHTML = `
     <svg class="chart-svg" viewBox="0 0 720 110" role="img" aria-label="Income versus spending this month">
       <text x="0" y="28" class="svg-label">Income</text>
-      <rect class="bar-income" x="110" y="12" width="${incomeW}" height="22" rx="8"></rect>
+      <rect class="bar-income" x="110" y="12" width="${incomeW}" height="22" rx="8" fill="#34c759"></rect>
       <text x="${120 + incomeW}" y="28" class="svg-value">${money(summary.income)}</text>
       <text x="0" y="78" class="svg-label">Spent</text>
-      <rect class="bar-expense" x="110" y="62" width="${spentW}" height="22" rx="8"></rect>
+      <rect class="bar-expense" x="110" y="62" width="${spentW}" height="22" rx="8" fill="#ff3b30"></rect>
       <text x="${120 + spentW}" y="78" class="svg-value">${money(summary.expenses)}</text>
     </svg>
   `;
