@@ -877,32 +877,38 @@ async function shareBudgetFlow() {
   }
 }
 
+/**
+ * Transactions you keep when leaving a shared budget: your own entries and any
+ * untagged history stay; a partner's tagged entries drop out. Author stamps are
+ * shed since the result is a personal budget again (which stays untagged).
+ */
+function keepOnLeave(transactions, uid) {
+  return transactions
+    .filter((tx) => !tx.addedBy || tx.addedBy === uid)
+    .map(({ addedBy, addedByName, ...tx }) => tx);
+}
+
 async function leaveSharedFlow() {
-  if (!sharedBudget) return;
+  if (!sharedBudget || !currentUser) return;
   const sure = window.confirm(
-    "Leave the shared budget? You'll go back to your personal budget — the shared one stays with your partner.",
+    "Leave the shared budget? You'll keep your own copy — your entries stay, your partner's transactions drop out, and your partner keeps the shared budget.",
   );
   if (!sure) return;
   try {
-    await leaveSharedBudget(sharedBudget.id);
+    const budgetId = sharedBudget.id;
+    // Snapshot the shared budget as it stands, minus the partner's entries.
+    const kept = { ...state, transactions: keepOnLeave(state.transactions, currentUser.uid) };
+    await leaveSharedBudget(budgetId);
     teardownShared();
-    let restored = null;
-    try {
-      restored = await fetchCloudBudget(currentUser.uid);
-    } catch {
-      /* offline — empty personal state below; cloud copy is still intact */
-    }
-    state = restored ? normalizeState(restored.state) : createEmptyState();
-    writeCachePayload(currentUser.uid, {
-      state,
-      updatedAt: restored?.updatedAt || Date.now(),
-      name: currentUser.displayName || "",
-    });
+    // Personal mode now: this snapshot becomes and overwrites the personal
+    // budget. saveState() caches it immediately and syncs to the personal row.
+    state = normalizeState(kept);
     populateCategorySelect();
+    saveState();
     render();
     renderSharedPanel();
     setSharedMessage("");
-    showToast("Left the shared budget — back to your personal one.");
+    showToast("Left the shared budget — your copy is saved.");
   } catch (error) {
     setSharedMessage(friendlyAuthError(error) || "Couldn't leave right now. Try again.", true);
   }
