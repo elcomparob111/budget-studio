@@ -251,7 +251,12 @@ security invoker
 set search_path = public
 as $$
 declare
-  bid uuid;
+  -- Generated here rather than read back with `returning id`: this function is
+  -- SECURITY INVOKER, so RETURNING would apply the SELECT policy
+  -- (private.is_budget_member(id)) to the new row. Owner membership is added by
+  -- an AFTER INSERT trigger, which is queued until end of statement, so the
+  -- creator is not a member yet at that point and the insert is rejected.
+  bid uuid := gen_random_uuid();
 begin
   if auth.uid() is null then
     raise exception 'not authenticated';
@@ -259,9 +264,8 @@ begin
   if initial_state is null then
     raise exception 'initial_state required';
   end if;
-  insert into public.shared_budgets (state, updated_at, name, created_by)
-  values (initial_state, (extract(epoch from now()) * 1000)::bigint, coalesce(budget_name, ''), auth.uid())
-  returning id into bid;
+  insert into public.shared_budgets (id, state, updated_at, name, created_by)
+  values (bid, initial_state, (extract(epoch from now()) * 1000)::bigint, coalesce(budget_name, ''), auth.uid());
   return bid;
 end;
 $$;
