@@ -408,7 +408,7 @@ final class SupabaseService {
             UpdateAction.self,
             schema: "public",
             table: "shared_budgets",
-            filter: "id=eq.\(budgetId.uuidString.lowercased())"
+            filter: .eq("id", value: budgetId.uuidString.lowercased())
         )
         do {
             try await channel.subscribeWithError()
