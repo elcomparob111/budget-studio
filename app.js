@@ -490,14 +490,30 @@ const elements = {
   activityNetMetric: document.querySelector("#activityNetMetric"),
   activityNetChip: document.querySelector("#activityNetChip"),
   goalsList: document.querySelector("#goalsList"),
+  goalsSavedTotal: document.querySelector("#goalsSavedTotal"),
+  goalsLeftTotal: document.querySelector("#goalsLeftTotal"),
+  goalsCountMetric: document.querySelector("#goalsCountMetric"),
+  openNewGoalBtn: document.querySelector("#openNewGoalBtn"),
+  goalDialog: document.querySelector("#goalDialog"),
+  goalDialogTitle: document.querySelector("#goalDialogTitle"),
+  closeGoalDialogBtn: document.querySelector("#closeGoalDialogBtn"),
   goalForm: document.querySelector("#goalForm"),
   goalEditIdInput: document.querySelector("#goalEditIdInput"),
   goalNameInput: document.querySelector("#goalNameInput"),
   goalTargetInput: document.querySelector("#goalTargetInput"),
   goalCurrentInput: document.querySelector("#goalCurrentInput"),
+  goalCurrentLabel: document.querySelector("#goalCurrentLabel"),
   goalSubmitBtn: document.querySelector("#goalSubmitBtn"),
   goalCancelEditBtn: document.querySelector("#goalCancelEditBtn"),
   goalFormMessage: document.querySelector("#goalFormMessage"),
+  addMoneyDialog: document.querySelector("#addMoneyDialog"),
+  addMoneyGoalName: document.querySelector("#addMoneyGoalName"),
+  addMoneyProgressHint: document.querySelector("#addMoneyProgressHint"),
+  addMoneyGoalIdInput: document.querySelector("#addMoneyGoalIdInput"),
+  addMoneyAmountInput: document.querySelector("#addMoneyAmountInput"),
+  addMoneyForm: document.querySelector("#addMoneyForm"),
+  addMoneyMessage: document.querySelector("#addMoneyMessage"),
+  closeAddMoneyBtn: document.querySelector("#closeAddMoneyBtn"),
   tabBar: document.querySelector("#tabBar"),
   addTransactionBtn: document.querySelector("#addTransactionBtn"),
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
@@ -1067,11 +1083,35 @@ function attachEvents() {
     event.preventDefault();
     saveGoalFromForm();
   });
-  elements.goalCancelEditBtn?.addEventListener("click", () => resetGoalForm());
+  elements.openNewGoalBtn?.addEventListener("click", () => openGoalDialog());
+  elements.closeGoalDialogBtn?.addEventListener("click", closeGoalDialog);
+  elements.goalCancelEditBtn?.addEventListener("click", closeGoalDialog);
+  elements.goalDialog?.addEventListener("click", (event) => {
+    if (event.target === elements.goalDialog) closeGoalDialog();
+  });
+  elements.closeAddMoneyBtn?.addEventListener("click", closeAddMoneyDialog);
+  elements.addMoneyDialog?.addEventListener("click", (event) => {
+    if (event.target === elements.addMoneyDialog) closeAddMoneyDialog();
+  });
+  elements.addMoneyForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitAddMoney();
+  });
+  elements.addMoneyForm?.addEventListener("click", (event) => {
+    const preset = event.target.closest("[data-money-preset]")?.dataset.moneyPreset;
+    if (!preset || !elements.addMoneyAmountInput) return;
+    elements.addMoneyAmountInput.value = preset;
+    elements.addMoneyAmountInput.focus();
+  });
   elements.goalsList?.addEventListener("click", (event) => {
+    const addId = event.target.closest("[data-add-money]")?.dataset.addMoney;
+    if (addId) {
+      openAddMoneyDialog(addId);
+      return;
+    }
     const editId = event.target.closest("[data-edit-goal]")?.dataset.editGoal;
     if (editId) {
-      startEditGoal(editId);
+      openGoalDialog(editId);
       return;
     }
     const deleteId = event.target.closest("[data-delete-goal]")?.dataset.deleteGoal;
@@ -1407,7 +1447,9 @@ function syncOverlayBodyClass() {
     (elements.setupWizard && !elements.setupWizard.hidden) ||
     (elements.editDialog && !elements.editDialog.hidden) ||
     (elements.payScheduleDialog && !elements.payScheduleDialog.hidden) ||
-    (elements.budgetsDialog && !elements.budgetsDialog.hidden);
+    (elements.budgetsDialog && !elements.budgetsDialog.hidden) ||
+    (elements.goalDialog && !elements.goalDialog.hidden) ||
+    (elements.addMoneyDialog && !elements.addMoneyDialog.hidden);
   document.body.classList.toggle("wizard-open", overlayOpen);
 }
 
@@ -2087,13 +2129,29 @@ function renderActivityCashflow() {
 }
 
 function renderGoals() {
-  if (!elements.goalsList) return;
   if (!Array.isArray(state.savingsGoals)) state.savingsGoals = [];
   const goals = state.savingsGoals;
+  const savedTotal = goals.reduce((sum, goal) => sum + Math.max(0, Number(goal.current) || 0), 0);
+  const targetTotal = goals.reduce((sum, goal) => sum + Math.max(0, Number(goal.target) || 0), 0);
+  const leftTotal = Math.max(0, targetTotal - savedTotal);
+
+  if (elements.goalsSavedTotal) elements.goalsSavedTotal.textContent = money(savedTotal);
+  if (elements.goalsLeftTotal) elements.goalsLeftTotal.textContent = money(leftTotal);
+  if (elements.goalsCountMetric) elements.goalsCountMetric.textContent = String(goals.length);
+  if (!elements.goalsList) return;
+
   if (!goals.length) {
-    elements.goalsList.innerHTML = `<div class="empty-state">No savings goals yet. Add one below — emergency fund, vacation, whatever you're working toward.</div>`;
+    elements.goalsList.innerHTML = `
+      <div class="goals-empty">
+        <strong>What are you saving for?</strong>
+        <p>Emergency fund, a trip, a new laptop — pick a target and watch it grow.</p>
+        <button class="primary-button" type="button" data-empty-new-goal>Create your first goal</button>
+      </div>
+    `;
+    elements.goalsList.querySelector("[data-empty-new-goal]")?.addEventListener("click", () => openGoalDialog());
     return;
   }
+
   elements.goalsList.innerHTML = goals
     .map((goal) => {
       const progress = goal.target > 0 ? Math.min(1, goal.current / goal.target) : 0;
@@ -2102,18 +2160,23 @@ function renderGoals() {
       const done = goal.current >= goal.target;
       return `
         <article class="goal-card ${done ? "is-complete" : ""}" data-goal-id="${escapeHtml(goal.id)}">
-          <div class="goal-card-top">
-            <div>
+          <div class="goal-card-main">
+            <div class="goal-card-copy">
               <strong>${escapeHtml(goal.name)}</strong>
-              <span>${money(goal.current)} of ${money(goal.target)}${done ? " · Done" : ` · ${money(left)} to go`}</span>
+              <span class="goal-card-amounts">${money(goal.current)} of ${money(goal.target)}</span>
             </div>
-            <div class="goal-card-actions">
-              <button class="edit-button" type="button" data-edit-goal="${escapeHtml(goal.id)}">Edit</button>
-              <button class="delete-button" type="button" data-delete-goal="${escapeHtml(goal.id)}">Delete</button>
-            </div>
+            <div class="goal-card-percent" aria-hidden="true">${width}%</div>
           </div>
-          <div class="progress-track" aria-label="${escapeHtml(goal.name)} progress">
-            <div class="progress-fill ${done ? "good" : progress >= 0.85 ? "watch" : "good"}" style="width:${width}%"></div>
+          <div class="progress-track goal-progress-track" aria-label="${escapeHtml(goal.name)} progress ${width} percent">
+            <div class="progress-fill ${done ? "good" : "good"}" style="width:${width}%"></div>
+          </div>
+          <div class="goal-card-footer">
+            <span class="goal-card-remaining">${done ? "Goal reached" : `${money(left)} to go`}</span>
+            <div class="goal-card-actions">
+              ${done ? "" : `<button class="primary-button goal-add-money-btn" type="button" data-add-money="${escapeHtml(goal.id)}">Add money</button>`}
+              <button class="ghost-button" type="button" data-edit-goal="${escapeHtml(goal.id)}">Edit</button>
+              <button class="ghost-button goal-delete-btn" type="button" data-delete-goal="${escapeHtml(goal.id)}">Delete</button>
+            </div>
           </div>
         </article>
       `;
@@ -2121,13 +2184,43 @@ function renderGoals() {
     .join("");
 }
 
+function openGoalDialog(editId = "") {
+  resetGoalForm();
+  if (editId) {
+    const goal = state.savingsGoals.find((item) => item.id === editId);
+    if (!goal) return;
+    elements.goalEditIdInput.value = goal.id;
+    elements.goalNameInput.value = goal.name;
+    elements.goalTargetInput.value = String(goal.target);
+    elements.goalCurrentInput.value = String(goal.current);
+    if (elements.goalDialogTitle) elements.goalDialogTitle.textContent = "Edit goal";
+    if (elements.goalSubmitBtn) elements.goalSubmitBtn.textContent = "Save changes";
+    if (elements.goalCurrentLabel) elements.goalCurrentLabel.hidden = false;
+  } else {
+    if (elements.goalDialogTitle) elements.goalDialogTitle.textContent = "New goal";
+    if (elements.goalSubmitBtn) elements.goalSubmitBtn.textContent = "Create goal";
+    if (elements.goalCurrentLabel) elements.goalCurrentLabel.hidden = true;
+    if (elements.goalCurrentInput) elements.goalCurrentInput.value = "0";
+  }
+  if (elements.goalDialog) elements.goalDialog.hidden = false;
+  document.body.classList.add("wizard-open");
+  elements.goalNameInput?.focus();
+}
+
+function closeGoalDialog() {
+  if (elements.goalDialog) elements.goalDialog.hidden = true;
+  resetGoalForm();
+  syncOverlayBodyClass();
+}
+
 function resetGoalForm() {
   if (!elements.goalForm) return;
   elements.goalEditIdInput.value = "";
   elements.goalForm.reset();
   if (elements.goalCurrentInput) elements.goalCurrentInput.value = "0";
-  if (elements.goalSubmitBtn) elements.goalSubmitBtn.textContent = "Add goal";
-  if (elements.goalCancelEditBtn) elements.goalCancelEditBtn.hidden = true;
+  if (elements.goalSubmitBtn) elements.goalSubmitBtn.textContent = "Create goal";
+  if (elements.goalDialogTitle) elements.goalDialogTitle.textContent = "New goal";
+  if (elements.goalCurrentLabel) elements.goalCurrentLabel.hidden = true;
   setGoalFormMessage("");
 }
 
@@ -2137,17 +2230,54 @@ function setGoalFormMessage(message, isError = false) {
   elements.goalFormMessage.style.color = isError ? "var(--red)" : "var(--muted)";
 }
 
-function startEditGoal(id) {
+function openAddMoneyDialog(id) {
   const goal = state.savingsGoals.find((item) => item.id === id);
-  if (!goal) return;
-  elements.goalEditIdInput.value = goal.id;
-  elements.goalNameInput.value = goal.name;
-  elements.goalTargetInput.value = String(goal.target);
-  elements.goalCurrentInput.value = String(goal.current);
-  elements.goalSubmitBtn.textContent = "Save goal";
-  elements.goalCancelEditBtn.hidden = false;
-  elements.goalNameInput.focus();
-  setGoalFormMessage("Editing — update the numbers and save.");
+  if (!goal || !elements.addMoneyDialog) return;
+  elements.addMoneyGoalIdInput.value = goal.id;
+  if (elements.addMoneyGoalName) elements.addMoneyGoalName.textContent = goal.name;
+  if (elements.addMoneyProgressHint) {
+    const left = Math.max(0, goal.target - goal.current);
+    elements.addMoneyProgressHint.textContent = left
+      ? `${money(goal.current)} saved · ${money(left)} left to hit ${money(goal.target)}`
+      : `${money(goal.current)} saved · this goal is already complete`;
+  }
+  if (elements.addMoneyAmountInput) elements.addMoneyAmountInput.value = "";
+  if (elements.addMoneyMessage) elements.addMoneyMessage.textContent = "";
+  elements.addMoneyDialog.hidden = false;
+  document.body.classList.add("wizard-open");
+  elements.addMoneyAmountInput?.focus();
+}
+
+function closeAddMoneyDialog() {
+  if (elements.addMoneyDialog) elements.addMoneyDialog.hidden = true;
+  if (elements.addMoneyGoalIdInput) elements.addMoneyGoalIdInput.value = "";
+  if (elements.addMoneyAmountInput) elements.addMoneyAmountInput.value = "";
+  if (elements.addMoneyMessage) elements.addMoneyMessage.textContent = "";
+  syncOverlayBodyClass();
+}
+
+function submitAddMoney() {
+  const id = elements.addMoneyGoalIdInput?.value;
+  const goal = state.savingsGoals.find((item) => item.id === id);
+  if (!goal) {
+    closeAddMoneyDialog();
+    return;
+  }
+  const amount = Number(elements.addMoneyAmountInput?.value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    if (elements.addMoneyMessage) {
+      elements.addMoneyMessage.textContent = "Enter an amount greater than zero.";
+      elements.addMoneyMessage.style.color = "var(--red)";
+    }
+    return;
+  }
+  const added = Math.min(amount, 1_000_000_000);
+  goal.current = Math.min(1_000_000_000, goal.current + added);
+  saveState();
+  closeAddMoneyDialog();
+  renderGoals();
+  const done = goal.current >= goal.target;
+  showToast(done ? `${goal.name} is fully funded!` : `Added ${money(added)} to ${goal.name}.`);
 }
 
 function saveGoalFromForm() {
@@ -2172,14 +2302,14 @@ function saveGoalFromForm() {
     const goal = state.savingsGoals.find((item) => item.id === editId);
     if (!goal) {
       setGoalFormMessage("That goal was already removed.", true);
-      resetGoalForm();
+      closeGoalDialog();
       return;
     }
     goal.name = nameCheck.value;
     goal.target = cappedTarget;
     goal.current = current;
     saveState();
-    resetGoalForm();
+    closeGoalDialog();
     renderGoals();
     showToast("Goal updated.");
     return;
@@ -2193,12 +2323,12 @@ function saveGoalFromForm() {
     id: crypto.randomUUID ? crypto.randomUUID() : `goal-${Date.now()}`,
     name: nameCheck.value,
     target: cappedTarget,
-    current,
+    current: 0,
   });
   saveState();
-  resetGoalForm();
+  closeGoalDialog();
   renderGoals();
-  showToast("Goal added.");
+  showToast("Goal created — tap Add money whenever you save.");
 }
 
 function deleteGoal(id) {
@@ -2206,7 +2336,7 @@ function deleteGoal(id) {
   const index = state.savingsGoals.findIndex((item) => item.id === id);
   if (index === -1) return;
   const [removed] = state.savingsGoals.splice(index, 1);
-  if (elements.goalEditIdInput?.value === id) resetGoalForm();
+  if (elements.goalEditIdInput?.value === id) closeGoalDialog();
   saveState();
   renderGoals();
   showToast("Goal deleted.", "success", {
@@ -3225,7 +3355,7 @@ function renderIdentityUI() {
   const titles = {
     overview: "",
     activity: "Activity",
-    goals: "Goals",
+    goals: "Savings",
     settings: "Settings",
   };
   const onOverview = !titles[activeTab];
@@ -3742,6 +3872,16 @@ function installGlobalKeyboard() {
     if (elements.budgetsDialog && !elements.budgetsDialog.hidden) {
       event.preventDefault();
       closeBudgetsDialog();
+      return;
+    }
+    if (elements.addMoneyDialog && !elements.addMoneyDialog.hidden) {
+      event.preventDefault();
+      closeAddMoneyDialog();
+      return;
+    }
+    if (elements.goalDialog && !elements.goalDialog.hidden) {
+      event.preventDefault();
+      closeGoalDialog();
       return;
     }
     if (!elements.editDialog.hidden) {

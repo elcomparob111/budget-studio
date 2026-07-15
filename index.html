@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=58" />
+    <link rel="stylesheet" href="./styles.css?v=59" />
   </head>
   <body>
     <main class="app-shell">
@@ -248,36 +248,30 @@
       </section>
 
       <section id="goalsTab" class="tab-panel" data-tab-panel="goals" hidden>
-        <section class="panel goals-panel">
+        <section class="panel goals-hero-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Save for</p>
-              <h2>Savings goals</h2>
+              <p class="eyebrow">Savings</p>
+              <h2>Your goals</h2>
             </div>
+            <button id="openNewGoalBtn" class="primary-button" type="button">New goal</button>
           </div>
-          <p class="goals-blurb">Track what you're saving toward. Update “saved so far” whenever you set money aside.</p>
-          <div id="goalsList" class="goals-list"></div>
-          <form id="goalForm" class="goal-form">
-            <input id="goalEditIdInput" type="hidden" value="" />
-            <label>
-              <span>Goal name</span>
-              <input id="goalNameInput" type="text" placeholder="Emergency fund, vacation, new laptop..." autocomplete="off" required maxlength="40" />
-            </label>
-            <label>
-              <span>Target</span>
-              <input id="goalTargetInput" type="number" min="1" step="1" placeholder="1000" required />
-            </label>
-            <label>
-              <span>Saved so far</span>
-              <input id="goalCurrentInput" type="number" min="0" step="1" placeholder="0" value="0" />
-            </label>
-            <div class="goal-form-actions">
-              <button id="goalSubmitBtn" class="primary-button" type="submit">Add goal</button>
-              <button id="goalCancelEditBtn" class="ghost-button" type="button" hidden>Cancel</button>
-            </div>
-            <p id="goalFormMessage" class="form-message" role="status"></p>
-          </form>
+          <div class="goals-summary" aria-label="Savings summary">
+            <article>
+              <span>Saved</span>
+              <strong id="goalsSavedTotal">$0</strong>
+            </article>
+            <article>
+              <span>Left to go</span>
+              <strong id="goalsLeftTotal">$0</strong>
+            </article>
+            <article>
+              <span>Goals</span>
+              <strong id="goalsCountMetric">0</strong>
+            </article>
+          </div>
         </section>
+        <div id="goalsList" class="goals-list"></div>
       </section>
 
       <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
@@ -432,7 +426,7 @@
         <span class="tab-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
         </span>
-        <span>Goals</span>
+        <span>Savings</span>
       </button>
       <button class="tab-button" type="button" data-tab="settings">
         <span class="tab-icon" aria-hidden="true">
@@ -659,6 +653,66 @@
       </div>
     </section>
 
+    <section id="goalDialog" class="edit-overlay" aria-label="Goal details" aria-modal="true" role="dialog" hidden>
+      <div class="edit-card goal-dialog-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Savings</p>
+            <h2 id="goalDialogTitle">New goal</h2>
+          </div>
+          <button id="closeGoalDialogBtn" class="ghost-button" type="button">Close</button>
+        </div>
+        <form id="goalForm" class="goal-form">
+          <input id="goalEditIdInput" type="hidden" value="" />
+          <label>
+            <span>What are you saving for?</span>
+            <input id="goalNameInput" type="text" placeholder="Emergency fund, vacation, new laptop..." autocomplete="off" required maxlength="40" />
+          </label>
+          <label>
+            <span>Target amount</span>
+            <input id="goalTargetInput" type="number" inputmode="decimal" min="1" step="1" placeholder="1000" required />
+          </label>
+          <label id="goalCurrentLabel">
+            <span>Already saved</span>
+            <input id="goalCurrentInput" type="number" inputmode="decimal" min="0" step="1" placeholder="0" value="0" />
+          </label>
+          <div class="goal-form-actions">
+            <button id="goalSubmitBtn" class="primary-button" type="submit">Save goal</button>
+            <button id="goalCancelEditBtn" class="ghost-button" type="button">Cancel</button>
+          </div>
+          <p id="goalFormMessage" class="form-message" role="status"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="addMoneyDialog" class="edit-overlay" aria-label="Add money to goal" aria-modal="true" role="dialog" hidden>
+      <div class="edit-card goal-dialog-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Add money</p>
+            <h2 id="addMoneyGoalName">Goal</h2>
+          </div>
+          <button id="closeAddMoneyBtn" class="ghost-button" type="button">Close</button>
+        </div>
+        <form id="addMoneyForm" class="goal-form">
+          <input id="addMoneyGoalIdInput" type="hidden" value="" />
+          <p id="addMoneyProgressHint" class="goals-blurb"></p>
+          <label class="big-input">
+            <span>How much are you adding?</span>
+            <input id="addMoneyAmountInput" type="number" inputmode="decimal" min="1" step="1" placeholder="50" required />
+          </label>
+          <div class="add-money-presets" role="group" aria-label="Quick amounts">
+            <button type="button" data-money-preset="25">+$25</button>
+            <button type="button" data-money-preset="50">+$50</button>
+            <button type="button" data-money-preset="100">+$100</button>
+            <button type="button" data-money-preset="200">+$200</button>
+          </div>
+          <button class="primary-button wide" type="submit">Add to goal</button>
+          <p id="addMoneyMessage" class="form-message" role="status"></p>
+        </form>
+      </div>
+    </section>
+
     <section id="budgetsDialog" class="edit-overlay budgets-overlay" aria-label="Edit categories and budgets" aria-modal="true" role="dialog" hidden>
       <div class="edit-card budgets-card">
         <header class="budgets-sheet-header">
@@ -747,10 +801,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=58"></script>
+    <script type="module" src="./app.js?v=59"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=58").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=59").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

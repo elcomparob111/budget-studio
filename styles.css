@@ -1773,54 +1773,159 @@ td.amount { font-weight: 700; color: var(--ink); }
   line-height: 1.45;
 }
 
+.goals-hero-panel .panel-heading {
+  align-items: center;
+}
+
+.goals-hero-panel .primary-button {
+  flex-shrink: 0;
+}
+
+.goals-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.goals-summary article {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--input);
+}
+
+.goals-summary span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.goals-summary strong {
+  font-size: 20px;
+  font-weight: 800;
+}
+
 .goals-list {
   display: grid;
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.goals-empty {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 28px 22px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.goals-empty strong {
+  font-size: 22px;
+}
+
+.goals-empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+  max-width: 36ch;
 }
 
 .goal-card {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 16px;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius);
   border: 1px solid var(--line);
-  background: var(--input);
+  background: var(--panel);
+  box-shadow: var(--shadow);
 }
 
 .goal-card.is-complete {
-  border-color: rgba(52, 199, 89, 0.35);
+  border-color: rgba(52, 199, 89, 0.4);
+  background: color-mix(in srgb, var(--soft-green) 35%, var(--panel));
 }
 
-.goal-card-top {
+.goal-card-main {
   display: flex;
   align-items: start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.goal-card-top strong {
-  display: block;
-  font-size: 16px;
+.goal-card-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
-.goal-card-top span {
+.goal-card-copy strong {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.goal-card-amounts {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.goal-card-percent {
+  flex-shrink: 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.goal-progress-track {
+  height: 10px;
+}
+
+.goal-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.goal-card-remaining {
   color: var(--muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .goal-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.goal-add-money-btn {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.goal-delete-btn {
+  color: var(--red);
+}
+
+.goal-dialog-card {
+  width: min(420px, 100%);
 }
 
 .goal-form {
   display: grid;
   gap: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line-soft);
+  margin-top: 8px;
 }
 
 .goal-form label {
@@ -1835,12 +1940,17 @@ td.amount { font-weight: 700; color: var(--ink); }
 }
 
 .goal-form input {
-  height: 44px;
+  height: 48px;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 0 12px;
-  background: var(--panel);
+  background: var(--input);
   color: var(--ink);
+  font-weight: 700;
+}
+
+.goal-form .big-input {
+  max-width: none;
 }
 
 .goal-form-actions {
@@ -1849,18 +1959,58 @@ td.amount { font-weight: 700; color: var(--ink); }
   gap: 10px;
 }
 
+.goal-form-actions .primary-button {
+  flex: 1;
+  min-width: 140px;
+}
+
+.add-money-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.add-money-presets button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--input);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.add-money-presets button:hover {
+  border-color: var(--ink);
+}
+
 @media (max-width: 760px) {
   .activity-cashflow-metrics {
     grid-template-columns: 1fr;
   }
-  .goal-card-top {
-    flex-direction: column;
+  .goals-summary {
+    grid-template-columns: 1fr;
   }
-  .goal-card-actions {
+  .goals-hero-panel .panel-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .goals-hero-panel .primary-button {
     width: 100%;
   }
-  .goal-card-actions button {
+  .goal-card-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .goal-card-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .goal-card-actions .primary-button,
+  .goal-card-actions .ghost-button {
     flex: 1;
+  }
+  .add-money-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
