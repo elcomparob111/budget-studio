@@ -521,7 +521,7 @@ struct SettingsView: View {
                     }
                 ))
                 .labelsHidden()
-                .tint(AppTheme.primaryText)
+                .tint(AppTheme.toggleTint)
                 .accessibilityLabel("Bill reminders")
             }
 

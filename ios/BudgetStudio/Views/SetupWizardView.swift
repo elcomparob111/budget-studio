@@ -187,7 +187,7 @@ struct SetupWizardView: View {
                                 GroupPill(group: category.group)
                             }
                         }
-                        .tint(AppTheme.primaryText)
+                        .tint(AppTheme.toggleTint)
                         .padding(AppTheme.md)
                         .background(AppTheme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
