@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=59" />
+    <link rel="stylesheet" href="./styles.css?v=60" />
   </head>
   <body>
     <main class="app-shell">
@@ -170,47 +170,6 @@
             <span id="savingsMetric" class="money-chip">0% saved</span>
           </div>
           <div id="trendChart" class="chart-area trend"></div>
-        </section>
-
-        <section class="panel add-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Quick add</p>
-              <h2>New transaction</h2>
-            </div>
-            <button id="clearFormBtn" class="icon-button" type="button" title="Clear form">Clear</button>
-          </div>
-          <form id="transactionForm" class="transaction-form">
-            <label>
-              <span>Date</span>
-              <input id="dateInput" type="date" required />
-            </label>
-            <label>
-              <span>Type</span>
-              <select id="typeInput">
-                <option>Expense</option>
-                <option>Income</option>
-              </select>
-            </label>
-            <label>
-              <span>Category</span>
-              <select id="categoryInput"></select>
-            </label>
-            <label>
-              <span>Account</span>
-              <select id="accountInput"></select>
-            </label>
-            <label class="wide">
-              <span>Description</span>
-              <input id="descriptionInput" type="text" placeholder="Groceries, rent, paycheck..." />
-            </label>
-            <label>
-              <span>Amount</span>
-              <input id="amountInput" type="number" min="0.01" step="0.01" placeholder="0.00" required />
-            </label>
-            <button class="primary-button wide" type="submit">Add transaction</button>
-            <p id="formMessage" class="form-message" role="status"></p>
-          </form>
         </section>
 
         <section class="panel table-panel">
@@ -801,10 +760,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=59"></script>
+    <script type="module" src="./app.js?v=60"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=59").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=60").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

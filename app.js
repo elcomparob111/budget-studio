@@ -597,13 +597,12 @@ function init() {
   initTheme();
   capturePendingJoinToken();
   setSelectedMonth(localStorage.getItem(SELECTED_MONTH_KEY) || currentMonthKey());
-  elements.dateInput.value = defaultDateForMonth(elements.monthInput.value);
-  elements.accountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
-  elements.editAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
+  if (elements.editAccountInput) {
+    elements.editAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
+  }
   if (elements.recAccountInput) {
     elements.recAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
   }
-  populateCategorySelect();
   populateRecurringCategorySelect();
   attachEvents();
   installGlobalKeyboard();
@@ -951,7 +950,6 @@ async function leaveSharedFlow() {
 function attachEvents() {
   elements.monthInput.addEventListener("change", () => {
     setSelectedMonth(elements.monthInput.value);
-    elements.dateInput.value = defaultDateForMonth(elements.monthInput.value);
     render();
   });
 
@@ -967,53 +965,8 @@ function attachEvents() {
     }
   });
 
-  elements.typeInput.addEventListener("change", populateCategorySelect);
   elements.searchInput.addEventListener("input", renderTransactions);
   elements.typeFilter.addEventListener("change", renderTransactions);
-
-  elements.clearFormBtn.addEventListener("click", () => {
-    elements.transactionForm.reset();
-    elements.typeInput.value = "Expense";
-    elements.dateInput.value = defaultDateForMonth(elements.monthInput.value);
-    populateCategorySelect();
-    setMessage("");
-  });
-
-  elements.transactionForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const dateCheck = validateDate(elements.dateInput.value);
-    const amountCheck = validateAmount(elements.amountInput.value);
-    const typeCheck = validateTransactionType(elements.typeInput.value);
-    const categoryCheck = validateCategoryName(elements.categoryInput.value);
-    const descriptionCheck = validateDescription(
-      elements.descriptionInput.value.trim() || elements.categoryInput.value,
-    );
-    if (!dateCheck.ok || !amountCheck.ok || !typeCheck.ok || !categoryCheck.ok || !descriptionCheck.ok) {
-      setMessage(
-        dateCheck.message || amountCheck.message || typeCheck.message || categoryCheck.message || descriptionCheck.message,
-        true,
-      );
-      return;
-    }
-
-    const item = stampAuthor(
-      transaction(
-        dateCheck.value,
-        typeCheck.value,
-        categoryCheck.value,
-        descriptionCheck.value,
-        elements.accountInput.value,
-        amountCheck.value,
-      ),
-    );
-
-    state.transactions.push(item);
-    saveState();
-    elements.descriptionInput.value = "";
-    elements.amountInput.value = "";
-    setMessage("Transaction added.");
-    render();
-  });
 
   elements.transactionsBody.addEventListener("click", (event) => {
     const emptyAction = event.target.closest("[data-empty-action]");
@@ -2449,13 +2402,15 @@ function setCategoryBuilderMessage(message, isError = false) {
 }
 
 function populateCategorySelect() {
-  const type = elements.typeInput.value;
-  const categories = state.categories.filter((category) => category.type === type);
-  elements.categoryInput.innerHTML = categories.map((category) => `<option>${escapeHtml(category.name)}</option>`).join("");
-  const preferred = type === "Income" ? "Salary" : "Groceries";
-  if (categories.some((category) => category.name === preferred)) {
-    elements.categoryInput.value = preferred;
+  // Inline Activity form removed — category picks live in the quick-add sheet / edit dialog.
+}
+
+function setMessage(message, isError = false) {
+  if (elements.formMessage) {
+    elements.formMessage.textContent = message;
+    elements.formMessage.style.color = isError ? "var(--red)" : "var(--muted)";
   }
+  if (message) showToast(message, isError ? "error" : "success");
 }
 
 function loadQuickAddPrefs() {
@@ -3733,12 +3688,6 @@ function download(filename, type, content) {
   URL.revokeObjectURL(url);
 }
 
-function setMessage(message, isError = false) {
-  elements.formMessage.textContent = message;
-  elements.formMessage.style.color = isError ? "var(--red)" : "var(--muted)";
-  if (message) showToast(message, isError ? "error" : "success");
-}
-
 function showToast(message, type = "success", options = {}) {
   if (!elements.toastStack || !message) return;
   const toast = document.createElement("div");
@@ -4054,7 +4003,6 @@ function shiftMonth(delta) {
   const next = new Date(year, month - 1 + delta, 1);
   const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
   setSelectedMonth(nextKey);
-  elements.dateInput.value = defaultDateForMonth(nextKey);
   render();
 }
 
