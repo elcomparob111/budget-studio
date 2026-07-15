@@ -29,6 +29,7 @@ import {
   getAuthLockout,
   safeLog,
   sanitizeBudgetState,
+  validateAccountName,
   validateAmount,
   validateCategoryName,
   validateDate,
@@ -482,6 +483,7 @@ const elements = {
   tabBar: document.querySelector("#tabBar"),
   addTransactionBtn: document.querySelector("#addTransactionBtn"),
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
+  importCsvInput: document.querySelector("#importCsvInput"),
   exportJsonBtn: document.querySelector("#exportJsonBtn"),
   importJsonInput: document.querySelector("#importJsonInput"),
   deleteAccountBtn: document.querySelector("#deleteAccountBtn"),
@@ -1206,6 +1208,7 @@ function attachEvents() {
   });
 
   elements.exportCsvBtn.addEventListener("click", exportCsv);
+  elements.importCsvInput?.addEventListener("change", importCsv);
   elements.exportJsonBtn.addEventListener("click", exportJson);
   elements.importJsonInput.addEventListener("change", importJson);
   elements.deleteAccountBtn?.addEventListener("click", handleDeleteAccount);
@@ -2977,6 +2980,155 @@ function exportCsv() {
 function exportJson() {
   download("budget-studio-backup.json", "application/json", JSON.stringify(state, null, 2));
   showToast("Backup downloaded.");
+}
+
+/**
+ * Split CSV text into rows of fields. Handles quoted cells containing commas,
+ * escaped quotes ("") and newlines, plus CRLF line endings.
+ */
+function parseCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (char !== "\r") {
+      field += char;
+    }
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
+}
+
+/**
+ * Turn CSV text into validated transactions. Matches the Export CSV columns
+ * (Date, Type, Category, Description, Account, Amount); maps by header name
+ * when a header row is present, else assumes that column order. Invalid rows
+ * are skipped, not fatal.
+ */
+function parseTransactionsCsv(text) {
+  const rows = parseCsvRows(text);
+  if (!rows.length) return { added: [], skipped: 0 };
+
+  const fields = ["date", "type", "category", "description", "account", "amount"];
+  let colMap = { date: 0, type: 1, category: 2, description: 3, account: 4, amount: 5 };
+  let startIndex = 0;
+
+  const firstLower = rows[0].map((cell) => cell.trim().toLowerCase());
+  if (fields.some((name) => firstLower.includes(name))) {
+    startIndex = 1;
+    const mapped = {};
+    fields.forEach((name) => {
+      const idx = firstLower.indexOf(name);
+      if (idx !== -1) mapped[name] = idx;
+    });
+    // Only trust header mapping if the essential columns are present.
+    if (mapped.date !== undefined && mapped.type !== undefined && mapped.amount !== undefined) {
+      colMap = { ...colMap, ...mapped };
+    }
+  }
+
+  const added = [];
+  let skipped = 0;
+  for (let i = startIndex; i < rows.length; i += 1) {
+    const cells = rows[i];
+    const cell = (name) => (colMap[name] !== undefined ? String(cells[colMap[name]] ?? "").trim() : "");
+
+    const dateCheck = validateDate(cell("date"));
+    const typeCheck = validateTransactionType(cell("type"));
+    // Tolerate "$1,234.56" style amounts from other apps.
+    const amountCheck = validateAmount(cell("amount").replace(/[$,\s]/g, ""));
+    const fallbackCategory = typeCheck.ok && typeCheck.value === "Income" ? "Salary" : "Groceries";
+    const categoryCheck = validateCategoryName(cell("category") || fallbackCategory);
+    const descriptionCheck = validateDescription(
+      cell("description") || (categoryCheck.ok ? categoryCheck.value : "Imported"),
+    );
+    const accountCheck = validateAccountName(cell("account") || "Checking");
+
+    if (
+      !dateCheck.ok ||
+      !typeCheck.ok ||
+      !amountCheck.ok ||
+      !categoryCheck.ok ||
+      !descriptionCheck.ok ||
+      !accountCheck.ok
+    ) {
+      skipped += 1;
+      continue;
+    }
+    added.push(
+      transaction(
+        dateCheck.value,
+        typeCheck.value,
+        categoryCheck.value,
+        descriptionCheck.value,
+        accountCheck.value,
+        amountCheck.value,
+      ),
+    );
+  }
+  return { added, skipped };
+}
+
+function importCsv(event) {
+  const [file] = event.target.files;
+  if (!file) return;
+  try {
+    assertImportFileSize(file.size);
+  } catch (error) {
+    setMessage(error.message || "Could not import that file.", true);
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const { added, skipped } = parseTransactionsCsv(String(reader.result));
+      if (!added.length) {
+        throw new Error(
+          skipped
+            ? "No valid rows — expected columns: Date (YYYY-MM-DD), Type, Category, Description, Account, Amount."
+            : "That file has no transaction rows.",
+        );
+      }
+      // Non-destructive: CSV import adds to the current budget (use Restore to replace).
+      state.transactions.push(...added);
+      saveState();
+      render();
+      const skippedNote = skipped ? ` (${skipped} skipped)` : "";
+      setMessage(`Imported ${added.length} transaction${added.length === 1 ? "" : "s"}${skippedNote}.`);
+    } catch (error) {
+      setMessage(error.message || "Could not import that file.", true);
+    } finally {
+      event.target.value = "";
+    }
+  });
+  reader.readAsText(file);
 }
 
 function importJson(event) {
