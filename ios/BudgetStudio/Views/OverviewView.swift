@@ -34,26 +34,9 @@ struct OverviewView: View {
                             valueColor: AppTheme.expense,
                             emoji: "🧾"
                         )
-                        HStack(spacing: AppTheme.md) {
-                            BudgetRingView(progress: store.monthSummary.usedRatio, label: "\(Int(store.monthSummary.usedRatio * 100))%")
-                            VStack(alignment: .leading, spacing: AppTheme.xs) {
-                                Text("Budget used")
-                                    .font(.app(14, weight: .semibold))
-                                    .foregroundStyle(AppTheme.primaryText)
-                                Text(store.monthSummary.usedRatio > 1 ? "Over plan" : "On track")
-                                    .font(.app(12, weight: .medium))
-                                    .foregroundStyle(AppTheme.secondaryText)
-                                Text("Cash left")
-                                    .font(.app(12, weight: .semibold))
-                                    .foregroundStyle(AppTheme.primaryText)
-                                Text(currency(store.monthSummary.cashLeft))
-                                    .font(.app(12, weight: .medium))
-                                    .foregroundStyle(AppTheme.secondaryText)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        .appCard()
                     }
+
+                    budgetUsedCard
 
                     if !upcomingBills.isEmpty {
                         upcomingSection
@@ -233,6 +216,36 @@ struct OverviewView: View {
         if let next = Calendar.current.date(byAdding: .month, value: value, to: store.selectedMonth) {
             store.selectedMonth = next
         }
+    }
+
+    /// Full width, not a grid cell: as the third item in a 2-up metric grid it
+    /// filled only the left column, leaving half a row empty and squeezing the
+    /// labels into two-line wraps.
+    private var budgetUsedCard: some View {
+        HStack(spacing: AppTheme.lg) {
+            BudgetRingView(progress: store.monthSummary.usedRatio, label: "\(Int(store.monthSummary.usedRatio * 100))%")
+            VStack(alignment: .leading, spacing: AppTheme.xs) {
+                Text("Budget used")
+                    .font(.app(15, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                Text(store.monthSummary.usedRatio > 1 ? "Over plan" : "On track")
+                    .font(.app(13, weight: .medium))
+                    .foregroundStyle(store.monthSummary.usedRatio > 1 ? AppTheme.expense : AppTheme.secondaryText)
+            }
+            Spacer(minLength: AppTheme.md)
+            VStack(alignment: .trailing, spacing: AppTheme.xs) {
+                Text("Cash left")
+                    .font(.app(13, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+                Text(currency(store.monthSummary.cashLeft))
+                    .font(.app(18, weight: .bold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .appCard()
     }
 
     private func payPeriodCard(_ pay: PayPeriodSummary) -> some View {
