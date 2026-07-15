@@ -8,6 +8,11 @@ packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift
     from: 2.5.0
+settings:
+  base:
+    DEVELOPMENT_TEAM: C4PCSYG9KX
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.10"
 targets:
   BudgetStudio:
     type: application
@@ -16,19 +21,22 @@ targets:
       - path: BudgetStudio
         excludes:
           - "**/.DS_Store"
+      - path: Shared
     resources:
       - path: BudgetStudio/Assets.xcassets
     dependencies:
       - package: Supabase
         product: Supabase
+      - target: BudgetStudioWidget
+    entitlements:
+      path: BudgetStudio/BudgetStudio.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.budgetstudio.app]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.budgetstudio.app
-        DEVELOPMENT_TEAM: C4PCSYG9KX
-        CODE_SIGN_STYLE: Automatic
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: 1
-        SWIFT_VERSION: "5.10"
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_CFBundleDisplayName: Budget Studio
@@ -52,3 +60,31 @@ targets:
           - CFBundleURLName: com.budgetstudio.app
             CFBundleURLSchemes:
               - budgetstudio
+
+  BudgetStudioWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BudgetStudioWidget
+      - path: Shared
+    entitlements:
+      path: BudgetStudioWidget/BudgetStudioWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.budgetstudio.app]
+    dependencies:
+      - sdk: SwiftUI.framework
+      - sdk: WidgetKit.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.budgetstudio.app.widget
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: 1
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+    info:
+      path: BudgetStudioWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Budget Studio
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension

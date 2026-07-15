@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 @MainActor
 final class BudgetStore: ObservableObject {
@@ -33,6 +34,8 @@ final class BudgetStore: ObservableObject {
     @Published var isSharedBusy = false
     /// True when a join token is stashed (survives sign-in).
     @Published var hasPendingJoinInvite = false
+    /// Set by `budgetstudio://add` — MainTabView opens the add sheet.
+    @Published var pendingQuickAdd = false
 
     private let supabase = SupabaseService.shared
     private var cloudSaveTask: Task<Void, Never>?
@@ -129,7 +132,32 @@ final class BudgetStore: ObservableObject {
     }
 
     func handleIncomingURL(_ url: URL) {
+        let host = (url.host ?? "").lowercased()
+        let path = url.path.lowercased()
+        if host == "add" || path == "/add" || path.hasSuffix("/add") {
+            pendingQuickAdd = true
+            return
+        }
         captureJoinToken(from: url.absoluteString)
+    }
+
+    /// Push safe-to-spend into the App Group so the home-screen widget stays current.
+    func publishWidgetSnapshot() {
+        let month = BudgetDefaults.currentMonthKey()
+        let summary = BudgetCalculator.monthSummary(state: state, month: month)
+        let label: String = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMM"
+            return formatter.string(from: Date())
+        }()
+        let snapshot = WidgetSnapshot(
+            safeToSpend: summary.left,
+            monthLabel: label,
+            updatedAt: Date().timeIntervalSince1970,
+            signedIn: isAuthenticated
+        )
+        snapshot.save()
+        WidgetCenter.shared.reloadTimelines(ofKind: "BudgetStudioWidget")
     }
 
     func signUp(name: String, email: String, password: String) async {
@@ -307,6 +335,7 @@ final class BudgetStore: ObservableObject {
         cloudDirty = false
         inviteLink = nil
         sharedStatusMessage = nil
+        publishWidgetSnapshot()
         // Keep Face ID credentials so the next launch can unlock quickly.
     }
 
@@ -572,6 +601,7 @@ final class BudgetStore: ObservableObject {
         let stripped = cleaned.transactions.count != before
         state = cleaned
         localUpdatedAt = stripped ? Int64(Date().timeIntervalSince1970 * 1000) : updatedAt
+        publishWidgetSnapshot()
         if persistCleanup {
             saveLocalKeepingTimestamp()
             if stripped {
@@ -817,8 +847,12 @@ final class BudgetStore: ObservableObject {
     private func saveLocal() {
         localUpdatedAt = Int64(Date().timeIntervalSince1970 * 1000)
         guard let userId = supabase.currentUser?.id,
-              let data = try? JSONEncoder().encode(CloudBudgetPayload(state: state, updatedAt: localUpdatedAt, name: userName)) else { return }
+              let data = try? JSONEncoder().encode(CloudBudgetPayload(state: state, updatedAt: localUpdatedAt, name: userName)) else {
+            publishWidgetSnapshot()
+            return
+        }
         UserDefaults.standard.set(data, forKey: cacheKey(for: userId))
+        publishWidgetSnapshot()
     }
 
     private func loadLocal(userId: UUID) -> CloudBudgetPayload? {

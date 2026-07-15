@@ -47,9 +47,14 @@ A static SPA on GitHub Pages + single Supabase project is a **strong family foun
 ## Product (optional, non-blocking for security)
 
 - [x] Household / shared budgets with explicit membership model (shipped web + iOS; see [`SHARED_BUDGETS.md`](SHARED_BUDGETS.md))
+- [x] iOS local bill reminders (Settings toggle; not remote APNs yet)
+- [x] iOS Home Screen quick-entry widget (safe-to-spend → add expense)
 - Bank sync (major compliance jump — PCI/GLBA/vendor diligence)
-- Push notifications for bill reminders
+- Remote push / APNs for bill reminders (optional upgrade over local)
 - WebAuthn / passkeys when Supabase support fits UX
+- Apple Watch / Siri quick-entry (widget done; see [`HANDOFF.md`](HANDOFF.md))
+
+Session pin / next picks: [`HANDOFF.md`](HANDOFF.md).
 
 ---
 

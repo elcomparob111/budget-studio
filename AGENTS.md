@@ -18,9 +18,10 @@ Live site: https://elcomparob111.github.io/budget-studio/
 
 ## Read first (in order)
 
-1. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design, trust boundaries, sync
-2. [`docs/PRODUCTION_AUDIT.md`](docs/PRODUCTION_AUDIT.md) — production readiness
-3. [`README.md`](README.md) — run locally, features, doc index
+1. [`docs/HANDOFF.md`](docs/HANDOFF.md) — **if continuing mid-project** (where we left off, next picks)
+2. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design, trust boundaries, sync
+3. [`docs/PRODUCTION_AUDIT.md`](docs/PRODUCTION_AUDIT.md) — production readiness
+4. [`README.md`](README.md) — run locally, features, doc index
 
 Then as needed:
 

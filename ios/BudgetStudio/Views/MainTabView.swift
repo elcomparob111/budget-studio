@@ -59,15 +59,28 @@ struct MainTabView: View {
         }
         .onAppear {
             presentSetupIfNeeded()
+            consumePendingQuickAdd()
         }
         .onChange(of: store.state.setupComplete) { _, complete in
             if complete { showSetup = false }
+        }
+        .onChange(of: store.pendingQuickAdd) { _, pending in
+            if pending { consumePendingQuickAdd() }
+        }
+        .onChange(of: store.isUnlocked) { _, unlocked in
+            if unlocked { consumePendingQuickAdd() }
         }
     }
 
     private func openAdd(preferScan: Bool) {
         preferScanOnAdd = preferScan
         showAddTransaction = true
+    }
+
+    private func consumePendingQuickAdd() {
+        guard store.pendingQuickAdd, store.isAuthenticated, store.isUnlocked else { return }
+        store.pendingQuickAdd = false
+        openAdd(preferScan: false)
     }
 
     private func presentSetupIfNeeded() {
