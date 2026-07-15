@@ -398,6 +398,9 @@ const elements = {
   ringSubtext: document.querySelector("#ringSubtext"),
   payPeriodBadge: document.querySelector("#payPeriodBadge"),
   payPeriodRange: document.querySelector("#payPeriodRange"),
+  payPeriodPreview: document.querySelector("#payPeriodPreview"),
+  payPeriodPreviewNote: document.querySelector("#payPeriodPreviewNote"),
+  paySchedulePeriodPreview: document.querySelector("#paySchedulePeriodPreview"),
   paycheckIncomeMetric: document.querySelector("#paycheckIncomeMetric"),
   paycheckSpentMetric: document.querySelector("#paycheckSpentMetric"),
   paycheckLeftMetric: document.querySelector("#paycheckLeftMetric"),
@@ -608,7 +611,11 @@ function init() {
   installGlobalKeyboard();
   render();
   initSync(handleUserChanged).catch(() => handleUserChanged(null, { unavailable: true }));
-  window.addEventListener("online", flushDirtyCloudSave);
+  window.addEventListener("online", () => {
+    flushDirtyCloudSave();
+    refreshFromCloudIfNeeded();
+  });
+  window.addEventListener("focus", () => refreshFromCloudIfNeeded());
 }
 
 async function handleUserChanged(user, info) {
@@ -667,51 +674,7 @@ async function handleUserChanged(user, info) {
   renderSharedPanel();
 
   try {
-    const cloud = await fetchCloudBudget(user.uid);
-    const local = readCachePayload(user.uid);
-    const cloudAt = cloud?.updatedAt || 0;
-    const localAt = local?.updatedAt || 0;
-    if (cloud && (!local || cloudAt > localAt)) {
-      const before = (cloud.state?.transactions || []).length;
-      state = normalizeState(cloud.state);
-      const stripped = before !== state.transactions.length;
-      writeCachePayload(user.uid, {
-        state,
-        updatedAt: stripped ? Date.now() : cloud.updatedAt || Date.now(),
-        name: user.displayName || "",
-      });
-      if (stripped) {
-        // Push cleanup so invented paychecks don't come back from cloud.
-        saveState();
-      }
-      populateCategorySelect();
-      render();
-    } else if (local && (!cloud || localAt >= cloudAt)) {
-      // Keep newer local (e.g. setup finished before cloud push) and sync up.
-      const before = (local.state?.transactions || []).length;
-      state = normalizeState(local.state);
-      const stripped = before !== state.transactions.length;
-      populateCategorySelect();
-      render();
-      if (stripped) {
-        // Persist + push cleaned ledger so invented paychecks don't reappear from cloud.
-        saveState();
-      } else if (!cloud || localAt > cloudAt) {
-        await pushCloudBudget(user.uid, {
-          state,
-          updatedAt: local.updatedAt || Date.now(),
-          name: user.displayName || "",
-        });
-      }
-    } else if (!cloud && !local) {
-      const legacy = readLegacyState();
-      if (legacy) {
-        state = normalizeState(legacy);
-        saveState();
-        populateCategorySelect();
-        render();
-      }
-    }
+    await mergePersonalCloudState(user);
     flushDirtyCloudSave();
   } catch {
     localStorage.setItem(CLOUD_DIRTY_KEY, "1");
@@ -727,6 +690,129 @@ async function handleUserChanged(user, info) {
 
   // After local/cloud state has settled, post any recurring items now due.
   postDueRecurring();
+}
+
+let lastCloudRefreshAt = 0;
+const CLOUD_REFRESH_MS = 3000;
+
+/** Re-fetch cloud on tab focus / visibility / online — never overwrite newer cloud with stale local. */
+async function refreshFromCloudIfNeeded() {
+  if (localOnlyMode || !currentUser || currentUser.uid === "local") return;
+  if (isPasswordRecoveryLink() || authMode === "recovery") return;
+  const now = Date.now();
+  if (now - lastCloudRefreshAt < CLOUD_REFRESH_MS) return;
+  lastCloudRefreshAt = now;
+
+  try {
+    if (sharedBudget) {
+      await refreshSharedFromCloud();
+    } else {
+      await refreshPersonalFromCloud();
+    }
+    flushDirtyCloudSave();
+  } catch {
+    /* quiet background refresh */
+  }
+}
+
+async function mergePersonalCloudState(user) {
+  const cloud = await fetchCloudBudget(user.uid);
+  const local = readCachePayload(user.uid);
+  const cloudAt = cloud?.updatedAt || 0;
+  const localAt = local?.updatedAt || 0;
+  if (cloud && (!local || cloudAt > localAt)) {
+    const before = (cloud.state?.transactions || []).length;
+    state = normalizeState(cloud.state);
+    const stripped = before !== state.transactions.length;
+    writeCachePayload(user.uid, {
+      state,
+      updatedAt: stripped ? Date.now() : cloud.updatedAt || Date.now(),
+      name: user.displayName || "",
+    });
+    if (stripped) {
+      // Push cleanup so invented paychecks don't come back from cloud.
+      saveState();
+    }
+    populateCategorySelect();
+    render();
+    return;
+  }
+  if (local && (!cloud || localAt >= cloudAt)) {
+    // Keep newer local (e.g. setup finished before cloud push) and sync up.
+    const before = (local.state?.transactions || []).length;
+    state = normalizeState(local.state);
+    const stripped = before !== state.transactions.length;
+    populateCategorySelect();
+    render();
+    if (stripped) {
+      // Persist + push cleaned ledger so invented paychecks don't reappear from cloud.
+      saveState();
+    } else if (!cloud || localAt > cloudAt) {
+      await pushCloudBudget(user.uid, {
+        state,
+        updatedAt: local.updatedAt || Date.now(),
+        name: user.displayName || "",
+      });
+    }
+    return;
+  }
+  if (!cloud && !local) {
+    const legacy = readLegacyState();
+    if (legacy) {
+      state = normalizeState(legacy);
+      saveState();
+      populateCategorySelect();
+      render();
+    }
+  }
+}
+
+async function refreshPersonalFromCloud() {
+  const cloud = await fetchCloudBudget(currentUser.uid);
+  const local = readCachePayload(currentUser.uid);
+  const cloudAt = cloud?.updatedAt || 0;
+  const localAt = local?.updatedAt || 0;
+  if (cloud && cloudAt > localAt) {
+    const before = (cloud.state?.transactions || []).length;
+    state = normalizeState(cloud.state);
+    const stripped = before !== state.transactions.length;
+    writeCachePayload(currentUser.uid, {
+      state,
+      updatedAt: stripped ? Date.now() : cloud.updatedAt || Date.now(),
+      name: currentUser.displayName || "",
+    });
+    if (stripped) saveState();
+    populateCategorySelect();
+    render();
+    return;
+  }
+  if (local && cloud && localAt > cloudAt && !localStorage.getItem(CLOUD_DIRTY_KEY)) {
+    await pushCloudBudget(currentUser.uid, {
+      state: normalizeState(local.state),
+      updatedAt: local.updatedAt || Date.now(),
+      name: currentUser.displayName || "",
+    });
+  }
+}
+
+async function refreshSharedFromCloud() {
+  if (!sharedBudget) return;
+  const remote = await fetchSharedBudget(sharedBudget.id);
+  const local = readCachePayload(currentUser.uid);
+  const remoteAt = remote?.updatedAt || 0;
+  const localAt = local?.updatedAt || 0;
+  if (remote && remoteAt > localAt && remoteAt > lastSharedAppliedAt) {
+    lastSharedAppliedAt = remoteAt;
+    state = normalizeState(remote.state);
+    writeCachePayload(currentUser.uid, {
+      state,
+      updatedAt: remoteAt,
+      name: currentUser.displayName || "",
+    });
+    populateCategorySelect();
+    render();
+    if (activeTab === "settings") renderRecurringList();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1269,7 +1355,9 @@ function attachEvents() {
   elements.authResendBtn.addEventListener("click", handleResendConfirmation);
   elements.authConfirmedBtn.addEventListener("click", () => attemptConfirmedSignIn(false));
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && authMode === "confirm") attemptConfirmedSignIn(true);
+    if (document.visibilityState !== "visible") return;
+    if (authMode === "confirm") attemptConfirmedSignIn(true);
+    refreshFromCloudIfNeeded();
   });
   elements.signOutBtn.addEventListener("click", async () => {
     await handleSignOut();
@@ -1335,6 +1423,7 @@ function updatePayScheduleSummary() {
   if (elements.settingsPayScheduleSubtitle) {
     elements.settingsPayScheduleSubtitle.textContent = subtitle;
   }
+  renderPayPeriodPreview(month, elements.paySchedulePeriodPreview, { compact: true });
 }
 
 function populatePayScheduleForm() {
@@ -1819,6 +1908,7 @@ function renderPaycheckView(month) {
     elements.paycheckLeftRange.textContent = paySummary.rangeLabel;
   }
   updatePayScheduleSummary();
+  renderPayPeriodPreview(month, elements.payPeriodPreview);
 
   const rows = paySummary.categoryRows.filter((row) => row.spent > 0).slice(0, 5);
   if (!rows.length) {
@@ -2745,6 +2835,83 @@ function getMonthSummary(month) {
     expenseCount,
     categoryRows,
   };
+}
+
+function listPayPeriodsForMonth(month) {
+  const profile = normalizeSetupProfile(state.setupProfile);
+  const frequency = profile.payFrequency;
+  const monthStart = `${month}-01`;
+  const [year, monthNum] = month.split("-").map(Number);
+  const monthEnd = toDateString(new Date(year, monthNum, 0));
+  const today = todayString();
+
+  if (frequency === "monthly" || frequency === "semimonthly") {
+    const period = getPayPeriodForDate(`${month}-15`, profile);
+    if (monthKeyFromDate(period.start) !== month && monthKeyFromDate(period.end) !== month) return [];
+    return [
+      {
+        ...period,
+        rangeLabel: formatPayPeriodRange(period.start, period.end),
+        isCurrent: dateInRange(today, period.start, period.end),
+      },
+    ];
+  }
+
+  const interval = payFrequencies[frequency]?.intervalDays || 14;
+  if (!profile.nextPayDate) return [];
+
+  let start = parseLocalDate(profile.nextPayDate);
+  const rangeStart = parseLocalDate(monthStart);
+  while (addDays(start, interval) <= rangeStart) {
+    start = addDays(start, interval);
+  }
+  while (start > rangeStart) {
+    start = addDays(start, -interval);
+  }
+
+  const periods = [];
+  while (toDateString(start) <= monthEnd) {
+    const end = addDays(start, interval);
+    const startStr = toDateString(start);
+    const endStr = toDateString(end);
+    if (monthKeyFromDate(startStr) === month) {
+      periods.push({
+        start: startStr,
+        end: endStr,
+        rangeLabel: formatPayPeriodRange(startStr, endStr),
+        isCurrent: dateInRange(today, startStr, endStr),
+      });
+    }
+    start = addDays(start, interval);
+  }
+  return periods;
+}
+
+function renderPayPeriodPreview(month, container, { compact = false } = {}) {
+  if (!container) return;
+  const periods = listPayPeriodsForMonth(month);
+  const showNote = elements.payPeriodPreviewNote;
+  if (!periods.length) {
+    container.hidden = true;
+    container.innerHTML = "";
+    if (showNote && container === elements.payPeriodPreview) showNote.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  if (showNote && container === elements.payPeriodPreview) showNote.hidden = false;
+  container.innerHTML = periods
+    .map((period) => {
+      const current = period.isCurrent ? `<span class="pay-period-current">Current</span>` : "";
+      const amount = compact ? "" : `<span class="pay-period-amount">${money(state.setupProfile?.payAmount || 0)}</span>`;
+      return `
+        <div class="pay-period-row${period.isCurrent ? " is-current" : ""}">
+          <span class="pay-period-range">${escapeHtml(period.rangeLabel)}</span>
+          ${current}
+          ${amount}
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function getPayPeriodSummary(month) {
@@ -3938,7 +4105,7 @@ function getPayPeriodForDate(dateString, profileInput) {
   while (addDays(start, interval) <= reference) {
     start = addDays(start, interval);
   }
-  const end = addDays(start, interval - 1);
+  const end = addDays(start, interval);
   return { start: toDateString(start), end: toDateString(end) };
 }
 

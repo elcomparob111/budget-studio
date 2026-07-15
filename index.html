@@ -109,6 +109,10 @@
               <small id="paycheckLeftRange">This paycheck</small>
             </article>
           </div>
+          <div id="payPeriodPreview" class="pay-period-preview" hidden></div>
+          <p id="payPeriodPreviewNote" class="goals-blurb pay-period-note" hidden>
+            Log income on payday — paychecks aren't added automatically.
+          </p>
           <div id="paycheckBreakdown" class="paycheck-breakdown"></div>
         </section>
 
@@ -607,6 +611,8 @@
               <input id="settingsNextPayDateInput" type="date" />
             </label>
           </div>
+          <div id="paySchedulePeriodPreview" class="pay-period-preview compact"></div>
+          <p class="goals-blurb pay-period-note">Log income on payday — paychecks aren't added automatically.</p>
           <button id="savePayScheduleBtn" class="primary-button" type="submit">Save pay schedule</button>
         </form>
       </div>
@@ -760,10 +766,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=60"></script>
+    <script type="module" src="./app.js?v=61"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=60").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=61").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

@@ -610,6 +610,7 @@ struct SettingsView: View {
 }
 
 private struct PayScheduleEditorSheet: View {
+    @EnvironmentObject private var store: BudgetStore
     @Binding var payAmountText: String
     @Binding var payFrequency: String
     @Binding var nextPayDate: Date
@@ -638,6 +639,33 @@ private struct PayScheduleEditorSheet: View {
                     DatePicker("Next payday", selection: $nextPayDate, displayedComponents: .date)
                         .font(.app(15, weight: .medium))
                         .tint(AppTheme.primaryText)
+
+                    if !store.payPeriodPreviews.isEmpty {
+                        VStack(alignment: .leading, spacing: AppTheme.sm) {
+                            Text("Pay periods this month")
+                                .font(.app(13, weight: .semibold))
+                                .foregroundStyle(AppTheme.secondaryText)
+                            ForEach(store.payPeriodPreviews) { period in
+                                HStack {
+                                    Text(period.rangeLabel)
+                                        .font(.app(14, weight: .semibold))
+                                    Spacer()
+                                    if period.isCurrent {
+                                        Text("Current")
+                                            .font(.app(12, weight: .bold))
+                                            .foregroundStyle(AppTheme.accent)
+                                    }
+                                }
+                                .padding(.horizontal, AppTheme.md)
+                                .padding(.vertical, 10)
+                                .background(AppTheme.inputFill)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            Text("Log income on payday — paychecks aren't added automatically.")
+                                .font(.app(12, weight: .medium))
+                                .foregroundStyle(AppTheme.secondaryText)
+                        }
+                    }
 
                     Button(action: onSave) {
                         Text("Save pay schedule")

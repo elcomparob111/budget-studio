@@ -92,6 +92,15 @@ struct PayPeriodSummary {
     var left: Double
 }
 
+struct PayPeriodPreview: Identifiable {
+    var start: String
+    var end: String
+    var rangeLabel: String
+    var isCurrent: Bool
+
+    var id: String { start }
+}
+
 enum BudgetDefaults {
     static let accounts = ["Checking", "Credit Card", "Savings", "Cash", "Investment", "Venmo", "Other"]
 

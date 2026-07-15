@@ -233,10 +233,31 @@ final class SupabaseService {
                 lastPostedMonth: String(item.lastPostedMonth.prefix(7))
             )
         }
+        let savingsGoals = Array((state.savingsGoals ?? []).prefix(50)).compactMap { goal -> SavingsGoal? in
+            let name = String(goal.name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+                .replacingOccurrences(of: "<", with: "")
+                .replacingOccurrences(of: ">", with: "")
+            guard !name.isEmpty else { return nil }
+            let safeIdChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_-"))
+            let rawId = String(goal.id.unicodeScalars.filter { safeIdChars.contains($0) }.prefix(80).map(Character.init))
+            var target = goal.target
+            if !target.isFinite || target <= 0 { target = 1 }
+            target = min(max(target, 0), 1_000_000_000)
+            var current = goal.current
+            if !current.isFinite || current < 0 { current = 0 }
+            current = min(current, 1_000_000_000)
+            return SavingsGoal(
+                id: rawId.isEmpty ? String(UUID().uuidString.prefix(80)) : rawId,
+                name: name,
+                target: (target * 100).rounded() / 100,
+                current: (current * 100).rounded() / 100
+            )
+        }
         return BudgetState(
             categories: categories,
             transactions: transactions,
             recurring: recurring.isEmpty ? state.recurring : recurring,
+            savingsGoals: savingsGoals.isEmpty ? state.savingsGoals : savingsGoals,
             setupComplete: state.setupComplete,
             setupProfile: state.setupProfile
         )

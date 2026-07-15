@@ -20,6 +20,8 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 | Web IA (Home / Activity / Goals / Settings) | Done (web + iOS) | Activity income-vs-spent + category breakdown; Budgets in Settings; Savings goals tab (`savingsGoals` synced). |
 | Docs | Updated | `SHARED_BUDGETS.md`, `ROADMAP.md` reflect shipped shared budgets |
 | Web touch targets | Done | SW **v59**; undo-on-delete already worked |
+| Sync refresh (web + iOS) | Done | Re-fetch cloud on focus/visibility/online when cloud `updatedAt` > local; iOS `sanitizeState` preserves `savingsGoals` |
+| Biweekly pay periods (web + iOS) | Done | Periods show payday → next payday (e.g. Jul 8–22); preview list on Home + Pay schedule; SW **v61**; incomes must be logged manually |
 
 ### Widget / iOS paths to know
 
@@ -38,6 +40,7 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 2. **Launch smoke test** — still open in [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data). Operator/dashboard, not a big code task.
 3. **Quick-entry leftovers (P1)** — Watch app and/or Siri shortcut; widget is done.
 4. **Launch hygiene** — AI logo provenance (`legal/AI_ASSETS.md`), trademark (`legal/TRADEMARK.md`), self-serve account deletion (Edge Function, service_role server-side only).
+5. **Before public publish (auth)** — Confirm Supabase Auth rate limits; enable CAPTCHA / leaked-password protection. See [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §2 and [`legal/RELEASE_CHECKLIST.md`](../legal/RELEASE_CHECKLIST.md). Not urgent for family/TestFlight.
 
 **Do not start:** bank sync / Plaid (compliance jump). Remote APNs for reminders can wait; local notifications cover the P1 “reminders” half.
 

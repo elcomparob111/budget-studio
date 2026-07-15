@@ -62,6 +62,63 @@ enum BudgetCalculator {
         )
     }
 
+    /// Pay periods that start in the given month (payday → next payday).
+    static func payPeriodPreviews(state: BudgetState, month: String, now: Date = Date()) -> [PayPeriodPreview] {
+        guard let profile = state.setupProfile else { return [] }
+        let today = todayString(now: now)
+        let monthStart = "\(month)-01"
+        guard let monthEndDate = parseDate(monthStart).flatMap({
+            Calendar.current.date(byAdding: DateComponents(month: 1, day: -1), to: $0)
+        }) else { return [] }
+        let monthEnd = formatISO(monthEndDate)
+
+        if profile.payFrequency == "monthly" || profile.payFrequency == "semimonthly" {
+            guard let period = payPeriod(for: "\(month)-15", profile: profile) else { return [] }
+            let startMonth = String(period.start.prefix(7))
+            let endMonth = String(period.end.prefix(7))
+            guard startMonth == month || endMonth == month else { return [] }
+            return [
+                PayPeriodPreview(
+                    start: period.start,
+                    end: period.end,
+                    rangeLabel: "\(formatShort(period.start)) – \(formatShort(period.end))",
+                    isCurrent: dateInRange(today, start: period.start, end: period.end)
+                ),
+            ]
+        }
+
+        let interval = profile.payFrequency == "weekly" ? 7 : 14
+        guard let nextPay = parseDate(profile.nextPayDate),
+              let rangeStart = parseDate(monthStart) else { return [] }
+
+        var anchor = nextPay
+        while Calendar.current.date(byAdding: .day, value: interval, to: anchor)! <= rangeStart {
+            anchor = Calendar.current.date(byAdding: .day, value: interval, to: anchor) ?? anchor
+        }
+        while anchor > rangeStart {
+            anchor = Calendar.current.date(byAdding: .day, value: -interval, to: anchor) ?? anchor
+        }
+
+        var previews: [PayPeriodPreview] = []
+        while formatISO(anchor) <= monthEnd {
+            let end = Calendar.current.date(byAdding: .day, value: interval, to: anchor)!
+            let startStr = formatISO(anchor)
+            let endStr = formatISO(end)
+            if String(startStr.prefix(7)) == month {
+                previews.append(
+                    PayPeriodPreview(
+                        start: startStr,
+                        end: endStr,
+                        rangeLabel: "\(formatShort(startStr)) – \(formatShort(endStr))",
+                        isCurrent: dateInRange(today, start: startStr, end: endStr)
+                    )
+                )
+            }
+            anchor = end
+        }
+        return previews
+    }
+
     /// Expense categories with activity this month or a budget — used by Overview progress.
     /// Idle $0/$0 rows are omitted; they reappear automatically when spent or budget becomes > 0.
     static func categorySpending(state: BudgetState, month: String) -> [(category: BudgetCategory, spent: Double)] {
@@ -93,7 +150,7 @@ enum BudgetCalculator {
             while Calendar.current.date(byAdding: .day, value: interval, to: anchor)! <= date {
                 anchor = Calendar.current.date(byAdding: .day, value: interval, to: anchor) ?? anchor
             }
-            let end = Calendar.current.date(byAdding: .day, value: interval - 1, to: anchor)!
+            let end = Calendar.current.date(byAdding: .day, value: interval, to: anchor)!
             return (formatISO(anchor), formatISO(end))
         }
 

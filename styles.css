@@ -466,6 +466,53 @@ body.wizard-open { overflow: hidden; }
 }
 .paycheck-grid strong { font-size: 20px; line-height: 1.1; font-weight: 700; }
 .paycheck-breakdown { display: grid; gap: 8px; margin-top: 14px; }
+
+.pay-period-preview {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pay-period-preview.compact { margin-top: 16px; }
+
+.pay-period-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--input);
+  border-radius: 12px;
+}
+
+.pay-period-row.is-current {
+  outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.pay-period-range {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.pay-period-current {
+  flex: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pay-period-amount {
+  flex: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pay-period-note {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
 .paycheck-breakdown-row {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(180px, 2fr) auto;

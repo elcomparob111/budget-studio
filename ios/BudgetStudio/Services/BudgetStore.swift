@@ -55,6 +55,7 @@ final class BudgetStore: ObservableObject {
     var monthKey: String { BudgetCalculator.monthKey(from: selectedMonth) }
     var monthSummary: MonthSummary { BudgetCalculator.monthSummary(state: state, month: monthKey) }
     var payPeriodSummary: PayPeriodSummary? { BudgetCalculator.payPeriodSummary(state: state, month: monthKey) }
+    var payPeriodPreviews: [PayPeriodPreview] { BudgetCalculator.payPeriodPreviews(state: state, month: monthKey) }
     var categorySpending: [(category: BudgetCategory, spent: Double)] {
         BudgetCalculator.categorySpending(state: state, month: monthKey)
     }
@@ -861,6 +862,52 @@ final class BudgetStore: ObservableObject {
             showToast("Left the shared budget — your copy is saved.")
         } catch {
             sharedStatusMessage = supabase.friendlyAuthError(error)
+        }
+    }
+
+    /// Re-fetch cloud when the app returns to foreground — never overwrite newer cloud with stale local.
+    func refreshFromCloudIfNeeded() async {
+        guard isAuthenticated, let userId = supabase.currentUser?.id else { return }
+        if sharedMembership != nil {
+            await refreshSharedFromCloud()
+        } else {
+            await refreshPersonalFromCloud(userId: userId)
+        }
+        if cloudDirty {
+            await pushCloud(notifyOnFailure: false)
+        }
+    }
+
+    private func refreshPersonalFromCloud(userId: UUID) async {
+        do {
+            let cloud = try await supabase.fetchBudget(userId: userId)
+            let local = loadLocal(userId: userId)
+            let cloudAt = cloud?.updatedAt ?? 0
+            let localAt = local?.updatedAt ?? 0
+            if let cloud, cloudAt > localAt {
+                applyLoadedState(cloud.state, updatedAt: cloud.updatedAt, persistCleanup: true)
+            } else if let local, let cloud, localAt > cloudAt, !cloudDirty {
+                await pushCloud(notifyOnFailure: false)
+            }
+        } catch {
+            /* quiet background refresh */
+        }
+    }
+
+    private func refreshSharedFromCloud() async {
+        guard let membership = sharedMembership else { return }
+        do {
+            let remote = try await supabase.fetchSharedBudget(budgetId: membership.id)
+            guard let userId = supabase.currentUser?.id else { return }
+            let local = loadLocal(userId: userId)
+            let remoteAt = remote?.updatedAt ?? 0
+            let localAt = local?.updatedAt ?? 0
+            if let remote, remoteAt > localAt, remoteAt > lastSharedAppliedAt {
+                lastSharedAppliedAt = remote.updatedAt
+                applyLoadedState(remote.state, updatedAt: remote.updatedAt, persistCleanup: true)
+            }
+        } catch {
+            /* quiet background refresh */
         }
     }
 
