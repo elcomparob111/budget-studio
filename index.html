@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=60" />
+    <link rel="stylesheet" href="./styles.css?v=64" />
   </head>
   <body>
     <main class="app-shell">
@@ -82,26 +82,22 @@
           <div id="upcomingList" class="upcoming-list"></div>
         </section>
 
-        <section class="panel paycheck-panel">
-          <div class="panel-heading">
+        <section id="paycheckPanel" class="panel paycheck-panel" hidden>
+          <div class="paycheck-card-header">
             <div>
-              <p class="eyebrow">Paycheck view</p>
-              <h2>This pay period</h2>
+              <p class="eyebrow">This pay period</p>
+              <h2 id="payPeriodRange">Not set</h2>
+              <small id="payPeriodNextHint" class="paycheck-next-hint" hidden></small>
             </div>
-            <span id="payPeriodBadge" class="money-chip">Set payday</span>
+            <span class="paycheck-calendar-icon" aria-hidden="true">📅</span>
           </div>
-          <div class="paycheck-grid">
+          <div class="paycheck-metrics">
             <article>
-              <span>Period</span>
-              <strong id="payPeriodRange">Not set</strong>
-              <small id="payPeriodNextHint" hidden></small>
-            </article>
-            <article>
-              <span>Income this period</span>
+              <span>Income</span>
               <strong id="paycheckIncomeMetric">$0</strong>
             </article>
             <article>
-              <span>Spent this period</span>
+              <span>Spent</span>
               <strong id="paycheckSpentMetric">$0</strong>
             </article>
             <article>
@@ -110,7 +106,6 @@
               <small id="paycheckLeftRange">This paycheck</small>
             </article>
           </div>
-          <div id="paycheckBreakdown" class="paycheck-breakdown"></div>
         </section>
 
         <section class="panel progress-panel">
@@ -597,19 +592,19 @@
           <button id="closePayScheduleBtn" class="ghost-button" type="button">Close</button>
         </div>
         <form id="payScheduleForm" class="pay-schedule-form">
-          <div id="settingsPayFrequencyGrid" class="pay-frequency-grid compact"></div>
-          <div class="payday-input-grid">
-            <label class="big-input">
-              <span>Amount per check</span>
-              <input id="settingsPayAmountInput" type="number" min="0" step="1" placeholder="e.g. 2100" />
-            </label>
-            <label class="big-input">
-              <span>Next payday</span>
-              <input id="settingsNextPayDateInput" type="date" />
-            </label>
+          <label class="big-input">
+            <span>Amount per check</span>
+            <input id="settingsPayAmountInput" type="number" min="0" step="1" placeholder="e.g. 2100" />
+          </label>
+          <div class="pay-schedule-field">
+            <span class="pay-schedule-label">Frequency</span>
+            <div id="settingsPayFrequencyGrid" class="pay-frequency-chips"></div>
           </div>
-          <div id="paySchedulePeriodPreview" class="pay-period-preview compact"></div>
-          <p class="pay-period-note">Add income when you get paid.</p>
+          <label class="big-input">
+            <span>Next payday</span>
+            <input id="settingsNextPayDateInput" type="date" />
+          </label>
+          <div id="paySchedulePeriodPreview" class="pay-period-preview"></div>
           <button id="savePayScheduleBtn" class="primary-button" type="submit">Save pay schedule</button>
         </form>
       </div>
@@ -763,10 +758,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=63"></script>
+    <script type="module" src="./app.js?v=64"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=63").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=64").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

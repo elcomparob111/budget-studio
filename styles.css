@@ -384,12 +384,81 @@ body.wizard-open { overflow: hidden; }
   font-weight: 600;
 }
 
-.paycheck-grid article small {
+.paycheck-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.paycheck-card-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.paycheck-next-hint {
   display: block;
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
+}
+
+.paycheck-calendar-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--soft-blue);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.paycheck-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.paycheck-metrics article {
+  display: grid;
+  gap: 8px;
+  min-height: 84px;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--input);
+}
+
+.paycheck-metrics span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.paycheck-metrics strong {
+  font-size: 16px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.paycheck-metrics article small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.pay-period-preview { margin-top: 16px; }
+
+.pay-period-schedule {
+  display: grid;
+  gap: 6px;
 }
 
 .budget-ring {
@@ -446,35 +515,6 @@ body.wizard-open { overflow: hidden; }
 .chart-area { min-height: 220px; }
 .chart-area svg { display: block; width: 100%; height: auto; }
 
-.paycheck-grid {
-  display: grid;
-  grid-template-columns: 1.3fr repeat(3, 1fr);
-  gap: 10px;
-}
-.paycheck-grid article {
-  display: grid;
-  gap: 8px;
-  min-height: 84px;
-  padding: 14px;
-  border-radius: var(--radius-sm);
-  background: var(--input);
-}
-.paycheck-grid span, .paycheck-breakdown span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-.paycheck-grid strong { font-size: 20px; line-height: 1.1; font-weight: 700; }
-.paycheck-breakdown { display: grid; gap: 8px; margin-top: 14px; }
-
-.pay-period-preview { margin-top: 14px; }
-.pay-period-preview.compact { margin-top: 16px; }
-
-.pay-period-schedule {
-  padding-top: 14px;
-  border-top: 1px solid var(--line-soft);
-}
-
 .pay-period-schedule-heading {
   margin: 0 0 6px;
   color: var(--muted);
@@ -527,10 +567,53 @@ body.wizard-open { overflow: hidden; }
 }
 
 .pay-period-note {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
+}
+
+.pay-schedule-form {
+  display: grid;
+  gap: 16px;
+}
+
+.pay-schedule-field {
+  display: grid;
+  gap: 8px;
+}
+
+.pay-schedule-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pay-frequency-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.pay-frequency-chip {
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(45, 45, 45, 0.08);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .pay-frequency-chip {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pay-frequency-chip.selected {
+  background: var(--soft-blue);
 }
 
 .paycheck-breakdown-row {
@@ -1328,19 +1411,8 @@ td.amount { font-weight: 700; color: var(--ink); }
   align-items: stretch;
 }
 
-#payScheduleForm .pay-frequency-grid.compact {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-#payScheduleForm .pay-frequency-grid.compact .pay-frequency-card {
-  min-height: 78px;
-  padding: 14px;
-}
-
-#payScheduleForm .payday-input-grid {
-  grid-template-columns: 1fr;
-  gap: 12px;
+#payScheduleForm .big-input {
+  max-width: none;
 }
 
 #payScheduleDialog .edit-card {
@@ -1533,7 +1605,6 @@ td.amount { font-weight: 700; color: var(--ink); }
 @media (min-width: 900px) {
   .stat-row { grid-template-columns: 1fr 1fr 1.6fr; }
   .stat-chip-ring { grid-column: auto; }
-  .paycheck-grid { grid-template-columns: 1.3fr repeat(3, 1fr); }
 }
 
 @media (max-width: 760px) {
@@ -1546,14 +1617,31 @@ td.amount { font-weight: 700; color: var(--ink); }
   .month-stepper { flex: 1; min-width: 0; }
   .transaction-form,
   .category-builder,
-  .paycheck-grid,
   .payday-input-grid,
   .custom-category-form,
   .pay-frequency-grid {
     grid-template-columns: 1fr;
   }
+  .paycheck-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .paycheck-metrics article {
+    min-height: 72px;
+    padding: 12px 10px;
+  }
+  .paycheck-metrics strong {
+    font-size: 15px;
+  }
+  .paycheck-calendar-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+  }
+  .pay-frequency-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .progress-row,
-  .paycheck-breakdown-row { grid-template-columns: 1fr; }
   /* Full-bleed sheet so Continue stays above the home indicator / Safari chrome. */
   #setupWizard.wizard-overlay {
     padding: 0;

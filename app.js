@@ -70,6 +70,13 @@ const groupChartColors = {
 
 const accounts = ["Checking", "Credit Card", "Savings", "Cash", "Investment", "Venmo", "Other"];
 
+const payFrequencyChipLabels = {
+  weekly: "Weekly",
+  biweekly: "Biweekly",
+  semimonthly: "Twice / mo",
+  monthly: "Monthly",
+};
+
 const payFrequencies = {
   weekly: {
     name: "Weekly",
@@ -396,7 +403,7 @@ const elements = {
   budgetRing: document.querySelector("#budgetRing"),
   budgetUsedMetric: document.querySelector("#budgetUsedMetric"),
   ringSubtext: document.querySelector("#ringSubtext"),
-  payPeriodBadge: document.querySelector("#payPeriodBadge"),
+  paycheckPanel: document.querySelector("#paycheckPanel"),
   payPeriodRange: document.querySelector("#payPeriodRange"),
   payPeriodNextHint: document.querySelector("#payPeriodNextHint"),
   paySchedulePeriodPreview: document.querySelector("#paySchedulePeriodPreview"),
@@ -404,7 +411,6 @@ const elements = {
   paycheckSpentMetric: document.querySelector("#paycheckSpentMetric"),
   paycheckLeftMetric: document.querySelector("#paycheckLeftMetric"),
   paycheckLeftRange: document.querySelector("#paycheckLeftRange"),
-  paycheckBreakdown: document.querySelector("#paycheckBreakdown"),
   payScheduleForm: document.querySelector("#payScheduleForm"),
   payScheduleDialog: document.querySelector("#payScheduleDialog"),
   editPayScheduleBtn: document.querySelector("#editPayScheduleBtn"),
@@ -1224,7 +1230,10 @@ function attachEvents() {
     elements.settingsPayFrequencyGrid.querySelectorAll("[data-frequency-id]").forEach((node) => {
       node.classList.toggle("selected", node === button);
     });
+    updatePaySchedulePreviewFromForm();
   });
+  elements.settingsPayAmountInput?.addEventListener("input", updatePaySchedulePreviewFromForm);
+  elements.settingsNextPayDateInput?.addEventListener("change", updatePaySchedulePreviewFromForm);
   elements.tabBar?.querySelectorAll("[data-tab]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1425,16 +1434,39 @@ function updatePayScheduleSummary() {
   renderPayPeriodPreview(month, elements.paySchedulePeriodPreview);
 }
 
+function getPayScheduleFormDraft() {
+  const selected = elements.settingsPayFrequencyGrid?.querySelector("[data-frequency-id].selected");
+  const payFrequency = selected?.dataset.frequencyId || state.setupProfile?.payFrequency || "biweekly";
+  const payAmount = Math.max(0, Number(elements.settingsPayAmountInput?.value) || 0);
+  const nextPayDate = elements.settingsNextPayDateInput?.value || todayString();
+  const existing = normalizeSetupProfile(state.setupProfile);
+  return {
+    ...existing,
+    payAmount,
+    payFrequency,
+    nextPayDate,
+  };
+}
+
+function updatePaySchedulePreviewFromForm() {
+  const month = elements.monthInput?.value || currentMonthKey();
+  const draft = getPayScheduleFormDraft();
+  renderPayPeriodPreview(month, elements.paySchedulePeriodPreview, {
+    profile: draft,
+    expectedAmount: draft.payAmount,
+  });
+}
+
 function populatePayScheduleForm() {
   if (!elements.settingsPayFrequencyGrid) return;
   const profile = normalizeSetupProfile(state.setupProfile);
-  elements.settingsPayFrequencyGrid.innerHTML = Object.entries(payFrequencies)
-    .map(([id, frequency]) => {
+  elements.settingsPayFrequencyGrid.innerHTML = Object.keys(payFrequencies)
+    .map((id) => {
       const selected = profile.payFrequency === id ? "selected" : "";
+      const label = payFrequencyChipLabels[id] || payFrequencies[id].name;
       return `
-        <button class="pay-frequency-card ${selected}" type="button" data-frequency-id="${id}">
-          <strong>${escapeHtml(frequency.name)}</strong>
-          <span>${escapeHtml(frequency.blurb)}</span>
+        <button class="pay-frequency-chip ${selected}" type="button" data-frequency-id="${id}">
+          ${escapeHtml(label)}
         </button>
       `;
     })
@@ -1445,7 +1477,7 @@ function populatePayScheduleForm() {
   if (elements.settingsNextPayDateInput) {
     elements.settingsNextPayDateInput.value = profile.nextPayDate || todayString();
   }
-  updatePayScheduleSummary();
+  updatePaySchedulePreviewFromForm();
 }
 
 function openPayScheduleDialog() {
@@ -1897,8 +1929,13 @@ function renderActivityCharts() {
 }
 
 function renderPaycheckView(month) {
+  if (!state.setupProfile) {
+    if (elements.paycheckPanel) elements.paycheckPanel.hidden = true;
+    return;
+  }
+  if (elements.paycheckPanel) elements.paycheckPanel.hidden = false;
+
   const paySummary = getPayPeriodSummary(month);
-  elements.payPeriodBadge.textContent = paySummary.label;
   elements.payPeriodRange.textContent = paySummary.rangeLabel;
   elements.paycheckIncomeMetric.textContent = money(paySummary.income);
   elements.paycheckSpentMetric.textContent = money(paySummary.expenses);
@@ -1917,28 +1954,6 @@ function renderPaycheckView(month) {
     }
   }
   updatePayScheduleSummary();
-
-  const rows = paySummary.categoryRows.filter((row) => row.spent > 0).slice(0, 5);
-  if (!rows.length) {
-    elements.paycheckBreakdown.innerHTML = `<div class="empty-state">No expenses logged in this pay period yet.</div>`;
-    return;
-  }
-
-  const max = Math.max(...rows.map((row) => row.spent));
-  elements.paycheckBreakdown.innerHTML = rows
-    .map((row) => {
-      const width = Math.max(6, (row.spent / max) * 100);
-      return `
-        <div class="paycheck-breakdown-row">
-          <strong>${escapeHtml(row.name)}</strong>
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${width}%"></div>
-          </div>
-          <span>${money(row.spent)}</span>
-        </div>
-      `;
-    })
-    .join("");
 }
 
 function renderProgress(rows) {
@@ -2845,8 +2860,8 @@ function getMonthSummary(month) {
   };
 }
 
-function listPayPeriodsForMonth(month) {
-  const profile = normalizeSetupProfile(state.setupProfile);
+function listPayPeriodsForMonth(month, profileOverride = null) {
+  const profile = normalizeSetupProfile(profileOverride || state.setupProfile);
   const frequency = profile.payFrequency;
   const monthStart = `${month}-01`;
   const [year, monthNum] = month.split("-").map(Number);
@@ -2895,24 +2910,24 @@ function listPayPeriodsForMonth(month) {
   return periods;
 }
 
-function getNextPayPeriodHint(month, period) {
-  const periods = listPayPeriodsForMonth(month);
+function getNextPayPeriodHint(month, period, profileOverride = null) {
+  const periods = listPayPeriodsForMonth(month, profileOverride);
   if (!period?.start || periods.length < 2) return null;
   const idx = periods.findIndex((item) => item.start === period.start && item.end === period.end);
   if (idx < 0 || idx >= periods.length - 1) return null;
   return `Next · ${periods[idx + 1].rangeLabel}`;
 }
 
-function renderPayPeriodPreview(month, container, { compact = false } = {}) {
+function renderPayPeriodPreview(month, container, { compact = false, profile = null, expectedAmount = null, showNote = true } = {}) {
   if (!container) return;
-  const periods = listPayPeriodsForMonth(month);
+  const periods = listPayPeriodsForMonth(month, profile);
   if (!periods.length) {
     container.hidden = true;
     container.innerHTML = "";
     return;
   }
   container.hidden = false;
-  const payAmount = Number(state.setupProfile?.payAmount) || 0;
+  const payAmount = expectedAmount ?? (Number((profile || state.setupProfile)?.payAmount) || 0);
   const expectedLine = !compact && payAmount > 0
     ? `<p class="pay-period-expected">Expected check · ${money(payAmount)}</p>`
     : "";
@@ -2928,11 +2943,15 @@ function renderPayPeriodPreview(month, container, { compact = false } = {}) {
         </li>`;
     })
     .join("");
+  const noteLine = showNote
+    ? `<p class="pay-period-note">Add income when you get paid.</p>`
+    : "";
   container.innerHTML = `
     <div class="pay-period-schedule">
       <p class="pay-period-schedule-heading">Pay periods this month</p>
       ${expectedLine}
       <ul class="pay-period-list">${rows}</ul>
+      ${noteLine}
     </div>
   `;
 }
