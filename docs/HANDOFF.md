@@ -1,7 +1,7 @@
 # Handoff — Budget Studio
 
 **Pinned:** July 15, 2026  
-**Branch / tip:** `main` @ `c96fc28` (pushed)  
+**Branch / tip:** `main` @ `a28bbb8` (**2 commits unpushed**)  
 **Owner preference:** stop feature crunch; next agent picks from **Recommended next** below.
 
 Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipped P0 work unless fixing a bug.
@@ -17,6 +17,7 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 | Supabase security advisors | Done | `is_budget_member` → `private` schema (`4a91780`); `create_shared_budget` + `accept_budget_invite` → SECURITY INVOKER + private triggers (`1d498e9`). **Remaining advisor:** likely auth leaked-password protection only (dashboard toggle). |
 | Pay UI (web ↔ iOS parity) | Done | **Option B:** Home metrics-only with optional “Next” line; full schedule in Pay schedule settings (`33a0ec8`, `58b9f4d`, `2775c84`). |
 | Recurring web UI | Done | Matched iOS settings sheet: modal, chips, bill reminders, trash rows (`c96fc28`). SW **v65**. |
+| Xcode 26 settings + warnings | Done | `692b97c` settings/`.eq` filter, `a28bbb8` BudgetStore bindings. `xcodebuild` → BUILD SUCCEEDED, **0 warnings**. `UIRequiresFullScreen` deliberately left `false` (iPad Split View). |
 | Shared budgets (web + iOS) | Done (prior arc) | Invite/join/realtime/leave Option A; authorship tags on Activity |
 | Bill reminders (iOS) | Done (prior arc) | **Local** notifications. Settings → Recurring → Bill reminders. 9am on due day, expenses only |
 | Home Screen widget | Done (prior arc) | Safe-to-spend + tap → `budgetstudio://add`. App Group `group.com.budgetstudio.app` |
@@ -39,20 +40,18 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 
 | Path | What |
 |------|------|
-| `ios/project.yml`, `ios/BudgetStudio/Info.plist` | `UIRequiresFullScreen: true`; Xcode 26 recommended settings (`LastUpgradeCheck`, script sandboxing, string catalogs, Release validate) |
-| `ios/BudgetStudio/Services/SupabaseService.swift` | `postgresChange` new filter syntax (`.eq("id", value:)` vs string filter) |
 | `LAUNCH_CHECKLIST.md`, `legal/RELEASE_CHECKLIST.md` | Auth rate limits / CAPTCHA / leaked-password wording (“before public publish”) |
 | `skills-lock.json` | Agent skills lockfile |
 | `.agents/skills/supabase/`, `.agents/skills/supabase-postgres-best-practices/` | Untracked skill installs |
 | `ios/build-*/` | Untracked local build dirs — ignore / do not commit |
 
-`BudgetStore.swift` is **clean** on `main`; no pending warning cleanup there.
+The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were committed in `692b97c`; `Info.plist` ended up unchanged once the fullscreen flag was reverted.
 
 ---
 
 ## Recommended next (pick one)
 
-1. **Commit Xcode warning fixes** — if still dirty: `project.yml`, `Info.plist`, `SupabaseService.swift` filter syntax. Run `xcodegen generate` then build to confirm warnings cleared.
+1. ~~Commit Xcode warning fixes~~ — **done** (`692b97c`, `a28bbb8`). Build is warning-free.
 2. **Smoke-test shared budgets** — create + accept invite after RPC hardening (`4a91780`, `1d498e9`); two accounts, realtime, leave Option A.
 3. **TestFlight** — family on real devices (shared budgets, reminders, widget, Savings). See `ios/README.md` / `docs/DEPLOYMENT.md`.
 4. **Launch smoke test** — [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data).
