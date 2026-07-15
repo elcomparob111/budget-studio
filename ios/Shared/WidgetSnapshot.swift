@@ -2,7 +2,7 @@ import Foundation
 
 enum AppGroup {
     static let id = "group.com.budgetstudio.app"
-    static let snapshotKey = "widget-snapshot-v1"
+    static let snapshotFileName = "widget-snapshot-v1.json"
     static let addExpenseURL = URL(string: "budgetstudio://add")!
 
     /// True when this process has a mounted App Group container (entitlement + provisioning).
@@ -10,10 +10,12 @@ enum AppGroup {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) != nil
     }
 
-    /// Shared defaults for the widget; nil when the App Group isn't provisioned on this install.
-    static var sharedDefaults: UserDefaults? {
-        guard isAvailable else { return nil }
-        return UserDefaults(suiteName: id)
+    /// JSON file in the shared container; avoids UserDefaults(suiteName:) CFPrefs console noise.
+    static var snapshotURL: URL? {
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id) else {
+            return nil
+        }
+        return container.appendingPathComponent(snapshotFileName)
     }
 }
 
@@ -31,8 +33,8 @@ struct WidgetSnapshot: Codable, Equatable {
     )
 
     static func load() -> WidgetSnapshot {
-        guard let defaults = AppGroup.sharedDefaults,
-              let data = defaults.data(forKey: AppGroup.snapshotKey),
+        guard let url = AppGroup.snapshotURL,
+              let data = try? Data(contentsOf: url),
               let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else {
             return .empty
         }
@@ -40,8 +42,8 @@ struct WidgetSnapshot: Codable, Equatable {
     }
 
     func save() {
-        guard let defaults = AppGroup.sharedDefaults,
+        guard let url = AppGroup.snapshotURL,
               let data = try? JSONEncoder().encode(self) else { return }
-        defaults.set(data, forKey: AppGroup.snapshotKey)
+        try? data.write(to: url, options: .atomic)
     }
 }
