@@ -1840,57 +1840,6 @@ td.amount { font-weight: 700; color: var(--ink); }
 .chart-svg .bar-income { fill: var(--green); }
 .chart-svg .bar-expense { fill: var(--red); }
 
-.activity-cashflow-panel .chart-area {
-  min-height: 120px;
-}
-
-.cashflow-bars {
-  display: grid;
-  gap: 14px;
-  padding: 4px 0 8px;
-}
-
-.cashflow-bar-row {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.cashflow-bar-label {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.cashflow-bar-track {
-  height: 14px;
-  border-radius: 999px;
-  background: var(--input);
-  overflow: hidden;
-}
-
-.cashflow-bar-fill {
-  height: 100%;
-  border-radius: inherit;
-  min-width: 8px;
-}
-
-.cashflow-bar-fill.is-income {
-  background: var(--green);
-}
-
-.cashflow-bar-fill.is-spent {
-  background: var(--red);
-}
-
-.cashflow-bar-value {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
 .activity-cashflow-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2139,8 +2088,16 @@ td.amount { font-weight: 700; color: var(--ink); }
 }
 
 @media (max-width: 760px) {
+  /* Metrics stay 3-across on phones: stacking them pushed Transactions
+     ~2 screens down on a tab whose job is scanning transactions. */
   .activity-cashflow-metrics {
-    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .activity-cashflow-metrics article {
+    padding: 10px 8px;
+  }
+  .activity-cashflow-metrics strong {
+    font-size: 15px;
   }
   .goals-summary {
     grid-template-columns: 1fr;

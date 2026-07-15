@@ -502,7 +502,6 @@ const elements = {
   activityTab: document.querySelector("#activityTab"),
   goalsTab: document.querySelector("#goalsTab"),
   settingsTab: document.querySelector("#settingsTab"),
-  activityCashflowChart: document.querySelector("#activityCashflowChart"),
   activityIncomeMetric: document.querySelector("#activityIncomeMetric"),
   activitySpentMetric: document.querySelector("#activitySpentMetric"),
   activityNetMetric: document.querySelector("#activityNetMetric"),
@@ -2173,9 +2172,6 @@ function renderTransactions() {
 }
 
 function renderActivityCashflow() {
-  const chart = document.querySelector("#activityCashflowChart");
-  if (!chart) return;
-  elements.activityCashflowChart = chart;
   const month = elements.monthInput.value;
   const summary = getMonthSummary(month);
   const net = summary.income - summary.expenses;
@@ -2193,35 +2189,6 @@ function renderActivityCashflow() {
     chipEl.textContent = `${money(net)} net`;
     chipEl.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
   }
-
-  if (!summary.income && !summary.expenses) {
-    chart.innerHTML = `<div class="empty-state">No income or spending logged for this month yet.</div>`;
-    return;
-  }
-
-  const max = Math.max(summary.income, summary.expenses, 1);
-  const incomePct = Math.max(4, Math.round((summary.income / max) * 100));
-  const spentPct = Math.max(4, Math.round((summary.expenses / max) * 100));
-
-  // HTML/CSS bars — more reliable than SVG fills in iOS Safari / installed PWAs.
-  chart.innerHTML = `
-    <div class="cashflow-bars" role="img" aria-label="Income ${money(summary.income)}, spent ${money(summary.expenses)}">
-      <div class="cashflow-bar-row">
-        <span class="cashflow-bar-label">Income</span>
-        <div class="cashflow-bar-track">
-          <div class="cashflow-bar-fill is-income" style="width:${incomePct}%"></div>
-        </div>
-        <span class="cashflow-bar-value">${money(summary.income)}</span>
-      </div>
-      <div class="cashflow-bar-row">
-        <span class="cashflow-bar-label">Spent</span>
-        <div class="cashflow-bar-track">
-          <div class="cashflow-bar-fill is-spent" style="width:${spentPct}%"></div>
-        </div>
-        <span class="cashflow-bar-value">${money(summary.expenses)}</span>
-      </div>
-    </div>
-  `;
 }
 
 function renderGoals() {
