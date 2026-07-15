@@ -887,7 +887,7 @@ final class BudgetStore: ObservableObject {
             let localAt = local?.updatedAt ?? 0
             if let cloud, cloudAt > localAt {
                 applyLoadedState(cloud.state, updatedAt: cloud.updatedAt, persistCleanup: true)
-            } else if let local, let cloud, localAt > cloudAt, !cloudDirty {
+            } else if local != nil, cloud != nil, localAt > cloudAt, !cloudDirty {
                 await pushCloud(notifyOnFailure: false)
             }
         } catch {
