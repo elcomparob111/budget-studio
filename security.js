@@ -196,7 +196,7 @@ function sanitizeTransaction(raw) {
   const id = String(raw.id || "")
     .trim()
     .slice(0, BUDGET_LIMITS.maxIdLength);
-  return {
+  const clean = {
     id: id || `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     date,
     type,
@@ -205,6 +205,16 @@ function sanitizeTransaction(raw) {
     account: account || "Checking",
     amount,
   };
+  // Shared-budget authorship (optional; absent on personal/older transactions).
+  const addedBy = String(raw.addedBy || "").trim().slice(0, BUDGET_LIMITS.maxIdLength);
+  if (addedBy) {
+    clean.addedBy = addedBy;
+    clean.addedByName = String(raw.addedByName || "")
+      .trim()
+      .replace(/[<>]/g, "")
+      .slice(0, BUDGET_LIMITS.maxNameLength);
+  }
+  return clean;
 }
 
 function sanitizeRecurringItem(raw) {

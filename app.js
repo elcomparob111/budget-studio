@@ -956,13 +956,15 @@ function attachEvents() {
       return;
     }
 
-    const item = transaction(
-      dateCheck.value,
-      typeCheck.value,
-      categoryCheck.value,
-      descriptionCheck.value,
-      elements.accountInput.value,
-      amountCheck.value,
+    const item = stampAuthor(
+      transaction(
+        dateCheck.value,
+        typeCheck.value,
+        categoryCheck.value,
+        descriptionCheck.value,
+        elements.accountInput.value,
+        amountCheck.value,
+      ),
     );
 
     state.transactions.push(item);
@@ -1902,7 +1904,7 @@ function renderTransactions() {
           <td>${formatDate(item.date)}</td>
           <td><span class="type-pill ${item.type.toLowerCase()}">${escapeHtml(item.type)}</span></td>
           <td>${escapeHtml(item.category)}</td>
-          <td>${escapeHtml(item.description)}</td>
+          <td>${escapeHtml(item.description)}${authorTag(item)}</td>
           <td>${escapeHtml(item.account)}</td>
           <td class="amount">${money(item.amount)}</td>
           <td class="action-cell">
@@ -2102,13 +2104,15 @@ function submitQuickAdd() {
     return;
   }
 
-  const item = transaction(
-    dateCheck.value,
-    typeCheck.value,
-    categoryCheck.value,
-    descriptionCheck.value,
-    elements.qaAccountInput.value,
-    amountCheck.value,
+  const item = stampAuthor(
+    transaction(
+      dateCheck.value,
+      typeCheck.value,
+      categoryCheck.value,
+      descriptionCheck.value,
+      elements.qaAccountInput.value,
+      amountCheck.value,
+    ),
   );
   state.transactions.push(item);
   saveState();
@@ -2956,6 +2960,30 @@ function transaction(date, type, category, description, account, amount) {
     account,
     amount: Number(amount),
   };
+}
+
+/** First word of a display name, for compact authorship tags. */
+function firstName(displayName) {
+  return String(displayName || "").trim().split(/\s+/)[0] || "";
+}
+
+/** Activity-row authorship chip. Empty for untagged (personal/older) rows. */
+function authorTag(item) {
+  if (!item.addedBy) return "";
+  const label = item.addedBy === currentUser?.uid ? "You" : item.addedByName || "Partner";
+  return ` <span class="tx-author">${escapeHtml(label)}</span>`;
+}
+
+/**
+ * Stamp who added a transaction — only inside a shared budget, where "who
+ * bought what" matters. Personal budgets stay untagged. Mutates and returns.
+ */
+function stampAuthor(item) {
+  if (sharedBudget && currentUser && currentUser.uid !== "local") {
+    item.addedBy = currentUser.uid;
+    item.addedByName = firstName(currentUser.displayName) || "Partner";
+  }
+  return item;
 }
 
 /** Matches income rows invented by the old setup wizard (e.g. "Biweekly paycheck"). */

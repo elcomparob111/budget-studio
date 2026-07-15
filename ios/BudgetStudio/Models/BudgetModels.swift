@@ -16,6 +16,10 @@ struct BudgetTransaction: Codable, Identifiable, Hashable {
     var description: String
     var account: String
     var amount: Double
+    /// Shared-budget authorship (optional; absent on personal/older rows).
+    /// Present so iOS round-trips it instead of stripping web-set values on sync.
+    var addedBy: String? = nil
+    var addedByName: String? = nil
 }
 
 struct SetupProfile: Codable, Hashable {
