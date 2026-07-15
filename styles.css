@@ -692,8 +692,11 @@ td.amount { font-weight: 700; color: var(--ink); }
   background: var(--page);
   backdrop-filter: none;
   align-content: start;
-  padding: 48px 24px 32px;
+  padding: max(48px, env(safe-area-inset-top, 0px)) 24px max(32px, env(safe-area-inset-bottom, 0px));
   overflow: auto;
+  height: 100vh;
+  height: 100dvh;
+  height: 100svh;
 }
 
 .auth-card {
@@ -778,9 +781,13 @@ td.amount { font-weight: 700; color: var(--ink); }
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 20px max(12px, env(safe-area-inset-bottom, 0px));
   background: rgba(45, 45, 45, 0.28);
   backdrop-filter: blur(10px);
+  /* Prefer small viewport so iOS Safari chrome can't clip the footer CTA. */
+  height: 100vh;
+  height: 100dvh;
+  height: 100svh;
 }
 
 .edit-overlay {
@@ -888,7 +895,11 @@ td.amount { font-weight: 700; color: var(--ink); }
 .wizard-card {
   width: min(920px, 100%);
   max-height: min(860px, calc(100vh - 40px));
-  overflow: auto;
+  max-height: min(860px, calc(100dvh - 40px));
+  max-height: min(860px, calc(100svh - 40px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: var(--shadow-elevated);
@@ -902,6 +913,11 @@ td.amount { font-weight: 700; color: var(--ink); }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.wizard-topline,
+.wizard-progress {
+  flex: 0 0 auto;
 }
 
 .wizard-topline span,
@@ -925,6 +941,14 @@ td.amount { font-weight: 700; color: var(--ink); }
   border-radius: inherit;
   background: var(--ink);
   transition: width 180ms ease;
+}
+
+.wizard-step:not([hidden]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .wizard-step h2 {
@@ -1220,9 +1244,16 @@ td.amount { font-weight: 700; color: var(--ink); }
 }
 
 .wizard-footer {
+  flex: 0 0 auto;
   margin-top: 22px;
   padding-top: 18px;
   border-top: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.wizard-footer .primary-button,
+.wizard-footer .ghost-button {
+  min-height: 48px;
 }
 
 
@@ -1252,7 +1283,18 @@ td.amount { font-weight: 700; color: var(--ink); }
   }
   .progress-row,
   .paycheck-breakdown-row { grid-template-columns: 1fr; }
-  .wizard-card { padding: 16px; }
+  /* Full-bleed sheet so Continue stays above the home indicator / Safari chrome. */
+  #setupWizard.wizard-overlay {
+    padding: 0;
+    place-items: stretch;
+  }
+  #setupWizard .wizard-card {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+  }
   .wizard-choice-grid.two,
   .preset-grid,
   .category-checklist,
@@ -1262,6 +1304,11 @@ td.amount { font-weight: 700; color: var(--ink); }
   .wizard-review-header {
     align-items: stretch;
     flex-direction: column;
+  }
+  .wizard-footer {
+    margin-top: 16px;
+    padding-top: 14px;
+    gap: 10px;
   }
   .wizard-footer button,
   .wizard-topline button { width: 100%; }
