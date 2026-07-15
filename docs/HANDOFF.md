@@ -1,7 +1,7 @@
 # Handoff — Budget Studio
 
 **Pinned:** July 15, 2026  
-**Branch / tip:** `main` @ `aa53edc` (pushed)  
+**Branch / tip:** `main` @ `a160c7e` (pushed)  
 **Owner preference:** stop feature crunch; next agent picks from **Recommended next** below.
 
 Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipped P0 work unless fixing a bug.
@@ -23,10 +23,12 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 | Bill reminders (iOS) | Done (prior arc) | **Local** notifications. Settings → Recurring → Bill reminders. 9am on due day, expenses only |
 | Home Screen widget | Done (prior arc) | Safe-to-spend + tap → `budgetstudio://add`. App Group `group.com.budgetstudio.app` |
 | Web IA (Home / Activity / Goals / Settings) | Done | Activity income-vs-spent + category breakdown; Budgets in Settings; Savings goals tab (`savingsGoals` synced) |
+| Home ring card layout (iOS) | Done | Ring was 3rd item in 2-col `LazyVGrid` → row-2 left cell with empty right, labels wrapping. Lifted to full-width row: ring left, “Budget used / On track” beside, “Cash left $X” trailing; over-plan tints red. Verified on simulator (`a160c7e`). |
+| Activity ordering (iOS ↔ web) | Done | Transactions above analysis charts (`deaf14d`, `1bbb12b`). |
 
 ### Key commits (newest first)
 
-`c96fc28` recurring web · `2775c84` pay Option B · `58b9f4d` Home schedule trim · `33a0ec8` pay preview · `1d498e9` / `4a91780` RPC hardening · `0b73f97` sync + biweekly
+`a160c7e` ring card full-width · `deaf14d` Activity order · `c96fc28` recurring web · `2775c84` pay Option B · `58b9f4d` Home schedule trim · `33a0ec8` pay preview · `1d498e9` / `4a91780` RPC hardening · `0b73f97` sync + biweekly
 
 ### Paths to know
 
@@ -43,8 +45,8 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 |------|------|
 | `LAUNCH_CHECKLIST.md`, `legal/RELEASE_CHECKLIST.md` | Auth rate limits / CAPTCHA / leaked-password wording (“before public publish”) |
 | `skills-lock.json` | Agent skills lockfile |
-| `.agents/skills/supabase/`, `.agents/skills/supabase-postgres-best-practices/` | Untracked skill installs |
-| `ios/build-*/` | Untracked local build dirs — ignore / do not commit |
+| `.agents/skills/supabase/`, `.agents/skills/supabase-postgres-best-practices/` | Untracked skill installs (plus duplicate `* 2.md` copies — ignore) |
+| `ios/build-*/`, `ios/BudgetStudio 2.xcodeproj/` | Untracked local build dirs / duplicate xcodeproj — ignore / do not commit |
 
 The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were committed in `692b97c`; `Info.plist` ended up unchanged once the fullscreen flag was reverted.
 
@@ -58,6 +60,8 @@ The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were 
 4. **Launch smoke test** — [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data).
 5. **Before public publish (auth)** — rate limits + CAPTCHA are configurable now; leaked-password protection is **Pro-only** and cannot be enabled on the current plan. Fine to defer for family/TestFlight.
 6. **Visual polish** — user may want feedback on Home paycheck line after hard refresh on live site.
+7. **iPad Home metrics grid (optional)** — on regular width the metric grid is **4 columns**; Income + Spent leave two empty cells (same structural class of bug as the pre-`a160c7e` ring card). Only if user asks.
+8. **Pay period vs month duplication (optional, ask first)** — Pay period card may echo Home metric numbers (Income/Spent/Cash left vs Check left); may be intentional when month ≈ pay period. Review with user before changing.
 
 **Do not start:** bank sync / Plaid. Remote APNs can wait; local iOS reminders cover P1.
 
@@ -65,6 +69,8 @@ The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were 
 
 ## Explicitly not done / stale doc lines
 
+- **iPad 4-col Home metrics** — empty grid cells on regular width (see Recommended next #7).
+- **Pay period card duplication** — may be intentional; confirm with user before changing (see #8).
 - `docs/ROADMAP.md` Product still says “Push notifications for bill reminders” — treat as **remote push**; local iOS reminders are shipped.
 - Confirm-email Site URL must stay `https://elcomparob111.github.io/budget-studio/` (with path).
 - Leave behavior is **Option A** (keep shared snapshot minus partner’s tagged txs). See `docs/SHARED_BUDGETS.md`.
