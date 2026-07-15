@@ -27,7 +27,8 @@ Use this for each production cut (web and/or iOS). Mark only what you verified.
 - [ ] Auth Site URL + redirect allowlist match live origin
 - [ ] Email confirm enabled (prod)
 - [ ] Password min length ≥ 8; letters + digits preferred
-- [ ] Auth rate limits / attack protection reviewed
+- [ ] Auth rate limits enabled (tighten sign-in / sign-up / recovery before public launch; defaults OK for family/TestFlight)
+- [ ] Attack protection: CAPTCHA + leaked-password protection enabled before public publish (client lockout in `security.js` is UX-only)
 - [ ] Smoke: signup → confirm → sync → isolation → delete cloud data → export
 
 ### Web (GitHub Pages)

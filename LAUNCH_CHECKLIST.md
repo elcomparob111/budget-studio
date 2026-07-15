@@ -37,8 +37,8 @@ Expect `rowsecurity = true` and four policies (SELECT / INSERT / UPDATE / DELETE
 | URL config | [Auth → URL Configuration](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/url-configuration) | **Site URL** = `https://elcomparob111.github.io/budget-studio/` (WITH `/budget-studio/` — bare root 404s unless the user-site redirect repo is live) · **Redirect URLs** must include that exact URL **and** `https://elcomparob111.github.io/budget-studio/**` (plus `http://localhost:3000/**` for local). If `emailRedirectTo` is not allowlisted, Supabase falls back to Site URL. |
 | Email confirm | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) | Enable **Confirm email** for production |
 | Password | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) (or Password settings) | Min length **8**; prefer letters + digits (matches app) |
-| Rate limits | [Auth → Rate Limits](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/rate-limits) | Keep defaults or tighten sign-in / sign-up / recovery |
-| Attack protection | [Auth → Attack Protection](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/protection) | Enable CAPTCHA / leaked-password protection if available |
+| Rate limits | [Auth → Rate Limits](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/rate-limits) | **Before public publish:** confirm limits are enabled; optionally tighten sign-in / sign-up / recovery below defaults. Fine to leave defaults for family/TestFlight. |
+| Attack protection | [Auth → Attack Protection](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/protection) | **Before public publish:** enable CAPTCHA and leaked-password protection if available. Web client lockout in `security.js` is UX-only — not a substitute. |
 
 ### 3. Smoke test
 
