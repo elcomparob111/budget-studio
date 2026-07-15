@@ -2,22 +2,28 @@ import SwiftUI
 import UIKit
 
 enum AppTheme {
-    // MARK: - Colors (swiftui-design skill)
-    static let background = Color(hex: 0xF9F9F9)
-    static let surface = Color.white
-    static let inputFill = Color(hex: 0xF5F5F5)
-    static let primaryText = Color(hex: 0x2D2D2D)
-    static let secondaryText = Color(hex: 0x8E8E93)
+    // MARK: - Colors (match web CSS vars in styles.css :root / [data-theme="dark"])
+    static let background = Color.adaptiveColor(light: 0xF9F9F9, dark: 0x121212)
+    static let surface = Color.adaptiveColor(light: 0xFFFFFF, dark: 0x1C1C1E)
+    static let inputFill = Color.adaptiveColor(light: 0xF5F5F5, dark: 0x2C2C2E)
+    static let primaryText = Color.adaptiveColor(light: 0x2D2D2D, dark: 0xF5F5F7)
+    static let secondaryText = Color.adaptiveColor(light: 0x8E8E93, dark: 0x98989D)
 
-    static let pastelBlue = Color(hex: 0xC6E7FF)
-    static let pastelPurple = Color(hex: 0xDCD6F7)
-    static let pastelGreen = Color(hex: 0xE1EACD)
-    static let pastelOrange = Color(hex: 0xFFDDAE)
-    static let pastelPink = Color(hex: 0xFFD6E0)
+    static let buttonFill = Color.adaptiveColor(light: 0x2D2D2D, dark: 0xF5F5F7)
+    static let buttonForeground = Color.adaptiveColor(light: 0xFFFFFF, dark: 0x2D2D2D)
+    static let cardStroke = Color.adaptiveColor(light: 0x000000, dark: 0xFFFFFF, lightOpacity: 0.03, darkOpacity: 0.06)
+    static let cardShadow = Color.adaptiveColor(light: 0x000000, dark: 0x000000, lightOpacity: 0.04, darkOpacity: 0.35)
+    static let ringTrack = Color.adaptiveColor(light: 0x000000, dark: 0xFFFFFF, lightOpacity: 0.06, darkOpacity: 0.12)
+
+    static let pastelBlue = Color.adaptiveColor(light: 0xC6E7FF, dark: 0x1E3A5F)
+    static let pastelPurple = Color.adaptiveColor(light: 0xDCD6F7, dark: 0x2E2648)
+    static let pastelGreen = Color.adaptiveColor(light: 0xE1EACD, dark: 0x1F3D2A)
+    static let pastelOrange = Color.adaptiveColor(light: 0xFFDDAE, dark: 0x4A3418)
+    static let pastelPink = Color.adaptiveColor(light: 0xFFD6E0, dark: 0x4A1F28)
 
     static let income = Color(hex: 0x34C759)
     static let expense = Color(hex: 0xFF3B30)
-    static let accent = Color(hex: 0x2D2D2D)
+    static let accent = primaryText
 
     // MARK: - Spacing
     static let xs: CGFloat = 4
@@ -53,11 +59,11 @@ enum AppTheme {
         let palette: [Color]
         switch group {
         case "Needs":
-            palette = [pastelBlue, Color(hex: 0xA8D4F0), Color(hex: 0xB8E0FF), Color(hex: 0x9EC9E8)]
+            palette = [pastelBlue, pastelBlue.opacity(0.85), pastelBlue.opacity(0.7), pastelBlue.opacity(0.55)]
         case "Wants":
-            palette = [pastelPurple, pastelPink, Color(hex: 0xE8D4F5), Color(hex: 0xF0C4D8)]
+            palette = [pastelPurple, pastelPink, pastelPurple.opacity(0.8), pastelPink.opacity(0.8)]
         case "Savings":
-            palette = [pastelGreen, Color(hex: 0xC5D9A8), Color(hex: 0xD4E8B8), Color(hex: 0xB8D090)]
+            palette = [pastelGreen, pastelGreen.opacity(0.85), pastelGreen.opacity(0.7), pastelGreen.opacity(0.55)]
         default:
             palette = [pastelOrange, pastelPink, pastelBlue, pastelPurple]
         }
@@ -85,6 +91,30 @@ extension Color {
             opacity: opacity
         )
     }
+
+    private static func uiColor(hex: UInt, opacity: Double = 1) -> UIColor {
+        UIColor(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: opacity
+        )
+    }
+
+    static func adaptiveColor(
+        light: UInt,
+        dark: UInt,
+        lightOpacity: Double = 1,
+        darkOpacity: Double = 1
+    ) -> Color {
+        Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? uiColor(hex: dark, opacity: darkOpacity)
+                    : uiColor(hex: light, opacity: lightOpacity)
+            }
+        )
+    }
 }
 
 extension Font {
@@ -99,10 +129,10 @@ struct CardModifier: ViewModifier {
             .padding(AppTheme.cardPadding)
             .background(AppTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous))
-            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
+            .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous)
-                    .stroke(Color.black.opacity(0.03), lineWidth: 1)
+                    .stroke(AppTheme.cardStroke, lineWidth: 1)
             )
     }
 }
@@ -241,7 +271,7 @@ struct BudgetRingView: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.black.opacity(0.06), lineWidth: 10)
+                .stroke(AppTheme.ringTrack, lineWidth: 10)
             Circle()
                 .trim(from: 0, to: min(max(progress, 0), 1))
                 .stroke(
@@ -281,10 +311,10 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.app(16, weight: .bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(AppTheme.buttonForeground)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(disabled ? Color.gray.opacity(0.3) : AppTheme.primaryText)
+            .background(disabled ? Color.gray.opacity(0.3) : AppTheme.buttonFill)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)

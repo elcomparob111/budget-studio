@@ -3,6 +3,7 @@ import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var store: BudgetStore
+    @EnvironmentObject private var appearanceSettings: AppearanceSettings
     @Binding var showSetup: Bool
 
     @State private var showPayScheduleEditor = false
@@ -49,6 +50,7 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
+                    appearanceSection
                     payScheduleSummaryRow
                     budgetsSummaryRow
 
@@ -178,6 +180,36 @@ struct SettingsView: View {
         }
     }
 
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(spacing: AppTheme.md) {
+                Image(systemName: appearanceSettings.appearance.icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.pastelPurple.opacity(0.45), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Appearance")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text("System, light, or dark")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer(minLength: 0)
+            }
+
+            Picker("Appearance", selection: $appearanceSettings.appearance) {
+                ForEach(AppAppearance.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Appearance")
+        }
+        .appCard()
+    }
+
     private var sharedBudgetSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.md) {
             HStack(spacing: AppTheme.md) {
@@ -266,10 +298,10 @@ struct SettingsView: View {
                 } label: {
                     Text(store.isSharedBusy ? "Setting up…" : "Share this budget")
                         .font(.app(15, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.buttonForeground)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(AppTheme.primaryText)
+                        .background(AppTheme.buttonFill)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -319,10 +351,10 @@ struct SettingsView: View {
             } label: {
                 Label("Invite from Contacts", systemImage: "person.crop.circle")
                     .font(.app(15, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.buttonForeground)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(AppTheme.primaryText)
+                    .background(AppTheme.buttonFill)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
@@ -651,10 +683,10 @@ private struct PayScheduleEditorSheet: View {
                     Button(action: onSave) {
                         Text("Save pay schedule")
                             .font(.app(16, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.buttonForeground)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(AppTheme.primaryText)
+                            .background(AppTheme.buttonFill)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .buttonStyle(.plain)

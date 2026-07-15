@@ -78,7 +78,7 @@ struct AuthView: View {
                         } label: {
                             Group {
                                 if store.isLoading {
-                                    ProgressView().tint(.white)
+                                    ProgressView().tint(AppTheme.buttonForeground)
                                 } else {
                                     Text(mode == .signUp ? "Create account" : "Sign in")
                                 }

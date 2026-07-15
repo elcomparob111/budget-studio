@@ -17,10 +17,10 @@ struct RootView: View {
             if let message = store.toastMessage {
                 Text(message)
                     .font(.app(14, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.buttonForeground)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(AppTheme.primaryText.opacity(0.92), in: Capsule())
+                    .background(AppTheme.buttonFill.opacity(0.92), in: Capsule())
                     .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
                     .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
