@@ -193,8 +193,10 @@ function sanitizeTransaction(raw) {
   let amount = Number(raw.amount);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) return null;
   amount = Math.round(amount * 100) / 100;
-  const id = String(raw.id || "")
+  // IDs land in HTML attributes — allow only URL/attr-safe characters.
+  let id = String(raw.id || "")
     .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, BUDGET_LIMITS.maxIdLength);
   const clean = {
     id: id || `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -206,7 +208,10 @@ function sanitizeTransaction(raw) {
     amount,
   };
   // Shared-budget authorship (optional; absent on personal/older transactions).
-  const addedBy = String(raw.addedBy || "").trim().slice(0, BUDGET_LIMITS.maxIdLength);
+  let addedBy = String(raw.addedBy || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, BUDGET_LIMITS.maxIdLength);
   if (addedBy) {
     clean.addedBy = addedBy;
     clean.addedByName = String(raw.addedByName || "")

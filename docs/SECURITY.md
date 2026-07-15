@@ -37,6 +37,8 @@ npm run security:audit
 
 In Supabase → **SQL Editor**, run the contents of [`../supabase/rls.sql`](../supabase/rls.sql) (same policies as [`../supabase-schema.sql`](../supabase-schema.sql)).
 
+Then run [`../supabase/security-hardening.sql`](../supabase/security-hardening.sql) — server-owned `updated_at` triggers + JSON state size caps (blocks forged client clocks and oversized REST payloads).
+
 Verify:
 
 ```sql

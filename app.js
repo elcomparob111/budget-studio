@@ -1906,7 +1906,7 @@ function renderTransactions() {
   elements.transactionsBody.innerHTML = rows
     .map(
       (item) => `
-        <tr class="table-row-clickable" data-transaction-id="${item.id}">
+        <tr class="table-row-clickable" data-transaction-id="${escapeHtml(item.id)}">
           <td>${formatDate(item.date)}</td>
           <td><span class="type-pill ${item.type.toLowerCase()}">${escapeHtml(item.type)}</span></td>
           <td>${escapeHtml(item.category)}</td>
@@ -1914,8 +1914,8 @@ function renderTransactions() {
           <td>${escapeHtml(item.account)}</td>
           <td class="amount">${money(item.amount)}</td>
           <td class="action-cell">
-            <button class="edit-button" data-edit-id="${item.id}" type="button">Edit</button>
-            <button class="delete-button" data-delete-id="${item.id}" type="button">Delete</button>
+            <button class="edit-button" data-edit-id="${escapeHtml(item.id)}" type="button">Edit</button>
+            <button class="delete-button" data-delete-id="${escapeHtml(item.id)}" type="button">Delete</button>
           </td>
         </tr>
       `,
@@ -2841,12 +2841,17 @@ async function handleDeleteAccount() {
     return;
   }
   const confirmed = window.confirm(
-    "Delete your cloud budget data and sign out?\n\nThis removes your synced budget from Budget Studio. Your Auth login may still exist until you delete it in Supabase (see Privacy). Export a backup first if you need it.",
+    "Delete your cloud budget data and sign out?\n\n" +
+      "• Removes your personal synced budget\n" +
+      "• Leaves any shared budget (if you own it, that shared budget is deleted for everyone)\n" +
+      "• Your Auth login may still exist until you delete it in Supabase (see Privacy)\n\n" +
+      "Export a backup first if you need it.",
   );
   if (!confirmed) return;
   const uid = currentUser.uid;
   elements.deleteAccountBtn.disabled = true;
   try {
+    teardownShared();
     await deleteOwnBudgetAndSignOut();
     clearLocalUserCaches(uid);
     currentUser = null;
@@ -2854,8 +2859,10 @@ async function handleDeleteAccount() {
     renderIdentityUI();
     render();
     openAuthGate();
-    setAuthMessage("Your budget data was deleted and you are signed out. To remove the login entirely, delete the user in Supabase Authentication.");
-    showToast("Budget data deleted.");
+    setAuthMessage(
+      "Your personal budget was deleted, shared membership was cleared, and you are signed out. To remove the login entirely, delete the user in Supabase Authentication.",
+    );
+    showToast("Cloud budget data deleted.");
   } catch (error) {
     showToast(friendlyAuthError(error), "error");
   } finally {
@@ -2906,9 +2913,18 @@ function flushDirtyCloudSave() {
   (sharedBudget
     ? pushSharedBudget(sharedBudget.id, payload)
     : pushCloudBudget(currentUser.uid, { ...payload, name: currentUser.displayName || "" }))
-    .then(() => {
+    .then((result) => {
       localStorage.removeItem(CLOUD_DIRTY_KEY);
       didNotifySyncFailure = false;
+      const serverAt = Number(result?.updatedAt) || 0;
+      if (serverAt > 0) {
+        if (sharedBudget) lastSharedAppliedAt = serverAt;
+        writeCachePayload(currentUser.uid, {
+          ...payload,
+          updatedAt: serverAt,
+          name: currentUser.displayName || "",
+        });
+      }
     })
     .catch(() => {});
 }
@@ -2936,15 +2952,20 @@ function saveState() {
 
   const payload = { state, updatedAt: Date.now(), name: currentUser.displayName || "" };
   writeCachePayload(currentUser.uid, payload);
-  if (sharedBudget) lastSharedAppliedAt = payload.updatedAt; // our own realtime echo gets skipped
+  if (sharedBudget) lastSharedAppliedAt = payload.updatedAt; // optimistic until server ack
   clearTimeout(cloudSaveTimer);
   // Debounce cloud push so rapid budget edits don't spam sync failures.
   cloudSaveTimer = setTimeout(() => {
     if (localOnlyMode || !currentUser || currentUser.uid === "local") return;
     (sharedBudget ? pushSharedBudget(sharedBudget.id, payload) : pushCloudBudget(currentUser.uid, payload))
-      .then(() => {
+      .then((result) => {
         localStorage.removeItem(CLOUD_DIRTY_KEY);
         didNotifySyncFailure = false;
+        const serverAt = Number(result?.updatedAt) || 0;
+        if (serverAt > 0) {
+          if (sharedBudget) lastSharedAppliedAt = serverAt;
+          writeCachePayload(currentUser.uid, { ...payload, updatedAt: serverAt });
+        }
       })
       .catch(() => {
         localStorage.setItem(CLOUD_DIRTY_KEY, "1");

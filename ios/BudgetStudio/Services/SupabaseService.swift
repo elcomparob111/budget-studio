@@ -120,13 +120,15 @@ final class SupabaseService {
         )
     }
 
-    func pushBudget(userId: UUID, payload: CloudBudgetPayload) async throws {
+    func pushBudget(userId: UUID, payload: CloudBudgetPayload) async throws -> Int64 {
         try await assertSessionOwns(userId)
         struct UpsertRow: Encodable {
             var user_id: UUID
             var state: BudgetState
-            var updated_at: Int64
             var name: String
+        }
+        struct UpdatedRow: Decodable {
+            var updated_at: Int64
         }
         let safeState = sanitizeState(payload.state)
         guard !safeState.categories.isEmpty else {
@@ -135,14 +137,16 @@ final class SupabaseService {
         let row = UpsertRow(
             user_id: userId,
             state: safeState,
-            updated_at: payload.updatedAt,
             name: String(payload.name.prefix(80))
         )
-        // Explicit conflict target matches web upsert on primary key user_id.
-        try await client
+        // updated_at is set by DB trigger (security-hardening.sql) — ignore client clock.
+        let rows: [UpdatedRow] = try await client
             .from("budgets")
             .upsert(row, onConflict: "user_id")
+            .select("updated_at")
             .execute()
+            .value
+        return rows.first?.updated_at ?? payload.updatedAt
     }
 
     /// Refuse cloud access unless the live session matches the requested user id.
@@ -187,21 +191,25 @@ final class SupabaseService {
             let description = String(tx.description.prefix(120))
                 .replacingOccurrences(of: "<", with: "")
                 .replacingOccurrences(of: ">", with: "")
-            let addedBy = tx.addedBy.map { String($0.prefix(80)) }
+            let safeIdChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_-"))
+            let rawId = String(tx.id.unicodeScalars.filter { safeIdChars.contains($0) }.prefix(80).map(Character.init))
+            let addedByRaw = tx.addedBy.map {
+                String($0.unicodeScalars.filter { safeIdChars.contains($0) }.prefix(80).map(Character.init))
+            }
             let addedByName = tx.addedByName.map {
                 String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
                     .replacingOccurrences(of: "<", with: "")
                     .replacingOccurrences(of: ">", with: "")
             }
             return BudgetTransaction(
-                id: String(tx.id.prefix(80)),
+                id: rawId.isEmpty ? String(UUID().uuidString.prefix(80)) : rawId,
                 date: date,
                 type: tx.type,
                 category: category,
                 description: description.isEmpty ? category : description,
                 account: String(tx.account.prefix(40)),
                 amount: (tx.amount * 100).rounded() / 100,
-                addedBy: addedBy?.isEmpty == false ? addedBy : nil,
+                addedBy: (addedByRaw?.isEmpty == false) ? addedByRaw : nil,
                 addedByName: (addedByName?.isEmpty == false) ? addedByName : nil
             )
         }
@@ -276,22 +284,27 @@ final class SupabaseService {
         )
     }
 
-    func pushSharedBudget(budgetId: UUID, payload: CloudBudgetPayload) async throws {
+    func pushSharedBudget(budgetId: UUID, payload: CloudBudgetPayload) async throws -> Int64 {
         _ = try await requireSessionUid()
         struct UpdateRow: Encodable {
             var state: BudgetState
+        }
+        struct UpdatedRow: Decodable {
             var updated_at: Int64
         }
         let safeState = sanitizeState(payload.state)
         guard !safeState.categories.isEmpty else {
             throw NSError(domain: "BudgetStudio", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid budget payload."])
         }
-        // Deliberately not updating `name` — same as web (saver's display name must not rename).
-        try await client
+        // Deliberately not updating `name` — same as web. updated_at is DB-triggered.
+        let rows: [UpdatedRow] = try await client
             .from("shared_budgets")
-            .update(UpdateRow(state: safeState, updated_at: payload.updatedAt))
+            .update(UpdateRow(state: safeState))
             .eq("id", value: budgetId.uuidString)
+            .select("updated_at")
             .execute()
+            .value
+        return rows.first?.updated_at ?? payload.updatedAt
     }
 
     func createSharedBudget(state: BudgetState, name: String) async throws -> UUID {

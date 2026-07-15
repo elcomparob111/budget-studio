@@ -243,13 +243,18 @@ export async function pushCloudBudget(uid, payload) {
   assertOwnUserId(sessionUid, uid);
 
   const safe = sanitizeCloudPayload(payload);
-  const { error } = await client.from("budgets").upsert({
-    user_id: sessionUid,
-    state: safe.state,
-    updated_at: safe.updatedAt,
-    name: safe.name,
-  });
+  // Do not trust client updated_at — DB trigger sets server time (see security-hardening.sql).
+  const { data, error } = await client
+    .from("budgets")
+    .upsert({
+      user_id: sessionUid,
+      state: safe.state,
+      name: safe.name,
+    })
+    .select("updated_at")
+    .single();
   if (error) throw error;
+  return { updatedAt: Number(data?.updated_at) || Date.now() };
 }
 
 // ---------------------------------------------------------------------------
@@ -303,11 +308,15 @@ export async function pushSharedBudget(budgetId, payload) {
   const safe = sanitizeCloudPayload(payload);
   // Deliberately not updating `name`: the payload carries the saver's display
   // name, which would rename the shared budget on every partner save.
-  const { error } = await client
+  // updated_at is set by a DB trigger — client timestamps are ignored.
+  const { data, error } = await client
     .from("shared_budgets")
-    .update({ state: safe.state, updated_at: safe.updatedAt })
-    .eq("id", budgetId);
+    .update({ state: safe.state })
+    .eq("id", budgetId)
+    .select("updated_at")
+    .single();
   if (error) throw error;
+  return { updatedAt: Number(data?.updated_at) || Date.now() };
 }
 
 /** Create a shared budget seeded from `state`; caller becomes owner. Returns budget id. */
@@ -393,10 +402,10 @@ export function subscribeSharedBudget(budgetId, onRemoteChange) {
 }
 
 /**
- * Best-effort account deletion placeholder.
+ * Best-effort account data deletion.
  * Supabase client apps cannot call admin deleteUser without a privileged key.
- * Clears the user's budget row (RLS-scoped) and signs out; full Auth user deletion
- * must be done in the Supabase dashboard or via a server-side Edge Function.
+ * Clears personal budget, leaves or dissolves shared membership, then signs out.
+ * Full Auth user deletion still needs the Supabase dashboard or an Edge Function.
  */
 export async function deleteOwnBudgetAndSignOut() {
   const client = requireClient();
@@ -404,13 +413,35 @@ export async function deleteOwnBudgetAndSignOut() {
   const sessionUid = sessionData.session?.user?.id;
   if (!sessionUid) throw new Error("You must be signed in to delete your data.");
 
+  // Shared first so we don't leave membership/state behind after personal wipe.
+  let sharedHandled = false;
+  try {
+    const membership = await fetchMySharedMembership();
+    if (membership) {
+      if (membership.role === "owner") {
+        const { error: sharedErr } = await client.from("shared_budgets").delete().eq("id", membership.id);
+        if (sharedErr) throw sharedErr;
+      } else {
+        await leaveSharedBudget(membership.id);
+      }
+      sharedHandled = true;
+    }
+  } catch (error) {
+    const msg = String(error?.message || error || "");
+    // Shared schema not applied yet — still allow personal delete.
+    if (!/relation|does not exist|schema cache|could not find the table/i.test(msg)) {
+      throw error;
+    }
+  }
+
   const { error } = await client.from("budgets").delete().eq("user_id", sessionUid);
   if (error) throw error;
   await signOutUser();
   return {
     deletedBudget: true,
+    sharedHandled,
     authUserDeleted: false,
-    note: "Budget data removed. Delete the Auth user in Supabase Dashboard → Authentication → Users if you need the account gone entirely.",
+    note: "Personal budget removed and shared membership cleared when present. Delete the Auth user in Supabase Dashboard → Authentication → Users if you need the account gone entirely.",
   };
 }
 

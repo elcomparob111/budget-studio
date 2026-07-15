@@ -866,13 +866,17 @@ final class BudgetStore: ObservableObject {
         let payload = CloudBudgetPayload(state: state, updatedAt: localUpdatedAt, name: userName)
         do {
             if let membership = sharedMembership {
-                try await supabase.pushSharedBudget(budgetId: membership.id, payload: payload)
-                lastSharedAppliedAt = localUpdatedAt
+                let serverAt = try await supabase.pushSharedBudget(budgetId: membership.id, payload: payload)
+                lastSharedAppliedAt = serverAt
+                localUpdatedAt = serverAt
             } else {
-                try await supabase.pushBudget(userId: userId, payload: payload)
+                let serverAt = try await supabase.pushBudget(userId: userId, payload: payload)
+                localUpdatedAt = serverAt
             }
             cloudDirty = false
             didNotifySyncFailure = false
+            saveLocalKeepingTimestamp()
+            publishWidgetSnapshot()
         } catch {
             cloudDirty = true
             // Local save already succeeded — never block input. Toast at most once until sync works again.

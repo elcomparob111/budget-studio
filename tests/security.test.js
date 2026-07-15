@@ -118,6 +118,28 @@ describe("sanitizeBudgetState", () => {
     assert.ok(!out.transactions[0].description.includes("<"));
   });
 
+  it("strips attribute-breaking characters from transaction ids", () => {
+    const out = sanitizeBudgetState({
+      categories: [{ name: "Salary", type: "Income", group: "Income", budget: 0 }],
+      transactions: [
+        {
+          id: `evil"><img src=x onerror=alert(1)>`,
+          date: "2026-07-09",
+          type: "Expense",
+          category: "X",
+          description: "ok",
+          account: "Checking",
+          amount: 5,
+          addedBy: `uid"><script>`,
+          addedByName: "Alex",
+        },
+      ],
+    });
+    assert.equal(out.transactions.length, 1);
+    assert.equal(out.transactions[0].id, "evilimgsrcxonerroralert1");
+    assert.equal(out.transactions[0].addedBy, "uidscript");
+  });
+
   it("drops invalid transactions", () => {
     const out = sanitizeBudgetState({
       categories: [{ name: "Salary", type: "Income", group: "Income", budget: 0 }],
