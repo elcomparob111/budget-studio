@@ -30,8 +30,8 @@ budget is simply a second row both clients point at.
 - All three tables are RLS-on, anon fully revoked.
 - Membership/invite writes go through `security definer` RPCs so tokens are
   never enumerable via SELECT and membership can't be self-granted.
-- `is_budget_member()` is a definer helper to avoid recursive RLS between
-  `shared_budgets` and `budget_members`.
+- `private.is_budget_member()` is a definer helper (non-exposed schema) to avoid
+  recursive RLS between `shared_budgets` and `budget_members`.
 - Invite tokens: UUID, 7-day expiry, single-use (`used_by`), revocable by
   creator (delete).
 

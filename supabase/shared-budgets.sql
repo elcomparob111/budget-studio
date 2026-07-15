@@ -44,9 +44,15 @@ grant select, insert, update, delete on table public.shared_budgets to authentic
 grant select, delete on table public.budget_members to authenticated;
 grant select, insert, delete on table public.budget_invites to authenticated;
 
--- Membership check helper. SECURITY DEFINER so shared_budgets policies can
--- consult budget_members without recursive RLS evaluation.
-create or replace function public.is_budget_member(bid uuid)
+-- Membership check helper in private schema (not PostgREST-exposed). SECURITY
+-- DEFINER so shared_budgets policies can consult budget_members without
+-- recursive RLS evaluation. authenticated needs EXECUTE for policy checks only.
+create schema if not exists private;
+
+revoke all on schema private from public;
+grant usage on schema private to postgres, authenticated, service_role;
+
+create or replace function private.is_budget_member(bid uuid)
 returns boolean
 language sql
 security definer
@@ -59,13 +65,18 @@ as $$
   );
 $$;
 
+revoke all on function private.is_budget_member(uuid) from public;
+revoke all on function private.is_budget_member(uuid) from anon;
+grant execute on function private.is_budget_member(uuid) to authenticated;
+grant execute on function private.is_budget_member(uuid) to service_role;
+
 -- shared_budgets: members read/write; anyone authed may create (becoming owner
 -- via the RPC below — direct inserts must name themselves as creator).
 drop policy if exists "Members read shared budget" on public.shared_budgets;
 create policy "Members read shared budget"
   on public.shared_budgets for select
   to authenticated
-  using (public.is_budget_member(id));
+  using (private.is_budget_member(id));
 
 drop policy if exists "Creator inserts shared budget" on public.shared_budgets;
 create policy "Creator inserts shared budget"
@@ -77,8 +88,8 @@ drop policy if exists "Members update shared budget" on public.shared_budgets;
 create policy "Members update shared budget"
   on public.shared_budgets for update
   to authenticated
-  using (public.is_budget_member(id))
-  with check (public.is_budget_member(id));
+  using (private.is_budget_member(id))
+  with check (private.is_budget_member(id));
 
 drop policy if exists "Owner deletes shared budget" on public.shared_budgets;
 create policy "Owner deletes shared budget"
@@ -97,7 +108,7 @@ drop policy if exists "Members read roster" on public.budget_members;
 create policy "Members read roster"
   on public.budget_members for select
   to authenticated
-  using (public.is_budget_member(budget_id));
+  using (private.is_budget_member(budget_id));
 
 drop policy if exists "Member leaves budget" on public.budget_members;
 create policy "Member leaves budget"
