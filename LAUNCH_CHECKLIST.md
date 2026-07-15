@@ -38,7 +38,7 @@ Expect `rowsecurity = true` and four policies (SELECT / INSERT / UPDATE / DELETE
 | Email confirm | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) | Enable **Confirm email** for production |
 | Password | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) (or Password settings) | Min length **8**; prefer letters + digits (matches app) |
 | Rate limits | [Auth → Rate Limits](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/rate-limits) | **Before public publish:** confirm limits are enabled; optionally tighten sign-in / sign-up / recovery below defaults. Fine to leave defaults for family/TestFlight. |
-| Attack protection | [Auth → Attack Protection](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/protection) | **Before public publish:** enable CAPTCHA and leaked-password protection if available. Web client lockout in `security.js` is UX-only — not a substitute. |
+| Attack protection | [Auth → Attack Protection](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/protection) | **Before public publish:** enable CAPTCHA. **Leaked-password protection is a Pro-plan feature** — not available on the current plan, so the `auth_leaked_password_protection` advisor stays WARN until an upgrade. Web client lockout in `security.js` is UX-only — not a substitute. |
 
 ### 3. Smoke test
 

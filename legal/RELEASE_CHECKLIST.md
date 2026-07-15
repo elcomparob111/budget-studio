@@ -28,7 +28,8 @@ Use this for each production cut (web and/or iOS). Mark only what you verified.
 - [ ] Email confirm enabled (prod)
 - [ ] Password min length ≥ 8; letters + digits preferred
 - [ ] Auth rate limits enabled (tighten sign-in / sign-up / recovery before public launch; defaults OK for family/TestFlight)
-- [ ] Attack protection: CAPTCHA + leaked-password protection enabled before public publish (client lockout in `security.js` is UX-only)
+- [ ] Attack protection: CAPTCHA enabled before public publish (client lockout in `security.js` is UX-only)
+- [ ] Leaked-password protection — **Pro-plan only**; N/A on the current plan. Revisit on upgrade; advisor stays WARN until then.
 - [ ] Smoke: signup → confirm → sync → isolation → delete cloud data → export
 
 ### Web (GitHub Pages)

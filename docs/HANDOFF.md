@@ -1,7 +1,7 @@
 # Handoff — Budget Studio
 
 **Pinned:** July 15, 2026  
-**Branch / tip:** `main` @ `a28bbb8` (**2 commits unpushed**)  
+**Branch / tip:** `main` @ `aa53edc` (pushed)  
 **Owner preference:** stop feature crunch; next agent picks from **Recommended next** below.
 
 Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipped P0 work unless fixing a bug.
@@ -14,7 +14,8 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 |------|--------|--------|
 | Sync refresh (web + iOS) | Done | Web re-fetches on focus/visibility/online when cloud `updatedAt` > local (`0b73f97`). iOS foreground refresh; `sanitizeState` preserves `savingsGoals`. |
 | Biweekly pay periods | Done | Periods show payday → next payday (e.g. Jul 8–22); preview on Home + Pay schedule (`0b73f97`). |
-| Supabase security advisors | Done | `is_budget_member` → `private` schema (`4a91780`); `create_shared_budget` + `accept_budget_invite` → SECURITY INVOKER + private triggers (`1d498e9`). **Remaining advisor:** likely auth leaked-password protection only (dashboard toggle). |
+| Supabase security advisors | Done | `is_budget_member` → `private` schema (`4a91780`); `create_shared_budget` + `accept_budget_invite` → SECURITY INVOKER + private triggers (`1d498e9`). **Only remaining advisor:** `auth_leaked_password_protection` (WARN) — **requires the Pro plan**, so it cannot be cleared on the current plan. Not a blocker for family/TestFlight. Verified via `get_advisors` Jul 15. |
+| Shared budgets — RLS regression + retest | Done | `1d498e9` broke **creation**: `create_shared_budget` is SECURITY INVOKER, so `returning id into bid` applied the SELECT policy (`private.is_budget_member(id)`) to the new row, but owner membership comes from an AFTER INSERT trigger (queued to end of statement) → `new row violates row-level security policy`. Fixed in `18f5395` by generating the id up front (no read-back). Applied live **and** in `supabase/shared-budgets.sql`. Invite → accept retested by owner Jul 15: **works**. |
 | Pay UI (web ↔ iOS parity) | Done | **Option B:** Home metrics-only with optional “Next” line; full schedule in Pay schedule settings (`33a0ec8`, `58b9f4d`, `2775c84`). |
 | Recurring web UI | Done | Matched iOS settings sheet: modal, chips, bill reminders, trash rows (`c96fc28`). SW **v65**. |
 | Xcode 26 settings + warnings | Done | `692b97c` settings/`.eq` filter, `a28bbb8` BudgetStore bindings. `xcodebuild` → BUILD SUCCEEDED, **0 warnings**. `UIRequiresFullScreen` deliberately left `false` (iPad Split View). |
@@ -52,10 +53,10 @@ The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were 
 ## Recommended next (pick one)
 
 1. ~~Commit Xcode warning fixes~~ — **done** (`692b97c`, `a28bbb8`). Build is warning-free.
-2. **Smoke-test shared budgets** — create + accept invite after RPC hardening (`4a91780`, `1d498e9`); two accounts, realtime, leave Option A.
+2. ~~Smoke-test shared budgets~~ — **done** Jul 15. Create was broken by the RPC hardening and is fixed (`18f5395`); invite → accept retested and working. **Still unexercised:** realtime partner sync and leave Option A after the SECURITY INVOKER switch — worth a pass during TestFlight.
 3. **TestFlight** — family on real devices (shared budgets, reminders, widget, Savings). See `ios/README.md` / `docs/DEPLOYMENT.md`.
 4. **Launch smoke test** — [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data).
-5. **Before public publish (auth)** — Supabase rate limits, CAPTCHA, leaked-password protection. Checklists updated locally but not committed. Fine to defer for family/TestFlight.
+5. **Before public publish (auth)** — rate limits + CAPTCHA are configurable now; leaked-password protection is **Pro-only** and cannot be enabled on the current plan. Fine to defer for family/TestFlight.
 6. **Visual polish** — user may want feedback on Home paycheck line after hard refresh on live site.
 
 **Do not start:** bank sync / Plaid. Remote APNs can wait; local iOS reminders cover P1.
@@ -74,6 +75,10 @@ The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were 
 
 - **Live web:** https://elcomparob111.github.io/budget-studio/ — **hard refresh** after deploy (SW v65).
 - Shared: two accounts, invite, edit both sides, leave keeps own entries.
+- **Supabase MCP is configured** (`.mcp.json`, project `dhlaqqghjfmgdlkfxlxg`). Authenticate with `claude /mcp` **from this repo** — running it elsewhere authenticates that directory's project instead. Restart the session afterwards; MCP tools bind at startup. `get_logs`/`execute_sql` beat guessing for any RLS or RPC bug.
+- **`supabase/*.sql` is applied by hand** — there is no CLI, no link, no migrations dir. The repo is *not* proof of what prod runs; query the database (`pg_proc.prosecdef`, `pg_policies`) before trusting a file.
+- **RLS trap (bit us once):** in a SECURITY INVOKER function, `insert ... returning` applies the **SELECT** policy to the new row. If that policy depends on a row created by an AFTER INSERT trigger, it fails — after-row triggers are queued to end of statement. Don't read back; generate the id up front. See `18f5395`.
+- **Testing a change means testing the current code.** The Jul 14 shared-budget test predated the Jul 15 RPC rewrite and gave false confidence; the create path was broken the whole time.
 - Pay: Home shows metrics + optional Next; full schedule under Settings → Pay schedule.
 - Recurring web: modal matches iOS (chips, bill reminders toggle, trash on rows).
 - Widget: install signed-in, add **Safe to spend** widget; re-add after UI changes.
