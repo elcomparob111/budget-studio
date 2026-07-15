@@ -157,11 +157,6 @@ enum AdaptiveLayout {
     static let authMaxWidth: CGFloat = 440
     static let lockMaxWidth: CGFloat = 420
 
-    static func metricColumns(horizontalSizeClass: UserInterfaceSizeClass?) -> [GridItem] {
-        let count = horizontalSizeClass == .regular ? 4 : 2
-        return Array(repeating: GridItem(.flexible(), spacing: AppTheme.md), count: count)
-    }
-
     static func categoryColumns(horizontalSizeClass: UserInterfaceSizeClass?) -> [GridItem] {
         let count = horizontalSizeClass == .regular ? 2 : 1
         return Array(repeating: GridItem(.flexible(), spacing: AppTheme.md), count: count)

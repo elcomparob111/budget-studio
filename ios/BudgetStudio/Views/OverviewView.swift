@@ -16,10 +16,7 @@ struct OverviewView: View {
 
                     monthPicker
 
-                    LazyVGrid(
-                        columns: AdaptiveLayout.metricColumns(horizontalSizeClass: horizontalSizeClass),
-                        spacing: AppTheme.md
-                    ) {
+                    HStack(spacing: AppTheme.md) {
                         MetricCard(
                             title: "Income",
                             value: currency(store.monthSummary.income),
@@ -55,6 +52,8 @@ struct OverviewView: View {
             }
             .background(AppTheme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Image("AppLogo")
@@ -249,7 +248,7 @@ struct OverviewView: View {
     }
 
     private func payPeriodCard(_ pay: PayPeriodSummary) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.md) {
+        VStack(alignment: .leading, spacing: AppTheme.sm) {
             HStack {
                 VStack(alignment: .leading, spacing: AppTheme.xs) {
                     Text("This pay period")
