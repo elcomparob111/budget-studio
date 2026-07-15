@@ -643,8 +643,8 @@ private struct PayScheduleEditorSheet: View {
                     if !store.payPeriodPreviews.isEmpty {
                         PayPeriodScheduleView(
                             periods: store.payPeriodPreviews,
-                            showNote: true,
-                            compact: true
+                            expectedCheckAmount: store.state.setupProfile?.payAmount,
+                            showNote: true
                         )
                     }
 

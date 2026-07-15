@@ -94,6 +94,7 @@
             <article>
               <span>Period</span>
               <strong id="payPeriodRange">Not set</strong>
+              <small id="payPeriodNextHint" hidden></small>
             </article>
             <article>
               <span>Income this period</span>
@@ -109,10 +110,6 @@
               <small id="paycheckLeftRange">This paycheck</small>
             </article>
           </div>
-          <div id="payPeriodPreview" class="pay-period-preview" hidden></div>
-          <p id="payPeriodPreviewNote" class="pay-period-note" hidden>
-            Add income when you get paid.
-          </p>
           <div id="paycheckBreakdown" class="paycheck-breakdown"></div>
         </section>
 
@@ -766,10 +763,10 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=61"></script>
+    <script type="module" src="./app.js?v=63"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=62").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=63").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

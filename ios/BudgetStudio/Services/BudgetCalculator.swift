@@ -119,6 +119,27 @@ enum BudgetCalculator {
         return previews
     }
 
+    static func nextPayPeriodHint(state: BudgetState, month: String, now: Date = Date()) -> String? {
+        guard state.setupProfile != nil else { return nil }
+        let today = todayString(now: now)
+        let isCurrentMonth = month == String(today.prefix(7))
+        let referenceDate = isCurrentMonth ? today : "\(month)-01"
+        guard var period = payPeriod(for: referenceDate, profile: state.setupProfile!) else { return nil }
+
+        if !isCurrentMonth && period.start < "\(month)-01" {
+            guard let endDate = parseDate(period.end),
+                  let dayAfter = Calendar.current.date(byAdding: .day, value: 1, to: endDate),
+                  let next = payPeriod(for: formatISO(dayAfter), profile: state.setupProfile!) else { return nil }
+            period = next
+        }
+
+        let previews = payPeriodPreviews(state: state, month: month, now: now)
+        guard previews.count >= 2,
+              let idx = previews.firstIndex(where: { $0.start == period.start && $0.end == period.end }),
+              idx < previews.count - 1 else { return nil }
+        return "Next · \(previews[idx + 1].rangeLabel)"
+    }
+
     /// Expense categories with activity this month or a budget — used by Overview progress.
     /// Idle $0/$0 rows are omitted; they reappear automatically when spent or budget becomes > 0.
     static func categorySpending(state: BudgetState, month: String) -> [(category: BudgetCategory, spent: Double)] {

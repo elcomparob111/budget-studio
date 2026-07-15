@@ -56,6 +56,7 @@ final class BudgetStore: ObservableObject {
     var monthSummary: MonthSummary { BudgetCalculator.monthSummary(state: state, month: monthKey) }
     var payPeriodSummary: PayPeriodSummary? { BudgetCalculator.payPeriodSummary(state: state, month: monthKey) }
     var payPeriodPreviews: [PayPeriodPreview] { BudgetCalculator.payPeriodPreviews(state: state, month: monthKey) }
+    var nextPayPeriodHint: String? { BudgetCalculator.nextPayPeriodHint(state: state, month: monthKey) }
     var categorySpending: [(category: BudgetCategory, spent: Double)] {
         BudgetCalculator.categorySpending(state: state, month: monthKey)
     }

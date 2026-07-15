@@ -398,8 +398,7 @@ const elements = {
   ringSubtext: document.querySelector("#ringSubtext"),
   payPeriodBadge: document.querySelector("#payPeriodBadge"),
   payPeriodRange: document.querySelector("#payPeriodRange"),
-  payPeriodPreview: document.querySelector("#payPeriodPreview"),
-  payPeriodPreviewNote: document.querySelector("#payPeriodPreviewNote"),
+  payPeriodNextHint: document.querySelector("#payPeriodNextHint"),
   paySchedulePeriodPreview: document.querySelector("#paySchedulePeriodPreview"),
   paycheckIncomeMetric: document.querySelector("#paycheckIncomeMetric"),
   paycheckSpentMetric: document.querySelector("#paycheckSpentMetric"),
@@ -1423,7 +1422,7 @@ function updatePayScheduleSummary() {
   if (elements.settingsPayScheduleSubtitle) {
     elements.settingsPayScheduleSubtitle.textContent = subtitle;
   }
-  renderPayPeriodPreview(month, elements.paySchedulePeriodPreview, { compact: true });
+  renderPayPeriodPreview(month, elements.paySchedulePeriodPreview);
 }
 
 function populatePayScheduleForm() {
@@ -1907,8 +1906,17 @@ function renderPaycheckView(month) {
   if (elements.paycheckLeftRange) {
     elements.paycheckLeftRange.textContent = paySummary.rangeLabel;
   }
+  if (elements.payPeriodNextHint) {
+    const nextHint = getNextPayPeriodHint(month, paySummary);
+    if (nextHint) {
+      elements.payPeriodNextHint.textContent = nextHint;
+      elements.payPeriodNextHint.hidden = false;
+    } else {
+      elements.payPeriodNextHint.textContent = "";
+      elements.payPeriodNextHint.hidden = true;
+    }
+  }
   updatePayScheduleSummary();
-  renderPayPeriodPreview(month, elements.payPeriodPreview);
 
   const rows = paySummary.categoryRows.filter((row) => row.spent > 0).slice(0, 5);
   if (!rows.length) {
@@ -2887,18 +2895,23 @@ function listPayPeriodsForMonth(month) {
   return periods;
 }
 
+function getNextPayPeriodHint(month, period) {
+  const periods = listPayPeriodsForMonth(month);
+  if (!period?.start || periods.length < 2) return null;
+  const idx = periods.findIndex((item) => item.start === period.start && item.end === period.end);
+  if (idx < 0 || idx >= periods.length - 1) return null;
+  return `Next · ${periods[idx + 1].rangeLabel}`;
+}
+
 function renderPayPeriodPreview(month, container, { compact = false } = {}) {
   if (!container) return;
   const periods = listPayPeriodsForMonth(month);
-  const showNote = elements.payPeriodPreviewNote;
   if (!periods.length) {
     container.hidden = true;
     container.innerHTML = "";
-    if (showNote && container === elements.payPeriodPreview) showNote.hidden = true;
     return;
   }
   container.hidden = false;
-  if (showNote && container === elements.payPeriodPreview) showNote.hidden = false;
   const payAmount = Number(state.setupProfile?.payAmount) || 0;
   const expectedLine = !compact && payAmount > 0
     ? `<p class="pay-period-expected">Expected check · ${money(payAmount)}</p>`

@@ -246,6 +246,11 @@ struct OverviewView: View {
                     Text(pay.rangeLabel)
                         .font(.app(18, weight: .bold))
                         .foregroundStyle(AppTheme.primaryText)
+                    if let nextHint = store.nextPayPeriodHint {
+                        Text(nextHint)
+                            .font(.app(12, weight: .medium))
+                            .foregroundStyle(AppTheme.secondaryText)
+                    }
                 }
                 Spacer()
                 Text("📅")
@@ -259,16 +264,6 @@ struct OverviewView: View {
                 miniStat("Spent", currency(pay.spent), AppTheme.expense)
                 // Date range under Check left so month vs paycheck windows are obvious at a glance.
                 miniStat("Check left", currency(pay.left), AppTheme.primaryText, subtitle: pay.rangeLabel)
-            }
-
-            let previews = store.payPeriodPreviews
-            if !previews.isEmpty {
-                Divider().opacity(0.35)
-                PayPeriodScheduleView(
-                    periods: previews,
-                    expectedCheckAmount: store.state.setupProfile?.payAmount,
-                    showNote: true
-                )
             }
         }
         .appCard()
