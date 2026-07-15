@@ -1132,13 +1132,12 @@ function attachEvents() {
       node.classList.toggle("selected", node === button);
     });
   });
-  elements.tabBar?.addEventListener("click", (event) => {
-    const fromPath = (typeof event.composedPath === "function" ? event.composedPath() : []).find(
-      (node) => node && typeof node.getAttribute === "function" && node.getAttribute("data-tab"),
-    );
-    const button = (event.target.closest && event.target.closest("[data-tab]")) || fromPath;
-    const tab = button?.getAttribute?.("data-tab") || button?.dataset?.tab;
-    if (tab) switchTab(tab);
+  elements.tabBar?.querySelectorAll("[data-tab]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      const tab = button.getAttribute("data-tab") || button.dataset.tab;
+      if (tab) switchTab(tab);
+    });
   });
   elements.addTransactionBtn?.addEventListener("click", openQuickAdd);
 
@@ -1278,16 +1277,26 @@ function attachEvents() {
 }
 
 function switchTab(tab) {
+  // Re-query panels each switch so a stale elements cache cannot drop Goals.
   const panels = {
-    overview: elements.overviewTab || document.querySelector("#overviewTab"),
-    activity: elements.activityTab || document.querySelector("#activityTab"),
-    goals: elements.goalsTab || document.querySelector("#goalsTab"),
-    settings: elements.settingsTab || document.querySelector("#settingsTab"),
+    overview: document.querySelector("#overviewTab"),
+    activity: document.querySelector("#activityTab"),
+    goals: document.querySelector("#goalsTab"),
+    settings: document.querySelector("#settingsTab"),
   };
-  // Prefer any tab that has a real panel in the DOM (avoids stale JS whitelist bugs).
-  activeTab = panels[tab] ? tab : "overview";
+  elements.overviewTab = panels.overview;
+  elements.activityTab = panels.activity;
+  elements.goalsTab = panels.goals;
+  elements.settingsTab = panels.settings;
+
+  const requested = String(tab || "").trim();
+  activeTab = panels[requested] ? requested : "overview";
+
   Object.entries(panels).forEach(([name, panel]) => {
-    if (panel) panel.hidden = name !== activeTab;
+    if (!panel) return;
+    const show = name === activeTab;
+    panel.toggleAttribute("hidden", !show);
+    panel.classList.toggle("is-active-panel", show);
   });
   elements.tabBar?.querySelectorAll("[data-tab]").forEach((button) => {
     const selected = button.dataset.tab === activeTab;
@@ -1964,16 +1973,16 @@ function renderTransactions() {
 }
 
 function renderActivityCashflow() {
-  const chart = elements.activityCashflowChart || document.querySelector("#activityCashflowChart");
+  const chart = document.querySelector("#activityCashflowChart");
   if (!chart) return;
   elements.activityCashflowChart = chart;
   const month = elements.monthInput.value;
   const summary = getMonthSummary(month);
   const net = summary.income - summary.expenses;
-  const incomeEl = elements.activityIncomeMetric || document.querySelector("#activityIncomeMetric");
-  const spentEl = elements.activitySpentMetric || document.querySelector("#activitySpentMetric");
-  const netEl = elements.activityNetMetric || document.querySelector("#activityNetMetric");
-  const chipEl = elements.activityNetChip || document.querySelector("#activityNetChip");
+  const incomeEl = document.querySelector("#activityIncomeMetric");
+  const spentEl = document.querySelector("#activitySpentMetric");
+  const netEl = document.querySelector("#activityNetMetric");
+  const chipEl = document.querySelector("#activityNetChip");
   if (incomeEl) incomeEl.textContent = money(summary.income);
   if (spentEl) spentEl.textContent = money(summary.expenses);
   if (netEl) {
@@ -1985,26 +1994,33 @@ function renderActivityCashflow() {
     chipEl.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
   }
 
-  const max = Math.max(summary.income, summary.expenses, 1);
-  const barMax = 520;
-  const incomeW = Math.max(8, (summary.income / max) * barMax);
-  const spentW = Math.max(8, (summary.expenses / max) * barMax);
-
   if (!summary.income && !summary.expenses) {
     chart.innerHTML = `<div class="empty-state">No income or spending logged for this month yet.</div>`;
     return;
   }
 
-  // Inline fills so bars stay visible even if theme CSS fails to paint SVG classes (Safari/PWA).
+  const max = Math.max(summary.income, summary.expenses, 1);
+  const incomePct = Math.max(4, Math.round((summary.income / max) * 100));
+  const spentPct = Math.max(4, Math.round((summary.expenses / max) * 100));
+
+  // HTML/CSS bars — more reliable than SVG fills in iOS Safari / installed PWAs.
   chart.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 720 110" role="img" aria-label="Income versus spending this month">
-      <text x="0" y="28" class="svg-label">Income</text>
-      <rect class="bar-income" x="110" y="12" width="${incomeW}" height="22" rx="8" fill="#34c759"></rect>
-      <text x="${120 + incomeW}" y="28" class="svg-value">${money(summary.income)}</text>
-      <text x="0" y="78" class="svg-label">Spent</text>
-      <rect class="bar-expense" x="110" y="62" width="${spentW}" height="22" rx="8" fill="#ff3b30"></rect>
-      <text x="${120 + spentW}" y="78" class="svg-value">${money(summary.expenses)}</text>
-    </svg>
+    <div class="cashflow-bars" role="img" aria-label="Income ${money(summary.income)}, spent ${money(summary.expenses)}">
+      <div class="cashflow-bar-row">
+        <span class="cashflow-bar-label">Income</span>
+        <div class="cashflow-bar-track">
+          <div class="cashflow-bar-fill is-income" style="width:${incomePct}%"></div>
+        </div>
+        <span class="cashflow-bar-value">${money(summary.income)}</span>
+      </div>
+      <div class="cashflow-bar-row">
+        <span class="cashflow-bar-label">Spent</span>
+        <div class="cashflow-bar-track">
+          <div class="cashflow-bar-fill is-spent" style="width:${spentPct}%"></div>
+        </div>
+        <span class="cashflow-bar-value">${money(summary.expenses)}</span>
+      </div>
+    </div>
   `;
 }
 

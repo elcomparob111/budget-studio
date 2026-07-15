@@ -1,12 +1,12 @@
-const CACHE = "budget-studio-v53";
+const CACHE = "budget-studio-v55";
 const ASSETS = [
   "./",
   "./index.html",
-  "./app.js?v=53",
+  "./app.js?v=55",
   "./sync.js",
   "./sync-config.js",
   "./security.js",
-  "./styles.css?v=53",
+  "./styles.css?v=55",
   "./manifest.json",
   "./privacy.html",
   "./terms.html",
@@ -28,7 +28,6 @@ self.addEventListener("activate", (event) => {
 
 function shouldCacheResponse(request, response) {
   if (!response || !response.ok) return false;
-  // Never cache authenticated API / cross-origin responses (Supabase, CDNs with tokens, etc.).
   try {
     const reqUrl = new URL(request.url);
     if (reqUrl.origin !== self.location.origin) return false;
@@ -36,17 +35,14 @@ function shouldCacheResponse(request, response) {
     return false;
   }
   const ct = response.headers.get("content-type") || "";
-  // Only cache static app assets, not JSON API bodies that might contain user data.
   if (ct.includes("application/json")) return false;
   return request.method === "GET";
 }
 
-// Network-first with revalidation so GitHub Pages / browser HTTP cache cannot
-// leave HTML on a new build while serving stale app.js (which broke Goals + charts).
+// Always revalidate so HTML and JS stay on the same build (stale app.js broke Goals + Activity chart).
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
-  // Bypass SW for cross-origin (Supabase Auth/REST) — never intercept user data APIs.
   try {
     const reqUrl = new URL(event.request.url);
     if (reqUrl.origin !== self.location.origin) return;

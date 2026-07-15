@@ -1485,6 +1485,53 @@ td.amount { font-weight: 700; color: var(--ink); }
   min-height: 120px;
 }
 
+.cashflow-bars {
+  display: grid;
+  gap: 14px;
+  padding: 4px 0 8px;
+}
+
+.cashflow-bar-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.cashflow-bar-label {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cashflow-bar-track {
+  height: 14px;
+  border-radius: 999px;
+  background: var(--input);
+  overflow: hidden;
+}
+
+.cashflow-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  min-width: 8px;
+}
+
+.cashflow-bar-fill.is-income {
+  background: var(--green);
+}
+
+.cashflow-bar-fill.is-spent {
+  background: var(--red);
+}
+
+.cashflow-bar-value {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .activity-cashflow-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
