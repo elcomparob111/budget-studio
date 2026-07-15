@@ -37,7 +37,8 @@ struct BudgetsView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .background(AppTheme.background.ignoresSafeArea())
-                .navigationTitle("Budgets")
+                .navigationTitle("Categories & budgets")
+                .navigationBarTitleDisplayMode(.inline)
                 .decimalPadDoneToolbar()
                 .onChange(of: focusedBudgetName) { _, name in
                     guard let name else { return }
@@ -89,6 +90,15 @@ struct BudgetsView: View {
                         }
                         Spacer()
                         budgetAmountControl(for: category)
+                        Button {
+                            store.deleteCategory(name: category.name)
+                        } label: {
+                            Text("Delete")
+                                .font(.app(13, weight: .semibold))
+                                .foregroundStyle(AppTheme.expense)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 4)
                     }
                     .id(budgetRowID(category.name))
                 }

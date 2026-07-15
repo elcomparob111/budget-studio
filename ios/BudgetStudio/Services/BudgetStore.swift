@@ -515,6 +515,67 @@ final class BudgetStore: ObservableObject {
         scheduleCloudSave()
     }
 
+    func deleteCategory(name: String) {
+        guard let index = state.categories.firstIndex(where: { $0.name == name && $0.type == "Expense" }) else { return }
+        let removed = state.categories.remove(at: index)
+        saveLocal()
+        scheduleCloudSave()
+        showToast("\(removed.name) removed.")
+    }
+
+    func addSavingsGoal(name: String, target: Double, current: Double = 0) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard state.goals.count < 50 else {
+            showToast("You can have up to 50 goals.")
+            return
+        }
+        var goals = state.goals
+        goals.append(
+            SavingsGoal(
+                id: UUID().uuidString,
+                name: String(trimmed.prefix(40)),
+                target: max(1, target),
+                current: max(0, current)
+            )
+        )
+        state.goals = goals
+        saveLocal()
+        scheduleCloudSave()
+        showToast("Goal created.")
+    }
+
+    func updateSavingsGoal(id: String, name: String, target: Double, current: Double) {
+        guard let index = state.goals.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        state.goals[index].name = String(trimmed.prefix(40))
+        state.goals[index].target = max(1, target)
+        state.goals[index].current = max(0, current)
+        saveLocal()
+        scheduleCloudSave()
+        showToast("Goal updated.")
+    }
+
+    func addMoneyToGoal(id: String, amount: Double) {
+        guard let index = state.goals.firstIndex(where: { $0.id == id }) else { return }
+        guard amount > 0 else { return }
+        state.goals[index].current = min(1_000_000_000, state.goals[index].current + amount)
+        let done = state.goals[index].current >= state.goals[index].target
+        let name = state.goals[index].name
+        saveLocal()
+        scheduleCloudSave()
+        showToast(done ? "\(name) is fully funded!" : "Added \(currency(amount)) to \(name).")
+    }
+
+    func deleteSavingsGoal(id: String) {
+        guard let index = state.goals.firstIndex(where: { $0.id == id }) else { return }
+        state.goals.remove(at: index)
+        saveLocal()
+        scheduleCloudSave()
+        showToast("Goal deleted.")
+    }
+
     func completeSetup(with profile: SetupProfile, categories: [BudgetCategory]) {
         state.categories = categories
         state.setupComplete = true

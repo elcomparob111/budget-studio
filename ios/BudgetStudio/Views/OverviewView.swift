@@ -8,10 +8,6 @@ struct OverviewView: View {
     var onAddManually: (() -> Void)? = nil
     var onScanReceipt: (() -> Void)? = nil
 
-    private var breakdownRows: [(category: BudgetCategory, spent: Double)] {
-        Array(store.categorySpending.filter { $0.spent > 0 }.prefix(8))
-    }
-
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -68,7 +64,6 @@ struct OverviewView: View {
                     }
 
                     categoryProgressSection
-                    categoryBreakdownSection
                 }
                 .padding(.horizontal, AppTheme.pagePadding)
                 .padding(.top, AppTheme.lg)
@@ -331,94 +326,5 @@ struct OverviewView: View {
             }
         }
         .appCard()
-    }
-
-    private var categoryBreakdownSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.md) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: AppTheme.xs) {
-                    Text("Spending")
-                        .font(.app(12, weight: .bold))
-                        .foregroundStyle(AppTheme.secondaryText)
-                        .textCase(.uppercase)
-                    Text("Category breakdown")
-                        .font(.app(18, weight: .bold))
-                        .foregroundStyle(AppTheme.primaryText)
-                }
-                Spacer(minLength: AppTheme.sm)
-                if let top = breakdownRows.first {
-                    Text("\(top.category.name): \(currencyDetailed(top.spent))")
-                        .font(.app(12, weight: .semibold))
-                        .foregroundStyle(AppTheme.primaryText)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.gray.opacity(0.08), in: Capsule())
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                } else {
-                    Text("No spending yet")
-                        .font(.app(12, weight: .semibold))
-                        .foregroundStyle(AppTheme.secondaryText)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.gray.opacity(0.08), in: Capsule())
-                }
-            }
-
-            if breakdownRows.isEmpty {
-                Text("No spending logged for this month.")
-                    .font(.app(14, weight: .medium))
-                    .foregroundStyle(AppTheme.secondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, AppTheme.lg)
-            } else {
-                let maxSpent = breakdownRows.map(\.spent).max() ?? 1
-                VStack(spacing: AppTheme.md) {
-                    ForEach(Array(breakdownRows.enumerated()), id: \.element.category.id) { index, row in
-                        categoryBreakdownRow(row: row, maxSpent: maxSpent, index: index)
-                    }
-                }
-                .padding(.top, AppTheme.xs)
-            }
-        }
-        .appCard()
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Spending by category")
-    }
-
-    private func categoryBreakdownRow(
-        row: (category: BudgetCategory, spent: Double),
-        maxSpent: Double,
-        index: Int
-    ) -> some View {
-        let fraction = maxSpent > 0 ? row.spent / maxSpent : 0
-        let barColor = AppTheme.chartBarColor(group: row.category.group, index: index)
-
-        return HStack(spacing: AppTheme.md) {
-            Text(row.category.name)
-                .font(.app(13, weight: .bold))
-                .foregroundStyle(AppTheme.primaryText)
-                .frame(width: horizontalSizeClass == .regular ? 120 : 88, alignment: .leading)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-
-            GeometryReader { geo in
-                let width = max(8, geo.size.width * fraction)
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(barColor)
-                    .frame(width: width, height: 18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(height: 18)
-
-            Text(currencyDetailed(row.spent))
-                .font(.app(12, weight: .bold))
-                .foregroundStyle(AppTheme.secondaryText)
-                .frame(width: horizontalSizeClass == .regular ? 72 : 64, alignment: .trailing)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(row.category.name), \(currencyDetailed(row.spent))")
     }
 }

@@ -44,17 +44,32 @@ struct RecurringItem: Codable, Identifiable, Hashable {
     var lastPostedMonth: String
 }
 
+/// Mirrors web `savingsGoals` JSON ({ id, name, target, current }).
+struct SavingsGoal: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var target: Double
+    var current: Double
+}
+
 struct BudgetState: Codable, Hashable {
     var categories: [BudgetCategory]
     var transactions: [BudgetTransaction]
     /// Optional so caches written before recurring existed still decode.
     var recurring: [RecurringItem]?
+    /// Optional so older caches / web payloads without goals still decode.
+    var savingsGoals: [SavingsGoal]?
     var setupComplete: Bool
     var setupProfile: SetupProfile?
 
     var recurringItems: [RecurringItem] {
         get { recurring ?? [] }
         set { recurring = newValue }
+    }
+
+    var goals: [SavingsGoal] {
+        get { savingsGoals ?? [] }
+        set { savingsGoals = newValue }
     }
 }
 
@@ -128,6 +143,9 @@ enum BudgetDefaults {
                     dayOfMonth: 25,
                     lastPostedMonth: ""
                 ),
+            ],
+            savingsGoals: [
+                SavingsGoal(id: "demo-goal-emergency", name: "Emergency fund", target: 3000, current: 750),
             ],
             setupComplete: true,
             setupProfile: SetupProfile(

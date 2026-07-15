@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TransactionsView: View {
     @EnvironmentObject private var store: BudgetStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var showAddTransaction: Bool
     var onAddManually: (() -> Void)? = nil
     var onScanReceipt: (() -> Void)? = nil
@@ -21,10 +22,21 @@ struct TransactionsView: View {
             .sorted { $0.date > $1.date }
     }
 
+    private var breakdownRows: [(category: BudgetCategory, spent: Double)] {
+        Array(store.categorySpending.filter { $0.spent > 0 }.prefix(8))
+    }
+
+    private var monthNet: Double {
+        store.monthSummary.income - store.monthSummary.spent
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
+                    incomeVsSpentCard
+                    categoryBreakdownSection
+
                     filterChips
                     searchField
 
@@ -88,6 +100,173 @@ struct TransactionsView: View {
                 AddTransactionSheet(existing: transaction)
                     .appSheetChrome(detents: [.medium, .large])
             }
+        }
+    }
+
+    private var incomeVsSpentCard: some View {
+        let income = store.monthSummary.income
+        let spent = store.monthSummary.spent
+        let maxValue = max(income, spent, 1)
+
+        return VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: AppTheme.xs) {
+                    Text("This month")
+                        .font(.app(12, weight: .bold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .textCase(.uppercase)
+                    Text("Income vs spent")
+                        .font(.app(18, weight: .bold))
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+                Spacer()
+                Text("\(currency(monthNet)) net")
+                    .font(.app(13, weight: .bold))
+                    .foregroundStyle(monthNet < 0 ? AppTheme.expense : AppTheme.income)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.gray.opacity(0.08), in: Capsule())
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.sm) {
+                cashStat("Income", currency(income), AppTheme.income)
+                cashStat("Spent", currency(spent), AppTheme.expense)
+                cashStat("Net", currency(monthNet), monthNet < 0 ? AppTheme.expense : AppTheme.primaryText)
+            }
+
+            if income > 0 || spent > 0 {
+                VStack(spacing: AppTheme.sm) {
+                    cashflowBar(label: "Income", value: income, maxValue: maxValue, color: AppTheme.income)
+                    cashflowBar(label: "Spent", value: spent, maxValue: maxValue, color: AppTheme.expense)
+                }
+            } else {
+                Text("No income or spending logged for this month yet.")
+                    .font(.app(14, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .padding(.vertical, AppTheme.sm)
+            }
+        }
+        .appCard()
+    }
+
+    private func cashStat(_ title: String, _ value: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.xs) {
+            Text(title)
+                .font(.app(12, weight: .medium))
+                .foregroundStyle(AppTheme.secondaryText)
+            Text(value)
+                .font(.app(16, weight: .bold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppTheme.md)
+        .background(AppTheme.inputFill)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func cashflowBar(label: String, value: Double, maxValue: Double, color: Color) -> some View {
+        HStack(spacing: AppTheme.md) {
+            Text(label)
+                .font(.app(13, weight: .bold))
+                .foregroundStyle(AppTheme.primaryText)
+                .frame(width: 64, alignment: .leading)
+            GeometryReader { geo in
+                let width = max(8, geo.size.width * (value / maxValue))
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(color)
+                    .frame(width: width, height: 18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(height: 18)
+            Text(currency(value))
+                .font(.app(12, weight: .bold))
+                .foregroundStyle(AppTheme.secondaryText)
+                .frame(width: 64, alignment: .trailing)
+        }
+    }
+
+    private var categoryBreakdownSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: AppTheme.xs) {
+                    Text("Spending")
+                        .font(.app(12, weight: .bold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .textCase(.uppercase)
+                    Text("Category breakdown")
+                        .font(.app(18, weight: .bold))
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+                Spacer(minLength: AppTheme.sm)
+                if let top = breakdownRows.first {
+                    Text("\(top.category.name): \(currencyDetailed(top.spent))")
+                        .font(.app(12, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.gray.opacity(0.08), in: Capsule())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                } else {
+                    Text("No spending yet")
+                        .font(.app(12, weight: .semibold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.gray.opacity(0.08), in: Capsule())
+                }
+            }
+
+            if breakdownRows.isEmpty {
+                Text("No spending logged for this month.")
+                    .font(.app(14, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .padding(.vertical, AppTheme.sm)
+            } else {
+                let maxSpent = breakdownRows.map(\.spent).max() ?? 1
+                VStack(spacing: AppTheme.md) {
+                    ForEach(Array(breakdownRows.enumerated()), id: \.element.category.id) { index, row in
+                        categoryBreakdownRow(row: row, maxSpent: maxSpent, index: index)
+                    }
+                }
+            }
+        }
+        .appCard()
+    }
+
+    private func categoryBreakdownRow(
+        row: (category: BudgetCategory, spent: Double),
+        maxSpent: Double,
+        index: Int
+    ) -> some View {
+        let fraction = maxSpent > 0 ? row.spent / maxSpent : 0
+        let barColor = AppTheme.chartBarColor(group: row.category.group, index: index)
+
+        return HStack(spacing: AppTheme.md) {
+            Text(row.category.name)
+                .font(.app(13, weight: .bold))
+                .foregroundStyle(AppTheme.primaryText)
+                .frame(width: horizontalSizeClass == .regular ? 120 : 88, alignment: .leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            GeometryReader { geo in
+                let width = max(8, geo.size.width * fraction)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(barColor)
+                    .frame(width: width, height: 18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(height: 18)
+
+            Text(currencyDetailed(row.spent))
+                .font(.app(12, weight: .bold))
+                .foregroundStyle(AppTheme.secondaryText)
+                .frame(width: horizontalSizeClass == .regular ? 72 : 64, alignment: .trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
 

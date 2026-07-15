@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Binding var showSetup: Bool
 
     @State private var showPayScheduleEditor = false
+    @State private var showBudgetsEditor = false
     @State private var showRecurringEditor = false
     @State private var payAmountText = ""
     @State private var payFrequency = "biweekly"
@@ -49,6 +50,7 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
                     payScheduleSummaryRow
+                    budgetsSummaryRow
 
                     recurringSection
 
@@ -130,6 +132,10 @@ struct SettingsView: View {
                     onCancel: { showPayScheduleEditor = false }
                 )
                 .appSheetChrome(detents: [.medium, .large])
+            }
+            .sheet(isPresented: $showBudgetsEditor) {
+                BudgetsView()
+                    .appSheetChrome(detents: [.large])
             }
             .onAppear(perform: loadPayScheduleFromStore)
             .onChange(of: showSetup) { _, isShowing in
@@ -506,6 +512,44 @@ struct SettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens pay schedule editor")
+    }
+
+    private var budgetsSummaryRow: some View {
+        let expense = store.state.categories.filter { $0.type == "Expense" }
+        let total = expense.reduce(0) { $0 + $1.budget }
+        let subtitle = expense.isEmpty
+            ? "Add categories and monthly amounts"
+            : "\(expense.count) categories · \(currency(total))/mo"
+
+        return Button {
+            showBudgetsEditor = true
+        } label: {
+            HStack(spacing: AppTheme.md) {
+                Text("▦")
+                    .font(.app(22))
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.pastelBlue.opacity(0.45), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Categories & budgets")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text(subtitle)
+                        .font(.app(13, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: AppTheme.sm)
+                Text("Edit")
+                    .font(.app(14, weight: .semibold))
+                    .foregroundStyle(AppTheme.secondaryText)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+            .appCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens category budget editor")
     }
 
     private func loadPayScheduleFromStore() {

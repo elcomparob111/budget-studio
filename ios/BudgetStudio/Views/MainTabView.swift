@@ -16,7 +16,7 @@ struct MainTabView: View {
                 onScanReceipt: { openAdd(preferScan: true) }
             )
                 .tabItem {
-                    Label("Overview", systemImage: "chart.pie.fill")
+                    Label("Home", systemImage: "chart.pie.fill")
                 }
                 .tag(0)
 
@@ -30,9 +30,9 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
-            BudgetsView()
+            SavingsView()
                 .tabItem {
-                    Label("Budgets", systemImage: "chart.bar.fill")
+                    Label("Savings", systemImage: "target")
                 }
                 .tag(2)
 
