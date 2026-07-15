@@ -129,6 +129,7 @@ export const BUDGET_LIMITS = {
   maxCategories: 200,
   maxTransactions: 20_000,
   maxRecurring: 100,
+  maxSavingsGoals: 50,
   maxNameLength: 40,
   maxDescriptionLength: 120,
   maxGroupLength: 40,
@@ -280,6 +281,31 @@ function sanitizeSetupProfile(profile) {
   };
 }
 
+function sanitizeSavingsGoal(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const id = String(raw.id || "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, BUDGET_LIMITS.maxIdLength);
+  const name = String(raw.name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[<>]/g, "")
+    .slice(0, BUDGET_LIMITS.maxNameLength);
+  if (!name) return null;
+  let target = Number(raw.target);
+  if (!Number.isFinite(target) || target <= 0) target = 1;
+  target = Math.min(target, 1_000_000_000);
+  let current = Number(raw.current ?? raw.saved);
+  if (!Number.isFinite(current) || current < 0) current = 0;
+  current = Math.min(current, 1_000_000_000);
+  return {
+    id: id || `goal-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    name,
+    target,
+    current,
+  };
+}
+
 /**
  * Whitelist + cap budget state from import / cloud.
  * Drops unexpected keys (prototype pollution / gadget fields) and oversized arrays.
@@ -304,10 +330,17 @@ export function sanitizeBudgetState(raw) {
         .map(sanitizeRecurringItem)
         .filter(Boolean)
     : [];
+  const savingsGoals = Array.isArray(safe.savingsGoals)
+    ? safe.savingsGoals
+        .slice(0, BUDGET_LIMITS.maxSavingsGoals)
+        .map(sanitizeSavingsGoal)
+        .filter(Boolean)
+    : [];
   return {
     categories,
     transactions,
     recurring,
+    savingsGoals,
     setupComplete: Boolean(safe.setupComplete ?? true),
     setupProfile: sanitizeSetupProfile(safe.setupProfile),
   };

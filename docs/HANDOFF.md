@@ -17,8 +17,9 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 | Bill reminders (iOS) | Done | **Local** notifications (not APNs). Settings → Recurring → Bill reminders. 9am on due day, expenses only |
 | Transaction delete (iOS) | Done | Delete lives in **edit sheet** only (no always-on trash on list) |
 | Home Screen widget | Done (polish loved) | Safe-to-spend + tap → `budgetstudio://add`. App Group `group.com.budgetstudio.app` |
+| Web IA (Home / Activity / Goals / Settings) | Done (web) | Activity income-vs-spent chart; Budgets moved into Settings; Goals tab (`savingsGoals` in state). **iOS parity still open.** |
 | Docs | Updated | `SHARED_BUDGETS.md`, `ROADMAP.md` reflect shipped shared budgets |
-| Web touch targets | Done | SW **v49**; undo-on-delete already worked |
+| Web touch targets | Done | SW **v52**; undo-on-delete already worked |
 
 ### Widget / iOS paths to know
 
@@ -34,9 +35,10 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 ## Recommended next (pick one)
 
 1. **TestFlight** — highest leverage: family on real devices (shared budgets, reminders, widget). See `ios/README.md` / `docs/DEPLOYMENT.md`.
-2. **Launch smoke test** — still open in [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data). Operator/dashboard, not a big code task.
-3. **Quick-entry leftovers (P1)** — Watch app and/or Siri shortcut; widget is done.
-4. **Launch hygiene** — AI logo provenance (`legal/AI_ASSETS.md`), trademark (`legal/TRADEMARK.md`), self-serve account deletion (Edge Function, service_role server-side only).
+2. **iOS parity for Goals tab** — mirror web: Goals tab, Activity income-vs-spent strip, move category budgets into Settings.
+3. **Launch smoke test** — still open in [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data). Operator/dashboard, not a big code task.
+4. **Quick-entry leftovers (P1)** — Watch app and/or Siri shortcut; widget is done.
+5. **Launch hygiene** — AI logo provenance (`legal/AI_ASSETS.md`), trademark (`legal/TRADEMARK.md`), self-serve account deletion (Edge Function, service_role server-side only).
 
 **Do not start:** bank sync / Plaid (compliance jump). Remote APNs for reminders can wait; local notifications cover the P1 “reminders” half.
 

@@ -1478,6 +1478,140 @@ td.amount { font-weight: 700; color: var(--ink); }
 .chart-svg .dot-income { fill: var(--green); }
 .chart-svg .dot-expense { fill: var(--red); }
 .chart-svg .dot-net { fill: var(--ink); }
+.chart-svg .bar-income { fill: var(--green); }
+.chart-svg .bar-expense { fill: var(--red); }
+
+.activity-cashflow-panel .chart-area {
+  min-height: 0;
+}
+
+.activity-cashflow-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.activity-cashflow-metrics article {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--input);
+}
+
+.activity-cashflow-metrics span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.activity-cashflow-metrics strong {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.activity-cashflow-metrics strong.is-negative {
+  color: var(--red);
+}
+
+.goals-blurb {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.goals-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.goal-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--input);
+}
+
+.goal-card.is-complete {
+  border-color: rgba(52, 199, 89, 0.35);
+}
+
+.goal-card-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.goal-card-top strong {
+  display: block;
+  font-size: 16px;
+}
+
+.goal-card-top span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.goal-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.goal-form {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.goal-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.goal-form span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.goal-form input {
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0 12px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.goal-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .activity-cashflow-metrics {
+    grid-template-columns: 1fr;
+  }
+  .goal-card-top {
+    flex-direction: column;
+  }
+  .goal-card-actions {
+    width: 100%;
+  }
+  .goal-card-actions button {
+    flex: 1;
+  }
+}
 
 /* Undo-capable toasts */
 .toast {

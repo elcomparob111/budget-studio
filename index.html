@@ -147,6 +147,31 @@
       </section>
 
       <section id="activityTab" class="tab-panel" data-tab-panel="activity" hidden>
+        <section class="panel activity-cashflow-panel" aria-label="Income versus spending">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">This month</p>
+              <h2>Income vs spent</h2>
+            </div>
+            <span id="activityNetChip" class="money-chip">$0 net</span>
+          </div>
+          <div class="activity-cashflow-metrics">
+            <article>
+              <span>Income</span>
+              <strong id="activityIncomeMetric">$0</strong>
+            </article>
+            <article>
+              <span>Spent</span>
+              <strong id="activitySpentMetric">$0</strong>
+            </article>
+            <article>
+              <span>Net</span>
+              <strong id="activityNetMetric">$0</strong>
+            </article>
+          </div>
+          <div id="activityCashflowChart" class="chart-area activity-cashflow-chart"></div>
+        </section>
+
         <section class="panel add-panel">
           <div class="panel-heading">
             <div>
@@ -222,12 +247,58 @@
         </section>
       </section>
 
-      <section id="budgetsTab" class="tab-panel" data-tab-panel="budgets" hidden>
+      <section id="goalsTab" class="tab-panel" data-tab-panel="goals" hidden>
+        <section class="panel goals-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Save for</p>
+              <h2>Savings goals</h2>
+            </div>
+          </div>
+          <p class="goals-blurb">Track what you're saving toward. Update “saved so far” whenever you set money aside.</p>
+          <div id="goalsList" class="goals-list"></div>
+          <form id="goalForm" class="goal-form">
+            <input id="goalEditIdInput" type="hidden" value="" />
+            <label>
+              <span>Goal name</span>
+              <input id="goalNameInput" type="text" placeholder="Emergency fund, vacation, new laptop..." autocomplete="off" required maxlength="40" />
+            </label>
+            <label>
+              <span>Target</span>
+              <input id="goalTargetInput" type="number" min="1" step="1" placeholder="1000" required />
+            </label>
+            <label>
+              <span>Saved so far</span>
+              <input id="goalCurrentInput" type="number" min="0" step="1" placeholder="0" value="0" />
+            </label>
+            <div class="goal-form-actions">
+              <button id="goalSubmitBtn" class="primary-button" type="submit">Add goal</button>
+              <button id="goalCancelEditBtn" class="ghost-button" type="button" hidden>Cancel</button>
+            </div>
+            <p id="goalFormMessage" class="form-message" role="status"></p>
+          </form>
+        </section>
+      </section>
+
+      <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
+        <section class="panel settings-actions-panel">
+          <button id="editPayScheduleBtn" class="settings-summary-row" type="button">
+            <span class="settings-summary-emoji" aria-hidden="true">💵</span>
+            <span class="settings-summary-copy">
+              <strong>Pay schedule</strong>
+              <span id="settingsPayScheduleSubtitle">Not set</span>
+            </span>
+            <span class="settings-summary-action">
+              <span class="settings-summary-edit">Edit</span>
+            </span>
+          </button>
+        </section>
+
         <section class="panel setup-panel">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Categories</p>
-              <h2>Monthly category budgets</h2>
+              <h2>Categories &amp; budgets</h2>
             </div>
           </div>
           <div id="budgetEditor" class="budget-editor"></div>
@@ -251,21 +322,6 @@
             <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
             <p id="categoryBuilderMessage" class="form-message" role="status"></p>
           </form>
-        </section>
-      </section>
-
-      <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
-        <section class="panel settings-actions-panel">
-          <button id="editPayScheduleBtn" class="settings-summary-row" type="button">
-            <span class="settings-summary-emoji" aria-hidden="true">💵</span>
-            <span class="settings-summary-copy">
-              <strong>Pay schedule</strong>
-              <span id="settingsPayScheduleSubtitle">Not set</span>
-            </span>
-            <span class="settings-summary-action">
-              <span class="settings-summary-edit">Edit</span>
-            </span>
-          </button>
         </section>
 
         <section id="sharedPanel" class="panel shared-panel" hidden>
@@ -384,7 +440,7 @@
         <span class="tab-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></svg>
         </span>
-        <span>Overview</span>
+        <span>Home</span>
       </button>
       <button class="tab-button" type="button" data-tab="activity">
         <span class="tab-icon" aria-hidden="true">
@@ -392,11 +448,11 @@
         </span>
         <span>Activity</span>
       </button>
-      <button class="tab-button" type="button" data-tab="budgets">
+      <button class="tab-button" type="button" data-tab="goals">
         <span class="tab-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
         </span>
-        <span>Budgets</span>
+        <span>Goals</span>
       </button>
       <button class="tab-button" type="button" data-tab="settings">
         <span class="tab-icon" aria-hidden="true">

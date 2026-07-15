@@ -161,6 +161,24 @@ describe("sanitizeBudgetState", () => {
     assert.equal(out.transactions.length, 1);
     assert.equal(out.transactions[0].amount, 12.35);
   });
+
+  it("keeps and sanitizes savings goals", () => {
+    const out = sanitizeBudgetState({
+      categories: [{ name: "Salary", type: "Income", group: "Income", budget: 0 }],
+      transactions: [],
+      savingsGoals: [
+        { id: `evil"><x`, name: "<Fund>", target: 1000, current: -5, saved: 50 },
+        { id: "ok", name: "Vacation", target: 2000, current: 400 },
+        null,
+      ],
+    });
+    assert.equal(out.savingsGoals.length, 2);
+    assert.ok(!out.savingsGoals[0].id.includes('"'));
+    assert.ok(!out.savingsGoals[0].name.includes("<"));
+    assert.equal(out.savingsGoals[0].current, 0);
+    assert.equal(out.savingsGoals[1].name, "Vacation");
+    assert.equal(out.savingsGoals[1].current, 400);
+  });
 });
 
 describe("sanitizeCloudPayload", () => {

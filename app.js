@@ -478,8 +478,22 @@ const elements = {
   bottomDock: document.querySelector("#bottomDock"),
   overviewTab: document.querySelector("#overviewTab"),
   activityTab: document.querySelector("#activityTab"),
-  budgetsTab: document.querySelector("#budgetsTab"),
+  goalsTab: document.querySelector("#goalsTab"),
   settingsTab: document.querySelector("#settingsTab"),
+  activityCashflowChart: document.querySelector("#activityCashflowChart"),
+  activityIncomeMetric: document.querySelector("#activityIncomeMetric"),
+  activitySpentMetric: document.querySelector("#activitySpentMetric"),
+  activityNetMetric: document.querySelector("#activityNetMetric"),
+  activityNetChip: document.querySelector("#activityNetChip"),
+  goalsList: document.querySelector("#goalsList"),
+  goalForm: document.querySelector("#goalForm"),
+  goalEditIdInput: document.querySelector("#goalEditIdInput"),
+  goalNameInput: document.querySelector("#goalNameInput"),
+  goalTargetInput: document.querySelector("#goalTargetInput"),
+  goalCurrentInput: document.querySelector("#goalCurrentInput"),
+  goalSubmitBtn: document.querySelector("#goalSubmitBtn"),
+  goalCancelEditBtn: document.querySelector("#goalCancelEditBtn"),
+  goalFormMessage: document.querySelector("#goalFormMessage"),
   tabBar: document.querySelector("#tabBar"),
   addTransactionBtn: document.querySelector("#addTransactionBtn"),
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
@@ -1039,6 +1053,21 @@ function attachEvents() {
     addCategoryFromBudgetPanel();
   });
 
+  elements.goalForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveGoalFromForm();
+  });
+  elements.goalCancelEditBtn?.addEventListener("click", () => resetGoalForm());
+  elements.goalsList?.addEventListener("click", (event) => {
+    const editId = event.target.closest("[data-edit-goal]")?.dataset.editGoal;
+    if (editId) {
+      startEditGoal(editId);
+      return;
+    }
+    const deleteId = event.target.closest("[data-delete-goal]")?.dataset.deleteGoal;
+    if (deleteId) deleteGoal(deleteId);
+  });
+
   elements.recurringForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     addRecurringFromForm();
@@ -1245,11 +1274,11 @@ function attachEvents() {
 }
 
 function switchTab(tab) {
-  activeTab = ["activity", "budgets", "settings"].includes(tab) ? tab : "overview";
+  activeTab = ["activity", "goals", "settings"].includes(tab) ? tab : "overview";
   const panels = {
     overview: elements.overviewTab,
     activity: elements.activityTab,
-    budgets: elements.budgetsTab,
+    goals: elements.goalsTab,
     settings: elements.settingsTab,
   };
   Object.entries(panels).forEach(([name, panel]) => {
@@ -1266,6 +1295,7 @@ function switchTab(tab) {
     populateRecurringCategorySelect();
     renderRecurringList();
     renderSharedPanel();
+    renderBudgetEditor();
   } else {
     render();
   }
@@ -1397,6 +1427,8 @@ function finishWizard() {
   state = {
     categories: finalCategories,
     transactions: existingTransactions,
+    recurring: Array.isArray(state.recurring) ? state.recurring : [],
+    savingsGoals: Array.isArray(state.savingsGoals) ? state.savingsGoals : [],
     setupComplete: true,
     setupProfile: {
       presetId: wizard.presetId,
@@ -1669,9 +1701,12 @@ function render() {
   // Month label lives in the shared header; keep it fresh on every render.
   syncMonthLabel(elements.monthInput.value);
   // Only the visible tab is rendered; switchTab() re-renders on switch.
-  if (activeTab === "activity") renderTransactions();
-  else if (activeTab === "budgets") renderBudgetEditor();
+  if (activeTab === "activity") {
+    renderActivityCashflow();
+    renderTransactions();
+  } else if (activeTab === "goals") renderGoals();
   else if (activeTab === "overview") renderDashboard();
+  else if (activeTab === "settings") renderBudgetEditor();
 }
 
 function renderDashboard() {
@@ -1921,6 +1956,179 @@ function renderTransactions() {
       `,
     )
     .join("");
+}
+
+function renderActivityCashflow() {
+  if (!elements.activityCashflowChart) return;
+  const month = elements.monthInput.value;
+  const summary = getMonthSummary(month);
+  const net = summary.income - summary.expenses;
+  if (elements.activityIncomeMetric) elements.activityIncomeMetric.textContent = money(summary.income);
+  if (elements.activitySpentMetric) elements.activitySpentMetric.textContent = money(summary.expenses);
+  if (elements.activityNetMetric) {
+    elements.activityNetMetric.textContent = money(net);
+    elements.activityNetMetric.classList.toggle("is-negative", net < 0);
+  }
+  if (elements.activityNetChip) {
+    elements.activityNetChip.textContent = `${money(net)} net`;
+    elements.activityNetChip.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
+  }
+
+  const max = Math.max(summary.income, summary.expenses, 1);
+  const barMax = 520;
+  const incomeW = Math.max(8, (summary.income / max) * barMax);
+  const spentW = Math.max(8, (summary.expenses / max) * barMax);
+
+  if (!summary.income && !summary.expenses) {
+    elements.activityCashflowChart.innerHTML = `<div class="empty-state">No income or spending logged for this month yet.</div>`;
+    return;
+  }
+
+  elements.activityCashflowChart.innerHTML = `
+    <svg class="chart-svg" viewBox="0 0 720 110" role="img" aria-label="Income versus spending this month">
+      <text x="0" y="28" class="svg-label">Income</text>
+      <rect class="bar-income" x="110" y="12" width="${incomeW}" height="22" rx="8"></rect>
+      <text x="${120 + incomeW}" y="28" class="svg-value">${money(summary.income)}</text>
+      <text x="0" y="78" class="svg-label">Spent</text>
+      <rect class="bar-expense" x="110" y="62" width="${spentW}" height="22" rx="8"></rect>
+      <text x="${120 + spentW}" y="78" class="svg-value">${money(summary.expenses)}</text>
+    </svg>
+  `;
+}
+
+function renderGoals() {
+  if (!elements.goalsList) return;
+  if (!Array.isArray(state.savingsGoals)) state.savingsGoals = [];
+  const goals = state.savingsGoals;
+  if (!goals.length) {
+    elements.goalsList.innerHTML = `<div class="empty-state">No savings goals yet. Add one below — emergency fund, vacation, whatever you're working toward.</div>`;
+    return;
+  }
+  elements.goalsList.innerHTML = goals
+    .map((goal) => {
+      const progress = goal.target > 0 ? Math.min(1, goal.current / goal.target) : 0;
+      const width = Math.round(progress * 100);
+      const left = Math.max(0, goal.target - goal.current);
+      const done = goal.current >= goal.target;
+      return `
+        <article class="goal-card ${done ? "is-complete" : ""}" data-goal-id="${escapeHtml(goal.id)}">
+          <div class="goal-card-top">
+            <div>
+              <strong>${escapeHtml(goal.name)}</strong>
+              <span>${money(goal.current)} of ${money(goal.target)}${done ? " · Done" : ` · ${money(left)} to go`}</span>
+            </div>
+            <div class="goal-card-actions">
+              <button class="edit-button" type="button" data-edit-goal="${escapeHtml(goal.id)}">Edit</button>
+              <button class="delete-button" type="button" data-delete-goal="${escapeHtml(goal.id)}">Delete</button>
+            </div>
+          </div>
+          <div class="progress-track" aria-label="${escapeHtml(goal.name)} progress">
+            <div class="progress-fill ${done ? "good" : progress >= 0.85 ? "watch" : "good"}" style="width:${width}%"></div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function resetGoalForm() {
+  if (!elements.goalForm) return;
+  elements.goalEditIdInput.value = "";
+  elements.goalForm.reset();
+  if (elements.goalCurrentInput) elements.goalCurrentInput.value = "0";
+  if (elements.goalSubmitBtn) elements.goalSubmitBtn.textContent = "Add goal";
+  if (elements.goalCancelEditBtn) elements.goalCancelEditBtn.hidden = true;
+  setGoalFormMessage("");
+}
+
+function setGoalFormMessage(message, isError = false) {
+  if (!elements.goalFormMessage) return;
+  elements.goalFormMessage.textContent = message;
+  elements.goalFormMessage.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function startEditGoal(id) {
+  const goal = state.savingsGoals.find((item) => item.id === id);
+  if (!goal) return;
+  elements.goalEditIdInput.value = goal.id;
+  elements.goalNameInput.value = goal.name;
+  elements.goalTargetInput.value = String(goal.target);
+  elements.goalCurrentInput.value = String(goal.current);
+  elements.goalSubmitBtn.textContent = "Save goal";
+  elements.goalCancelEditBtn.hidden = false;
+  elements.goalNameInput.focus();
+  setGoalFormMessage("Editing — update the numbers and save.");
+}
+
+function saveGoalFromForm() {
+  const nameCheck = validateCategoryName(elements.goalNameInput.value);
+  if (!nameCheck.ok) {
+    setGoalFormMessage(nameCheck.message, true);
+    return;
+  }
+  const target = Number(elements.goalTargetInput.value);
+  if (!Number.isFinite(target) || target <= 0) {
+    setGoalFormMessage("Enter a target greater than zero.", true);
+    return;
+  }
+  let current = Number(elements.goalCurrentInput.value);
+  if (!Number.isFinite(current) || current < 0) current = 0;
+  current = Math.min(current, 1_000_000_000);
+  const cappedTarget = Math.min(target, 1_000_000_000);
+  if (!Array.isArray(state.savingsGoals)) state.savingsGoals = [];
+
+  const editId = elements.goalEditIdInput.value;
+  if (editId) {
+    const goal = state.savingsGoals.find((item) => item.id === editId);
+    if (!goal) {
+      setGoalFormMessage("That goal was already removed.", true);
+      resetGoalForm();
+      return;
+    }
+    goal.name = nameCheck.value;
+    goal.target = cappedTarget;
+    goal.current = current;
+    saveState();
+    resetGoalForm();
+    renderGoals();
+    showToast("Goal updated.");
+    return;
+  }
+
+  if (state.savingsGoals.length >= 50) {
+    setGoalFormMessage("You can have up to 50 goals.", true);
+    return;
+  }
+  state.savingsGoals.push({
+    id: crypto.randomUUID ? crypto.randomUUID() : `goal-${Date.now()}`,
+    name: nameCheck.value,
+    target: cappedTarget,
+    current,
+  });
+  saveState();
+  resetGoalForm();
+  renderGoals();
+  showToast("Goal added.");
+}
+
+function deleteGoal(id) {
+  if (!Array.isArray(state.savingsGoals)) return;
+  const index = state.savingsGoals.findIndex((item) => item.id === id);
+  if (index === -1) return;
+  const [removed] = state.savingsGoals.splice(index, 1);
+  if (elements.goalEditIdInput?.value === id) resetGoalForm();
+  saveState();
+  renderGoals();
+  showToast("Goal deleted.", "success", {
+    actionLabel: "Undo",
+    duration: 5000,
+    onAction: () => {
+      state.savingsGoals.splice(Math.min(index, state.savingsGoals.length), 0, removed);
+      saveState();
+      renderGoals();
+      showToast("Goal restored.");
+    },
+  });
 }
 
 function renderBudgetEditor() {
@@ -2372,6 +2580,7 @@ function createEmptyState() {
     })),
     transactions: [],
     recurring: [],
+    savingsGoals: [],
     setupComplete: false,
     setupProfile: null,
   };
@@ -2402,6 +2611,14 @@ function createDemoState() {
         amount: 60,
         dayOfMonth: 25,
         lastPostedMonth: "",
+      },
+    ],
+    savingsGoals: [
+      {
+        id: "demo-goal-emergency",
+        name: "Emergency fund",
+        target: 3000,
+        current: 750,
       },
     ],
     setupComplete: true,
@@ -2497,6 +2714,7 @@ function normalizeState(raw) {
     categories,
     transactions,
     recurring: sanitized.recurring || [],
+    savingsGoals: sanitized.savingsGoals || [],
     setupComplete: sanitized.setupComplete ?? true,
     setupProfile,
   };
@@ -2874,7 +3092,7 @@ function renderIdentityUI() {
   const titles = {
     overview: "",
     activity: "Activity",
-    budgets: "Budgets",
+    goals: "Goals",
     settings: "Settings",
   };
   const onOverview = !titles[activeTab];
