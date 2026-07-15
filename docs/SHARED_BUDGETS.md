@@ -1,8 +1,10 @@
 # Shared/couples budgets — design (P0)
 
-Status: **schema applied (Rob, 2026-07-13), client layer built**. Anon-role
-lockout verified live (all tables/RPCs return 42501 for anon). Awaiting the
-two-account smoke test below before announcing the feature.
+Status: **shipped (web + iOS, 2026-07-14)**. Schema applied; anon-role
+lockout verified live (all tables/RPCs return 42501 for anon). Invite, join,
+realtime, leave (Option A), and authorship tags are live on web and iOS.
+Owner-validated smoke across web + iOS; operators may re-run the two-account
+checklist below after schema or RPC changes.
 
 ## Why this shape
 
@@ -35,21 +37,25 @@ budget is simply a second row both clients point at.
 
 ## Client work (after schema applies)
 
-1. `sync.js`: `createSharedBudget()`, `acceptInvite(token)`,
+1. [x] `sync.js`: `createSharedBudget()`, `acceptInvite(token)`,
    `fetchSharedBudget(id)` / `pushSharedBudget(id, payload)`, and a
    `subscribeSharedBudget(id, onChange)` realtime channel.
-2. `app.js`: active-budget pointer in localStorage
+2. [x] `app.js`: active-budget pointer in localStorage
    (`{ kind: "personal" | "shared", id }`), a Settings “Share this budget”
    card (create + copy link, member list, leave), `?join=` handling on load
-   (after auth), and a subtle “synced with <partner>” indicator.
-3. iOS: same RPCs through supabase-swift; realtime channel on the row.
+   (after auth), authorship tags, and a subtle “synced with <partner>”
+   indicator.
+3. [x] iOS: same RPCs through supabase-swift; invite (incl. Contacts/Messages),
+   join via paste / URL scheme, realtime channel, leave Option A, Activity
+   author tags.
 
-## Decisions (Rob, 2026-07-13)
+## Decisions (Rob, 2026-07-13; leave updated 2026-07-14)
 
 - **Seed from inviter's state**: yes — partner joins into a copy of the
   inviter's current budget.
-- **On leave**: leaver's old personal budget is untouched; they simply stop
-  seeing the shared one. No copy-back.
+- **On leave (Option A)**: leaver keeps a personal copy of the shared
+  snapshot with the partner's tagged transactions removed. Not the earlier
+  “old personal untouched / no copy-back” plan.
 - **V1 scope**: one shared budget per user — no switcher UI; you're solo or
   in one shared budget.
 
@@ -58,4 +64,5 @@ budget is simply a second row both clients point at.
 1. Review this doc + SQL. 2. Run SQL in Supabase SQL editor (staging first if
 available). 3. Verify with the queries at the bottom of the SQL file. 4. Build
 client layer behind a “Share budget” entry point. 5. Two-account smoke test
-(invite, join, both-sides edit, realtime, leave). 6. Ship.
+(invite, join, both-sides edit, realtime, leave) — web + iOS validated by
+owner. 6. Ship.

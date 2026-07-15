@@ -19,12 +19,25 @@ struct CloudBudgetRow: Codable {
     var name: String
 }
 
+struct SharedMembership: Equatable {
+    var id: UUID
+    var role: String
+}
+
+struct BudgetMemberRow: Codable, Equatable {
+    var user_id: UUID
+    var role: String
+    var joined_at: String?
+}
+
 @MainActor
 final class SupabaseService {
     static let shared = SupabaseService()
 
     private let client = SupabaseClient(supabaseURL: SyncConfig.url, supabaseKey: SyncConfig.anonKey)
     private(set) var currentUser: User?
+    private var sharedChannel: RealtimeChannelV2?
+    private var sharedListenTask: Task<Void, Never>?
 
     var displayName: String {
         guard let user = currentUser else { return "" }
@@ -174,6 +187,12 @@ final class SupabaseService {
             let description = String(tx.description.prefix(120))
                 .replacingOccurrences(of: "<", with: "")
                 .replacingOccurrences(of: ">", with: "")
+            let addedBy = tx.addedBy.map { String($0.prefix(80)) }
+            let addedByName = tx.addedByName.map {
+                String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+                    .replacingOccurrences(of: "<", with: "")
+                    .replacingOccurrences(of: ">", with: "")
+            }
             return BudgetTransaction(
                 id: String(tx.id.prefix(80)),
                 date: date,
@@ -181,15 +200,245 @@ final class SupabaseService {
                 category: category,
                 description: description.isEmpty ? category : description,
                 account: String(tx.account.prefix(40)),
-                amount: (tx.amount * 100).rounded() / 100
+                amount: (tx.amount * 100).rounded() / 100,
+                addedBy: addedBy?.isEmpty == false ? addedBy : nil,
+                addedByName: (addedByName?.isEmpty == false) ? addedByName : nil
+            )
+        }
+        let recurring = Array((state.recurring ?? []).prefix(500)).compactMap { item -> RecurringItem? in
+            guard item.type == "Income" || item.type == "Expense" else { return nil }
+            guard item.amount > 0, item.amount <= 1_000_000_000 else { return nil }
+            let category = String(item.category.prefix(40))
+                .replacingOccurrences(of: "<", with: "")
+                .replacingOccurrences(of: ">", with: "")
+            guard !category.isEmpty else { return nil }
+            return RecurringItem(
+                id: String(item.id.prefix(80)),
+                type: item.type,
+                category: category,
+                description: String(item.description.prefix(120))
+                    .replacingOccurrences(of: "<", with: "")
+                    .replacingOccurrences(of: ">", with: ""),
+                account: String(item.account.prefix(40)),
+                amount: (item.amount * 100).rounded() / 100,
+                dayOfMonth: min(31, max(1, item.dayOfMonth)),
+                lastPostedMonth: String(item.lastPostedMonth.prefix(7))
             )
         }
         return BudgetState(
             categories: categories,
             transactions: transactions,
+            recurring: recurring.isEmpty ? state.recurring : recurring,
             setupComplete: state.setupComplete,
             setupProfile: state.setupProfile
         )
+    }
+
+    // MARK: - Shared/couples budgets (mirrors sync.js)
+
+    private func requireSessionUid() async throws -> UUID {
+        let sessionUser = try await client.auth.session.user
+        currentUser = sessionUser
+        return sessionUser.id
+    }
+
+    func fetchMySharedMembership() async throws -> SharedMembership? {
+        let uid = try await requireSessionUid()
+        struct Row: Decodable {
+            var budget_id: UUID
+            var role: String
+        }
+        let rows: [Row] = try await client
+            .from("budget_members")
+            .select("budget_id, role")
+            .eq("user_id", value: uid.uuidString)
+            .limit(1)
+            .execute()
+            .value
+        guard let row = rows.first else { return nil }
+        return SharedMembership(id: row.budget_id, role: row.role)
+    }
+
+    func fetchSharedBudget(budgetId: UUID) async throws -> CloudBudgetPayload? {
+        _ = try await requireSessionUid()
+        let rows: [CloudBudgetRow] = try await client
+            .from("shared_budgets")
+            .select("state, updated_at, name")
+            .eq("id", value: budgetId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+        guard let row = rows.first else { return nil }
+        return CloudBudgetPayload(
+            state: sanitizeState(row.state),
+            updatedAt: row.updated_at,
+            name: String(row.name.prefix(80))
+        )
+    }
+
+    func pushSharedBudget(budgetId: UUID, payload: CloudBudgetPayload) async throws {
+        _ = try await requireSessionUid()
+        struct UpdateRow: Encodable {
+            var state: BudgetState
+            var updated_at: Int64
+        }
+        let safeState = sanitizeState(payload.state)
+        guard !safeState.categories.isEmpty else {
+            throw NSError(domain: "BudgetStudio", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid budget payload."])
+        }
+        // Deliberately not updating `name` — same as web (saver's display name must not rename).
+        try await client
+            .from("shared_budgets")
+            .update(UpdateRow(state: safeState, updated_at: payload.updatedAt))
+            .eq("id", value: budgetId.uuidString)
+            .execute()
+    }
+
+    func createSharedBudget(state: BudgetState, name: String) async throws -> UUID {
+        _ = try await requireSessionUid()
+        struct Params: Encodable {
+            var initial_state: BudgetState
+            var budget_name: String
+        }
+        let params = Params(
+            initial_state: sanitizeState(state),
+            budget_name: String(name.prefix(80))
+        )
+        let id: UUID = try await client
+            .rpc("create_shared_budget", params: params)
+            .execute()
+            .value
+        return id
+    }
+
+    func createBudgetInvite(budgetId: UUID) async throws -> UUID {
+        let uid = try await requireSessionUid()
+        struct InsertRow: Encodable {
+            var budget_id: UUID
+            var created_by: UUID
+        }
+        struct TokenRow: Decodable {
+            var token: UUID
+        }
+        let rows: [TokenRow] = try await client
+            .from("budget_invites")
+            .insert(InsertRow(budget_id: budgetId, created_by: uid))
+            .select("token")
+            .execute()
+            .value
+        guard let token = rows.first?.token else {
+            throw NSError(domain: "BudgetStudio", code: 500, userInfo: [NSLocalizedDescriptionKey: "Couldn't create an invite link."])
+        }
+        return token
+    }
+
+    func acceptBudgetInvite(token: UUID) async throws -> UUID {
+        _ = try await requireSessionUid()
+        struct Params: Encodable {
+            var invite_token: UUID
+        }
+        let budgetId: UUID = try await client
+            .rpc("accept_budget_invite", params: Params(invite_token: token))
+            .execute()
+            .value
+        return budgetId
+    }
+
+    func listBudgetMembers(budgetId: UUID) async throws -> [BudgetMemberRow] {
+        _ = try await requireSessionUid()
+        let rows: [BudgetMemberRow] = try await client
+            .from("budget_members")
+            .select("user_id, role, joined_at")
+            .eq("budget_id", value: budgetId.uuidString)
+            .order("joined_at", ascending: true)
+            .execute()
+            .value
+        return rows
+    }
+
+    func leaveSharedBudget(budgetId: UUID) async throws {
+        let uid = try await requireSessionUid()
+        try await client
+            .from("budget_members")
+            .delete()
+            .eq("budget_id", value: budgetId.uuidString)
+            .eq("user_id", value: uid.uuidString)
+            .execute()
+    }
+
+    /// Realtime: notify on shared_budgets UPDATE. Callback should refetch.
+    func subscribeSharedBudget(budgetId: UUID, onRemoteChange: @escaping @Sendable () -> Void) async {
+        await unsubscribeSharedBudget()
+        let channel = client.channel("shared-budget-\(budgetId.uuidString.lowercased())")
+        let updates = channel.postgresChange(
+            UpdateAction.self,
+            schema: "public",
+            table: "shared_budgets",
+            filter: "id=eq.\(budgetId.uuidString.lowercased())"
+        )
+        do {
+            try await channel.subscribeWithError()
+        } catch {
+            return
+        }
+        sharedChannel = channel
+        sharedListenTask = Task {
+            for await _ in updates {
+                onRemoteChange()
+            }
+        }
+    }
+
+    func unsubscribeSharedBudget() async {
+        sharedListenTask?.cancel()
+        sharedListenTask = nil
+        if let channel = sharedChannel {
+            await client.removeChannel(channel)
+            sharedChannel = nil
+        }
+    }
+
+    static let webJoinBaseURL = "https://elcomparob111.github.io/budget-studio/"
+
+    static func inviteURL(token: UUID) -> String {
+        "\(webJoinBaseURL)?join=\(token.uuidString.lowercased())"
+    }
+
+    /// Parse a join token from a URL, raw UUID, or pasted invite link.
+    static func parseJoinToken(from raw: String) -> UUID? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let uuid = UUID(uuidString: trimmed) { return uuid }
+        guard let url = URL(string: trimmed) else { return nil }
+        if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let join = comps.queryItems?.first(where: { $0.name == "join" })?.value,
+           let uuid = UUID(uuidString: join) {
+            return uuid
+        }
+        // budgetstudio://join/<uuid>
+        if url.scheme?.lowercased() == "budgetstudio",
+           url.host?.lowercased() == "join",
+           let uuid = UUID(uuidString: url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))) {
+            return uuid
+        }
+        if url.scheme?.lowercased() == "budgetstudio",
+           url.pathComponents.count >= 2,
+           url.pathComponents[1].lowercased() == "join" || url.host == nil,
+           let last = url.pathComponents.last,
+           let uuid = UUID(uuidString: last) {
+            return uuid
+        }
+        return nil
+    }
+
+    func friendlySharedError(_ error: Error) -> String {
+        let raw = error.localizedDescription
+        let lower = raw.lowercased()
+        if lower.contains("expired") { return "That invite link expired — ask for a new one." }
+        if lower.contains("already used") { return "That invite link was already used." }
+        if lower.contains("not found") || lower.contains("invalid") {
+            return "That invite didn't work — ask for a fresh link."
+        }
+        return friendlyAuthError(error)
     }
 
     func friendlyAuthError(_ error: Error) -> String {

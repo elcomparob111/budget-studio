@@ -18,6 +18,21 @@ final class BudgetStore: ObservableObject {
     @Published var faceIDEnabled: Bool {
         didSet { UserDefaults.standard.set(faceIDEnabled, forKey: "budget-studio-face-id") }
     }
+    @Published var billRemindersEnabled: Bool {
+        didSet {
+            BillReminderService.shared.isEnabled = billRemindersEnabled
+            Task { await refreshBillReminders() }
+        }
+    }
+
+    /// Active shared-budget membership, or nil when using the personal budget.
+    @Published var sharedMembership: SharedMembership?
+    @Published var inviteLink: String?
+    @Published var sharedStatusMessage: String?
+    @Published var sharedMemberCount: Int?
+    @Published var isSharedBusy = false
+    /// True when a join token is stashed (survives sign-in).
+    @Published var hasPendingJoinInvite = false
 
     private let supabase = SupabaseService.shared
     private var cloudSaveTask: Task<Void, Never>?
@@ -26,6 +41,13 @@ final class BudgetStore: ObservableObject {
     private var cloudDirty = false
     /// Avoid toast spam while typing category budgets or during rapid edits.
     private var didNotifySyncFailure = false
+    /// Last shared remote `updated_at` we applied (skip own write echoes).
+    private var lastSharedAppliedAt: Int64 = 0
+
+    private static let pendingJoinKey = "budget-studio-pending-join"
+
+    var isInSharedBudget: Bool { sharedMembership != nil }
+    var isSharedOwner: Bool { sharedMembership?.role == "owner" }
 
     var monthKey: String { BudgetCalculator.monthKey(from: selectedMonth) }
     var monthSummary: MonthSummary { BudgetCalculator.monthSummary(state: state, month: monthKey) }
@@ -42,6 +64,9 @@ final class BudgetStore: ObservableObject {
 
     init() {
         faceIDEnabled = UserDefaults.standard.bool(forKey: "budget-studio-face-id")
+        billRemindersEnabled = BillReminderService.shared.isEnabled
+        hasPendingJoinInvite = UserDefaults.standard.string(forKey: Self.pendingJoinKey) != nil
+        BillReminderService.shared.install()
     }
 
     func bootstrap() async {
@@ -51,7 +76,8 @@ final class BudgetStore: ObservableObject {
         if let user = supabase.currentUser {
             isAuthenticated = true
             userName = supabase.displayName
-            await loadFromCloud(userId: user.id)
+            await resolveSharedAndLoad(userId: user.id)
+            await refreshBillReminders()
             if canUseFaceID {
                 isUnlocked = false
                 await unlockWithFaceID()
@@ -62,6 +88,48 @@ final class BudgetStore: ObservableObject {
             // No live session, but Face ID can sign back in with saved credentials.
             isUnlocked = false
         }
+    }
+
+    /// Turn bill reminders on (requests permission) or off.
+    func setBillRemindersEnabled(_ enabled: Bool) async {
+        if enabled {
+            let ok = await BillReminderService.shared.requestAuthorization()
+            if !ok {
+                billRemindersEnabled = false
+                showToast("Notifications are off — enable them in Settings to get bill reminders.")
+                return
+            }
+        }
+        // Assigning triggers didSet → refresh.
+        if billRemindersEnabled != enabled {
+            billRemindersEnabled = enabled
+        } else if enabled {
+            await refreshBillReminders()
+        }
+        showToast(enabled ? "Bill reminders on — we'll nudge you the morning they're due." : "Bill reminders off.")
+    }
+
+    func refreshBillReminders() async {
+        await BillReminderService.shared.refresh(items: state.recurringItems)
+    }
+
+    /// Stash a join token from a deep link or paste so it survives sign-in.
+    func captureJoinToken(from raw: String) {
+        guard let token = SupabaseService.parseJoinToken(from: raw) else {
+            showToast("That doesn't look like an invite link.")
+            return
+        }
+        UserDefaults.standard.set(token.uuidString.lowercased(), forKey: Self.pendingJoinKey)
+        hasPendingJoinInvite = true
+        if isAuthenticated, let userId = supabase.currentUser?.id {
+            Task { await resolveSharedAndLoad(userId: userId) }
+        } else {
+            showToast("Sign in to join the shared budget.")
+        }
+    }
+
+    func handleIncomingURL(_ url: URL) {
+        captureJoinToken(from: url.absoluteString)
     }
 
     func signUp(name: String, email: String, password: String) async {
@@ -81,7 +149,7 @@ final class BudgetStore: ObservableObject {
                 userName = name
                 state = BudgetDefaults.emptyState()
                 saveLocal()
-                await pushCloud()
+                await resolveSharedAndLoad(userId: supabase.currentUser!.id)
                 offerFaceID(email: email, password: password)
             }
         } catch {
@@ -100,7 +168,7 @@ final class BudgetStore: ObservableObject {
             userName = supabase.displayName
             // Load cloud before unlocking so MainTabView does not flash setup
             // against the empty default state (setupComplete: false).
-            await loadFromCloud(userId: supabase.currentUser!.id)
+            await resolveSharedAndLoad(userId: supabase.currentUser!.id)
             isAuthenticated = true
             isUnlocked = true
             offerFaceID(email: email, password: password)
@@ -176,7 +244,7 @@ final class BudgetStore: ObservableObject {
         do {
             try await supabase.signIn(email: credentials.email, password: credentials.password)
             userName = supabase.displayName
-            await loadFromCloud(userId: supabase.currentUser!.id)
+            await resolveSharedAndLoad(userId: supabase.currentUser!.id)
             isAuthenticated = true
             isUnlocked = true
         } catch {
@@ -229,6 +297,7 @@ final class BudgetStore: ObservableObject {
 
     func signOut() async {
         let previousUserId = supabase.currentUser?.id
+        await teardownShared()
         try? await supabase.signOut()
         clearLocalCaches(for: previousUserId)
         isAuthenticated = false
@@ -236,6 +305,8 @@ final class BudgetStore: ObservableObject {
         userName = ""
         state = BudgetDefaults.emptyState()
         cloudDirty = false
+        inviteLink = nil
+        sharedStatusMessage = nil
         // Keep Face ID credentials so the next launch can unlock quickly.
     }
 
@@ -256,10 +327,13 @@ final class BudgetStore: ObservableObject {
         saveLocal()
         scheduleCloudSave()
         showToast("Demo budget loaded.")
+        Task { await refreshBillReminders() }
     }
 
     func addTransaction(_ transaction: BudgetTransaction) {
-        state.transactions.insert(transaction, at: 0)
+        var stamped = transaction
+        stampAuthorIfNeeded(&stamped)
+        state.transactions.insert(stamped, at: 0)
         saveLocal()
         scheduleCloudSave()
         showToast("Transaction added.")
@@ -267,10 +341,32 @@ final class BudgetStore: ObservableObject {
 
     func updateTransaction(_ transaction: BudgetTransaction) {
         guard let index = state.transactions.firstIndex(where: { $0.id == transaction.id }) else { return }
-        state.transactions[index] = transaction
+        var updated = transaction
+        // Keep original authorship on edits; don't re-stamp.
+        updated.addedBy = state.transactions[index].addedBy
+        updated.addedByName = state.transactions[index].addedByName
+        state.transactions[index] = updated
         saveLocal()
         scheduleCloudSave()
         showToast("Transaction updated.")
+    }
+
+    /// Activity chip label for a shared-budget row; nil when untagged / personal.
+    func authorLabel(for transaction: BudgetTransaction) -> String? {
+        guard isInSharedBudget, let addedBy = transaction.addedBy else { return nil }
+        if let uid = supabase.currentUser?.id.uuidString.lowercased(),
+           addedBy.lowercased() == uid {
+            return "You"
+        }
+        let name = transaction.addedByName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? "Partner" : name
+    }
+
+    private func stampAuthorIfNeeded(_ transaction: inout BudgetTransaction) {
+        guard isInSharedBudget, let user = supabase.currentUser else { return }
+        transaction.addedBy = user.id.uuidString.lowercased()
+        let first = userName.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
+        transaction.addedByName = first.isEmpty ? "Partner" : first
     }
 
     func deleteTransaction(id: String) {
@@ -363,6 +459,7 @@ final class BudgetStore: ObservableObject {
         scheduleCloudSave()
         showToast("\(item.description) will post on day \(item.dayOfMonth) each month.")
         postDueRecurring()
+        Task { await refreshBillReminders() }
     }
 
     func deleteRecurring(id: String) {
@@ -370,6 +467,7 @@ final class BudgetStore: ObservableObject {
         saveLocal()
         scheduleCloudSave()
         showToast("Recurring item removed.")
+        Task { await refreshBillReminders() }
     }
 
     func updateCategoryBudget(name: String, budget: Double) {
@@ -488,6 +586,193 @@ final class BudgetStore: ObservableObject {
         UserDefaults.standard.set(data, forKey: cacheKey(for: userId))
     }
 
+    // MARK: - Shared budgets
+
+    private func teardownShared() async {
+        await supabase.unsubscribeSharedBudget()
+        sharedMembership = nil
+        lastSharedAppliedAt = 0
+        inviteLink = nil
+        sharedMemberCount = nil
+    }
+
+    private func resolveSharedAndLoad(userId: UUID) async {
+        await resolveSharedMembership()
+        if sharedMembership != nil {
+            await loadSharedState(userId: userId)
+            await refreshSharedMemberCount()
+        } else {
+            await loadFromCloud(userId: userId)
+        }
+    }
+
+    private func resolveSharedMembership() async {
+        await teardownShared()
+        if let pending = UserDefaults.standard.string(forKey: Self.pendingJoinKey),
+           let token = UUID(uuidString: pending) {
+            do {
+                let budgetId = try await supabase.acceptBudgetInvite(token: token)
+                sharedMembership = SharedMembership(id: budgetId, role: "member")
+                showToast("You joined the shared budget!")
+            } catch {
+                showToast(supabase.friendlySharedError(error))
+            }
+            UserDefaults.standard.removeObject(forKey: Self.pendingJoinKey)
+            hasPendingJoinInvite = false
+        }
+        if sharedMembership == nil {
+            do {
+                sharedMembership = try await supabase.fetchMySharedMembership()
+            } catch {
+                sharedMembership = nil
+            }
+        }
+        if let membership = sharedMembership {
+            await startSharedSubscription(budgetId: membership.id)
+        }
+    }
+
+    private func loadSharedState(userId: UUID) async {
+        guard let membership = sharedMembership else { return }
+        do {
+            let remote = try await supabase.fetchSharedBudget(budgetId: membership.id)
+            let local = loadLocal(userId: userId)
+            let remoteAt = remote?.updatedAt ?? 0
+            let localAt = local?.updatedAt ?? 0
+            if let remote, local == nil || remoteAt >= localAt {
+                lastSharedAppliedAt = remote.updatedAt
+                applyLoadedState(remote.state, updatedAt: remote.updatedAt, persistCleanup: true)
+            } else if let local {
+                applyLoadedState(local.state, updatedAt: local.updatedAt, persistCleanup: true)
+                lastSharedAppliedAt = local.updatedAt
+                if remote == nil || localAt > remoteAt {
+                    await pushCloud(notifyOnFailure: false)
+                }
+            } else {
+                state = BudgetDefaults.emptyState()
+            }
+            if cloudDirty {
+                await pushCloud(notifyOnFailure: false)
+            }
+            postDueRecurring()
+        } catch {
+            if let local = loadLocal(userId: userId) {
+                applyLoadedState(local.state, updatedAt: local.updatedAt, persistCleanup: false)
+                postDueRecurring()
+            }
+            cloudDirty = true
+            if !didNotifySyncFailure {
+                didNotifySyncFailure = true
+                showToast("Working offline — changes save on this device.")
+            }
+        }
+    }
+
+    private func startSharedSubscription(budgetId: UUID) async {
+        await supabase.subscribeSharedBudget(budgetId: budgetId) { [weak self] in
+            Task { @MainActor in
+                await self?.applyRemoteSharedChange()
+            }
+        }
+    }
+
+    private func applyRemoteSharedChange() async {
+        guard let membership = sharedMembership else { return }
+        do {
+            let remote = try await supabase.fetchSharedBudget(budgetId: membership.id)
+            guard let remote, remote.updatedAt > lastSharedAppliedAt else { return }
+            lastSharedAppliedAt = remote.updatedAt
+            applyLoadedState(remote.state, updatedAt: remote.updatedAt, persistCleanup: true)
+            await refreshBillReminders()
+            showToast("Budget updated by your partner.")
+        } catch {
+            /* transient — next event or reload catches up */
+        }
+    }
+
+    private func refreshSharedMemberCount() async {
+        guard let membership = sharedMembership else {
+            sharedMemberCount = nil
+            return
+        }
+        do {
+            let members = try await supabase.listBudgetMembers(budgetId: membership.id)
+            sharedMemberCount = members.count
+        } catch {
+            sharedMemberCount = nil
+        }
+    }
+
+    func shareThisBudget() async {
+        guard !isInSharedBudget, supabase.currentUser != nil else { return }
+        isSharedBusy = true
+        sharedStatusMessage = "Setting up your shared budget…"
+        defer { isSharedBusy = false }
+        do {
+            let first = userName.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
+            let name = first.isEmpty ? "Shared budget" : "\(first)'s shared budget"
+            let budgetId = try await supabase.createSharedBudget(state: state, name: name)
+            sharedMembership = SharedMembership(id: budgetId, role: "owner")
+            lastSharedAppliedAt = Int64(Date().timeIntervalSince1970 * 1000)
+            saveLocal()
+            await startSharedSubscription(budgetId: budgetId)
+            try await mintInviteLink()
+            sharedStatusMessage = "Done — send your partner the link. It works once and expires in 7 days."
+            await refreshSharedMemberCount()
+        } catch {
+            sharedStatusMessage = supabase.friendlyAuthError(error)
+        }
+    }
+
+    func mintInviteLink() async throws {
+        guard let membership = sharedMembership else { return }
+        let token = try await supabase.createBudgetInvite(budgetId: membership.id)
+        inviteLink = SupabaseService.inviteURL(token: token)
+    }
+
+    func createNewInviteLink() async {
+        guard isSharedOwner else { return }
+        isSharedBusy = true
+        defer { isSharedBusy = false }
+        do {
+            try await mintInviteLink()
+            sharedStatusMessage = "New invite link ready — works once, expires in 7 days."
+        } catch {
+            sharedStatusMessage = supabase.friendlyAuthError(error)
+        }
+    }
+
+    func leaveSharedBudget() async {
+        guard let membership = sharedMembership, let uid = supabase.currentUser?.id else { return }
+        isSharedBusy = true
+        defer { isSharedBusy = false }
+        do {
+            // Option A: keep shared snapshot minus partner's tagged entries.
+            let keptTransactions = state.transactions
+                .filter { tx in
+                    guard let addedBy = tx.addedBy else { return true }
+                    return addedBy.lowercased() == uid.uuidString.lowercased()
+                }
+                .map { tx -> BudgetTransaction in
+                    var copy = tx
+                    copy.addedBy = nil
+                    copy.addedByName = nil
+                    return copy
+                }
+            var kept = state
+            kept.transactions = keptTransactions
+            try await supabase.leaveSharedBudget(budgetId: membership.id)
+            await teardownShared()
+            state = kept
+            saveLocal()
+            await pushCloud(notifyOnFailure: true)
+            sharedStatusMessage = nil
+            showToast("Left the shared budget — your copy is saved.")
+        } catch {
+            sharedStatusMessage = supabase.friendlyAuthError(error)
+        }
+    }
+
     private func loadFromCloud(userId: UUID) async {
         do {
             let cloud = try await supabase.fetchBudget(userId: userId)
@@ -546,7 +831,12 @@ final class BudgetStore: ObservableObject {
         guard let userId = supabase.currentUser?.id else { return }
         let payload = CloudBudgetPayload(state: state, updatedAt: localUpdatedAt, name: userName)
         do {
-            try await supabase.pushBudget(userId: userId, payload: payload)
+            if let membership = sharedMembership {
+                try await supabase.pushSharedBudget(budgetId: membership.id, payload: payload)
+                lastSharedAppliedAt = localUpdatedAt
+            } else {
+                try await supabase.pushBudget(userId: userId, payload: payload)
+            }
             cloudDirty = false
             didNotifySyncFailure = false
         } catch {

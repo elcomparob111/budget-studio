@@ -26,6 +26,7 @@ struct AddTransactionSheet: View {
     @State private var scanBanner: String?
     @State private var scanError: String?
     @State private var didAutoPresentScan = false
+    @State private var showDeleteConfirm = false
 
     private var categories: [BudgetCategory] {
         store.state.categories.filter { $0.type == type }
@@ -113,6 +114,21 @@ struct AddTransactionSheet: View {
                         }
                         .buttonStyle(PrimaryButtonStyle(disabled: !canSave))
                         .disabled(!canSave)
+
+                        if existing != nil {
+                            Button {
+                                showDeleteConfirm = true
+                            } label: {
+                                Text("Delete transaction")
+                                    .font(.app(15, weight: .semibold))
+                                    .foregroundStyle(AppTheme.expense)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(AppTheme.pastelPink.opacity(0.35))
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     .padding(.horizontal, AppTheme.pagePadding)
                     .padding(.top, AppTheme.lg)
@@ -130,6 +146,18 @@ struct AddTransactionSheet: View {
                             .font(.app(15, weight: .semibold))
                             .foregroundStyle(AppTheme.primaryText)
                     }
+                }
+                .confirmationDialog(
+                    "Delete this transaction?",
+                    isPresented: $showDeleteConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) {
+                        deleteExisting()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This removes it from your budget. You can always add it again later.")
                 }
                 .onAppear {
                     populate()
@@ -369,6 +397,12 @@ struct AddTransactionSheet: View {
         } else {
             store.updateTransaction(payload)
         }
+        dismiss()
+    }
+
+    private func deleteExisting() {
+        guard let id = existing?.id else { return }
+        store.deleteTransaction(id: id)
         dismiss()
     }
 

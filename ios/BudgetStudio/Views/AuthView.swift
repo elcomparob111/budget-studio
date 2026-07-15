@@ -41,7 +41,9 @@ struct AuthView: View {
 
                         Text(store.pendingConfirmEmail != nil
                             ? "One tap in your inbox and you're in."
-                            : "Your budget stays private and syncs across your devices.")
+                            : store.hasPendingJoinInvite
+                                ? "Sign in to join the shared budget waiting for you."
+                                : "Your budget stays private and syncs across your devices.")
                             .font(.app(15, weight: .medium))
                             .foregroundStyle(AppTheme.secondaryText)
                             .multilineTextAlignment(.center)

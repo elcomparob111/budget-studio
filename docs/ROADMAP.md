@@ -1,6 +1,6 @@
 # Roadmap — Budget Studio
 
-**Last updated:** July 10, 2026  
+**Last updated:** July 14, 2026  
 **North star:** Production-ready commercial personal budgeting (web + iOS), acquisition-clean IP, honest scale path.
 
 ---
@@ -46,7 +46,7 @@ A static SPA on GitHub Pages + single Supabase project is a **strong family foun
 
 ## Product (optional, non-blocking for security)
 
-- Household / shared budgets with explicit membership model (new RLS design)
+- [x] Household / shared budgets with explicit membership model (shipped web + iOS; see [`SHARED_BUDGETS.md`](SHARED_BUDGETS.md))
 - Bank sync (major compliance jump — PCI/GLBA/vendor diligence)
 - Push notifications for bill reminders
 - WebAuthn / passkeys when Supabase support fits UX

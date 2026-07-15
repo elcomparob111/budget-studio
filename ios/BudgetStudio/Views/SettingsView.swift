@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var store: BudgetStore
@@ -9,6 +10,12 @@ struct SettingsView: View {
     @State private var payAmountText = ""
     @State private var payFrequency = "biweekly"
     @State private var nextPayDate = Date()
+    @State private var joinPaste = ""
+    @State private var showLeaveConfirm = false
+    @State private var showContactPicker = false
+    @State private var showMessageComposer = false
+    @State private var messageRecipients: [String] = []
+    @State private var messageBody = ""
 
     private let frequencies = [
         ("weekly", "Weekly"),
@@ -44,6 +51,8 @@ struct SettingsView: View {
                     payScheduleSummaryRow
 
                     recurringSection
+
+                    sharedBudgetSection
 
                     VStack(spacing: AppTheme.sm) {
                         settingsButton(title: "Setup wizard", emoji: "🪄") { showSetup = true }
@@ -126,7 +135,256 @@ struct SettingsView: View {
             .onChange(of: showSetup) { _, isShowing in
                 if !isShowing { loadPayScheduleFromStore() }
             }
+            .confirmationDialog(
+                "Leave the shared budget?",
+                isPresented: $showLeaveConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Leave shared budget", role: .destructive) {
+                    Task { await store.leaveSharedBudget() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You'll keep your own copy — your entries stay, your partner's transactions drop out, and your partner keeps the shared budget.")
+            }
+            .sheet(isPresented: $showContactPicker) {
+                ContactPickerSheet(
+                    onPick: { phone in
+                        showContactPicker = false
+                        guard let phone, !phone.isEmpty else {
+                            store.toastMessage = "That contact has no phone number."
+                            return
+                        }
+                        presentMessages(to: [phone])
+                    },
+                    onCancel: { showContactPicker = false }
+                )
+                .ignoresSafeArea()
+            }
+            .sheet(isPresented: $showMessageComposer) {
+                MessageComposeSheet(
+                    recipients: messageRecipients,
+                    body: messageBody,
+                    onFinish: { showMessageComposer = false }
+                )
+                .ignoresSafeArea()
+            }
         }
+    }
+
+    private var sharedBudgetSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(spacing: AppTheme.md) {
+                Text("👥")
+                    .font(.app(22))
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.pastelBlue.opacity(0.45), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Shared budget")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text(sharedSubtitle)
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer(minLength: 0)
+            }
+
+            if store.isInSharedBudget {
+                if store.isSharedOwner {
+                    invitePartnerActions
+
+                    Button {
+                        Task { await store.createNewInviteLink() }
+                    } label: {
+                        Text(store.isSharedBusy ? "Working…" : "New invite link")
+                            .font(.app(14, weight: .semibold))
+                            .foregroundStyle(AppTheme.secondaryText)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(store.isSharedBusy)
+                }
+
+                if let link = store.inviteLink {
+                    Text(link)
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .textSelection(.enabled)
+                        .lineLimit(2)
+
+                    HStack(spacing: AppTheme.sm) {
+                        ShareLink(item: link) {
+                            Label("More", systemImage: "square.and.arrow.up")
+                                .font(.app(14, weight: .semibold))
+                                .foregroundStyle(AppTheme.primaryText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(AppTheme.inputFill)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+
+                        Button {
+                            UIPasteboard.general.string = link
+                            store.toastMessage = "Invite link copied."
+                        } label: {
+                            Label("Copy", systemImage: "doc.on.doc")
+                                .font(.app(14, weight: .semibold))
+                                .foregroundStyle(AppTheme.primaryText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(AppTheme.inputFill)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Button {
+                    showLeaveConfirm = true
+                } label: {
+                    Text("Leave shared budget")
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.expense)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.pastelPink.opacity(0.35))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isSharedBusy)
+            } else {
+                Button {
+                    Task { await store.shareThisBudget() }
+                } label: {
+                    Text(store.isSharedBusy ? "Setting up…" : "Share this budget")
+                        .font(.app(15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.primaryText)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isSharedBusy)
+
+                Text("After you share, invite your partner from Contacts or Messages.")
+                    .font(.app(12, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+
+                VStack(alignment: .leading, spacing: AppTheme.sm) {
+                    Text("Have an invite?")
+                        .font(.app(13, weight: .semibold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                    TextField("Paste invite link or token", text: $joinPaste)
+                        .font(.app(14, weight: .medium))
+                        .padding(.horizontal, AppTheme.lg)
+                        .padding(.vertical, AppTheme.md)
+                        .background(AppTheme.inputFill)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .appInputText()
+                    Button {
+                        store.captureJoinToken(from: joinPaste)
+                        joinPaste = ""
+                    } label: {
+                        Text("Join shared budget")
+                            .font(.app(14, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryText)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(joinPaste.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+
+            if let message = store.sharedStatusMessage, !message.isEmpty {
+                Text(message)
+                    .font(.app(12, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+        }
+        .appCard()
+    }
+
+    private var invitePartnerActions: some View {
+        VStack(spacing: AppTheme.sm) {
+            Button {
+                Task { await inviteFromContacts() }
+            } label: {
+                Label("Invite from Contacts", systemImage: "person.crop.circle")
+                    .font(.app(15, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.primaryText)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(store.isSharedBusy)
+
+            if MessageComposeSheet.canSendText {
+                Button {
+                    Task { await inviteViaMessages() }
+                } label: {
+                    Label("Text invite in Messages", systemImage: "message.fill")
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.pastelGreen.opacity(0.55))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isSharedBusy)
+            }
+        }
+    }
+
+    private func inviteFromContacts() async {
+        guard await ensureInviteLink() else { return }
+        guard MessageComposeSheet.canSendText else {
+            store.toastMessage = "Messages isn't available on this device — use Copy or More instead."
+            return
+        }
+        showContactPicker = true
+    }
+
+    private func inviteViaMessages() async {
+        guard await ensureInviteLink() else { return }
+        presentMessages(to: [])
+    }
+
+    @discardableResult
+    private func ensureInviteLink() async -> Bool {
+        if store.inviteLink != nil { return true }
+        await store.createNewInviteLink()
+        if store.inviteLink != nil { return true }
+        store.toastMessage = store.sharedStatusMessage ?? "Couldn't create an invite link."
+        return false
+    }
+
+    private func presentMessages(to recipients: [String]) {
+        guard let link = store.inviteLink else { return }
+        guard MessageComposeSheet.canSendText else {
+            store.toastMessage = "Messages isn't available on this device — use Copy or More instead."
+            return
+        }
+        messageRecipients = recipients
+        messageBody = InviteMessage.body(link: link, fromName: store.userName)
+        showMessageComposer = true
+    }
+
+    private var sharedSubtitle: String {
+        if store.isInSharedBudget {
+            if let count = store.sharedMemberCount {
+                if count <= 1 {
+                    return "Just you so far — invite your partner. You're the \(store.sharedMembership?.role ?? "member")."
+                }
+                return "\(count) people share this budget. You're the \(store.sharedMembership?.role ?? "member")."
+            }
+            return store.isSharedOwner ? "You own this shared budget." : "You're in a shared budget."
+        }
+        return "Invite a partner to edit the same budget live."
     }
 
     private var recurringSection: some View {
@@ -152,6 +410,32 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add recurring transaction")
+            }
+
+            HStack(spacing: AppTheme.md) {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(width: 36, height: 36)
+                    .background(AppTheme.pastelOrange.opacity(0.5), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bill reminders")
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text("Notify the morning a bill is due.")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { store.billRemindersEnabled },
+                    set: { enabled in
+                        Task { await store.setBillRemindersEnabled(enabled) }
+                    }
+                ))
+                .labelsHidden()
+                .tint(AppTheme.primaryText)
+                .accessibilityLabel("Bill reminders")
             }
 
             ForEach(store.state.recurringItems) { item in

@@ -32,5 +32,16 @@
 	<dict/>
 	<key>UIRequiresFullScreen</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.budgetstudio.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>budgetstudio</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

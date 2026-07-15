@@ -40,13 +40,6 @@ struct TransactionsView: View {
                                         .appCard()
                                 }
                                 .buttonStyle(.plain)
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        store.deleteTransaction(id: item.id)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
                             }
                         }
                     }
@@ -173,6 +166,7 @@ struct TransactionsView: View {
 }
 
 struct TransactionRow: View {
+    @EnvironmentObject private var store: BudgetStore
     let transaction: BudgetTransaction
 
     var body: some View {
@@ -189,9 +183,20 @@ struct TransactionRow: View {
                 Text(transaction.description.isEmpty ? transaction.category : transaction.description)
                     .font(.app(16, weight: .semibold))
                     .foregroundStyle(AppTheme.primaryText)
-                Text("\(transaction.category) · \(transaction.account)")
-                    .font(.app(12, weight: .medium))
-                    .foregroundStyle(AppTheme.secondaryText)
+                HStack(spacing: 6) {
+                    Text("\(transaction.category) · \(transaction.account)")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                    if let author = store.authorLabel(for: transaction) {
+                        Text(author)
+                            .font(.app(11, weight: .bold))
+                            .foregroundStyle(AppTheme.primaryText)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(AppTheme.pastelBlue.opacity(0.55))
+                            .clipShape(Capsule())
+                    }
+                }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: AppTheme.xs) {

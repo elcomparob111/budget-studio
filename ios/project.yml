@@ -48,3 +48,7 @@ targets:
         NSCameraUsageDescription: Budget Studio uses the camera to scan receipts and screenshots into transactions.
         NSPhotoLibraryUsageDescription: Budget Studio reads photos and screenshots to fill in transaction details.
         ITSAppUsesNonExemptEncryption: false
+        CFBundleURLTypes:
+          - CFBundleURLName: com.budgetstudio.app
+            CFBundleURLSchemes:
+              - budgetstudio
