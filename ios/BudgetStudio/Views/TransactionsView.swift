@@ -35,7 +35,6 @@ struct TransactionsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
                     incomeVsSpentCard
-                    categoryBreakdownSection
 
                     filterChips
                     searchField
@@ -55,6 +54,9 @@ struct TransactionsView: View {
                             }
                         }
                     }
+
+                    // Analysis sits below the transactions it describes.
+                    categoryBreakdownSection
                 }
                 .padding(.horizontal, AppTheme.pagePadding)
                 .padding(.top, AppTheme.lg)
@@ -106,7 +108,6 @@ struct TransactionsView: View {
     private var incomeVsSpentCard: some View {
         let income = store.monthSummary.income
         let spent = store.monthSummary.spent
-        let maxValue = max(income, spent, 1)
 
         return VStack(alignment: .leading, spacing: AppTheme.md) {
             HStack(alignment: .top) {
@@ -128,22 +129,12 @@ struct TransactionsView: View {
                     .background(Color.gray.opacity(0.08), in: Capsule())
             }
 
+            // No bars: they restated income and spent, which the stats above
+            // already show larger. An empty month reads $0 / $0 / $0.
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.sm) {
                 cashStat("Income", currency(income), AppTheme.income)
                 cashStat("Spent", currency(spent), AppTheme.expense)
                 cashStat("Net", currency(monthNet), monthNet < 0 ? AppTheme.expense : AppTheme.primaryText)
-            }
-
-            if income > 0 || spent > 0 {
-                VStack(spacing: AppTheme.sm) {
-                    cashflowBar(label: "Income", value: income, maxValue: maxValue, color: AppTheme.income)
-                    cashflowBar(label: "Spent", value: spent, maxValue: maxValue, color: AppTheme.expense)
-                }
-            } else {
-                Text("No income or spending logged for this month yet.")
-                    .font(.app(14, weight: .medium))
-                    .foregroundStyle(AppTheme.secondaryText)
-                    .padding(.vertical, AppTheme.sm)
             }
         }
         .appCard()
@@ -166,26 +157,6 @@ struct TransactionsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private func cashflowBar(label: String, value: Double, maxValue: Double, color: Color) -> some View {
-        HStack(spacing: AppTheme.md) {
-            Text(label)
-                .font(.app(13, weight: .bold))
-                .foregroundStyle(AppTheme.primaryText)
-                .frame(width: 64, alignment: .leading)
-            GeometryReader { geo in
-                let width = max(8, geo.size.width * (value / maxValue))
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(color)
-                    .frame(width: width, height: 18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(height: 18)
-            Text(currency(value))
-                .font(.app(12, weight: .bold))
-                .foregroundStyle(AppTheme.secondaryText)
-                .frame(width: 64, alignment: .trailing)
-        }
-    }
 
     private var categoryBreakdownSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.md) {
