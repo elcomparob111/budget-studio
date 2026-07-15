@@ -1,48 +1,65 @@
 # Handoff — Budget Studio
 
-**Pinned:** July 14, 2026  
-**Branch / tip:** `main` (see latest commit after this file lands)  
-**Owner preference:** stop feature crunch; next agent should pick up from **Recommended next** below.
+**Pinned:** July 15, 2026  
+**Branch / tip:** `main` @ `c96fc28` (pushed)  
+**Owner preference:** stop feature crunch; next agent picks from **Recommended next** below.
 
 Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipped P0 work unless fixing a bug.
 
 ---
 
-## Just shipped (this session arc)
+## Just shipped (this session / recent commits)
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Shared budgets (web) | Done | Invite/join/realtime/leave Option A; authorship tags on Activity |
-| Shared budgets (iOS) | Done | Settings share, Contacts/Messages invite, paste join, realtime, leave Option A, author chips |
-| Bill reminders (iOS) | Done | **Local** notifications (not APNs). Settings → Recurring → Bill reminders. 9am on due day, expenses only |
-| Transaction delete (iOS) | Done | Delete lives in **edit sheet** only (no always-on trash on list) |
-| Home Screen widget | Done (polish loved) | Safe-to-spend + tap → `budgetstudio://add`. App Group `group.com.budgetstudio.app` |
-| Web IA (Home / Activity / Goals / Settings) | Done (web + iOS) | Activity income-vs-spent + category breakdown; Budgets in Settings; Savings goals tab (`savingsGoals` synced). |
-| Docs | Updated | `SHARED_BUDGETS.md`, `ROADMAP.md` reflect shipped shared budgets |
-| Web touch targets | Done | SW **v59**; undo-on-delete already worked |
-| Sync refresh (web + iOS) | Done | Re-fetch cloud on focus/visibility/online when cloud `updatedAt` > local; iOS `sanitizeState` preserves `savingsGoals` |
-| Biweekly pay periods (web + iOS) | Done | Periods show payday → next payday (e.g. Jul 8–22); preview list on Home + Pay schedule; SW **v61**; incomes must be logged manually |
+| Sync refresh (web + iOS) | Done | Web re-fetches on focus/visibility/online when cloud `updatedAt` > local (`0b73f97`). iOS foreground refresh; `sanitizeState` preserves `savingsGoals`. |
+| Biweekly pay periods | Done | Periods show payday → next payday (e.g. Jul 8–22); preview on Home + Pay schedule (`0b73f97`). |
+| Supabase security advisors | Done | `is_budget_member` → `private` schema (`4a91780`); `create_shared_budget` + `accept_budget_invite` → SECURITY INVOKER + private triggers (`1d498e9`). **Remaining advisor:** likely auth leaked-password protection only (dashboard toggle). |
+| Pay UI (web ↔ iOS parity) | Done | **Option B:** Home metrics-only with optional “Next” line; full schedule in Pay schedule settings (`33a0ec8`, `58b9f4d`, `2775c84`). |
+| Recurring web UI | Done | Matched iOS settings sheet: modal, chips, bill reminders, trash rows (`c96fc28`). SW **v65**. |
+| Shared budgets (web + iOS) | Done (prior arc) | Invite/join/realtime/leave Option A; authorship tags on Activity |
+| Bill reminders (iOS) | Done (prior arc) | **Local** notifications. Settings → Recurring → Bill reminders. 9am on due day, expenses only |
+| Home Screen widget | Done (prior arc) | Safe-to-spend + tap → `budgetstudio://add`. App Group `group.com.budgetstudio.app` |
+| Web IA (Home / Activity / Goals / Settings) | Done | Activity income-vs-spent + category breakdown; Budgets in Settings; Savings goals tab (`savingsGoals` synced) |
 
-### Widget / iOS paths to know
+### Key commits (newest first)
 
-- Widget: `ios/BudgetStudioWidget/`
-- Shared snapshot: `ios/Shared/WidgetSnapshot.swift`
-- Publish from app: `BudgetStore.publishWidgetSnapshot()`
-- Deep link: `budgetstudio://add` → `pendingQuickAdd` → `MainTabView`
-- Project: `ios/project.yml` (run `xcodegen generate` after target edits)
-- Entitlements: App Group on app + widget; first device build may need Xcode to confirm the group
+`c96fc28` recurring web · `2775c84` pay Option B · `58b9f4d` Home schedule trim · `33a0ec8` pay preview · `1d498e9` / `4a91780` RPC hardening · `0b73f97` sync + biweekly
+
+### Paths to know
+
+- Web: `app.js`, `sync.js`, `sw.js` (cache `budget-studio-v65`)
+- Widget: `ios/BudgetStudioWidget/`, `ios/Shared/WidgetSnapshot.swift`
+- iOS project: `ios/project.yml` (run `xcodegen generate` after target edits)
+- Shared-budget RPCs: `supabase/` migrations / `rls.sql`
+
+---
+
+## Uncommitted local (verify before assuming shipped)
+
+| Path | What |
+|------|------|
+| `ios/project.yml`, `ios/BudgetStudio/Info.plist` | `UIRequiresFullScreen: true`; Xcode 26 recommended settings (`LastUpgradeCheck`, script sandboxing, string catalogs, Release validate) |
+| `ios/BudgetStudio/Services/SupabaseService.swift` | `postgresChange` new filter syntax (`.eq("id", value:)` vs string filter) |
+| `LAUNCH_CHECKLIST.md`, `legal/RELEASE_CHECKLIST.md` | Auth rate limits / CAPTCHA / leaked-password wording (“before public publish”) |
+| `skills-lock.json` | Agent skills lockfile |
+| `.agents/skills/supabase/`, `.agents/skills/supabase-postgres-best-practices/` | Untracked skill installs |
+| `ios/build-*/` | Untracked local build dirs — ignore / do not commit |
+
+`BudgetStore.swift` is **clean** on `main`; no pending warning cleanup there.
 
 ---
 
 ## Recommended next (pick one)
 
-1. **TestFlight** — highest leverage: family on real devices (shared budgets, reminders, widget, Savings). See `ios/README.md` / `docs/DEPLOYMENT.md`.
-2. **Launch smoke test** — still open in [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data). Operator/dashboard, not a big code task.
-3. **Quick-entry leftovers (P1)** — Watch app and/or Siri shortcut; widget is done.
-4. **Launch hygiene** — AI logo provenance (`legal/AI_ASSETS.md`), trademark (`legal/TRADEMARK.md`), self-serve account deletion (Edge Function, service_role server-side only).
-5. **Before public publish (auth)** — Confirm Supabase Auth rate limits; enable CAPTCHA / leaked-password protection. See [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §2 and [`legal/RELEASE_CHECKLIST.md`](../legal/RELEASE_CHECKLIST.md). Not urgent for family/TestFlight.
+1. **Commit Xcode warning fixes** — if still dirty: `project.yml`, `Info.plist`, `SupabaseService.swift` filter syntax. Run `xcodegen generate` then build to confirm warnings cleared.
+2. **Smoke-test shared budgets** — create + accept invite after RPC hardening (`4a91780`, `1d498e9`); two accounts, realtime, leave Option A.
+3. **TestFlight** — family on real devices (shared budgets, reminders, widget, Savings). See `ios/README.md` / `docs/DEPLOYMENT.md`.
+4. **Launch smoke test** — [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data).
+5. **Before public publish (auth)** — Supabase rate limits, CAPTCHA, leaked-password protection. Checklists updated locally but not committed. Fine to defer for family/TestFlight.
+6. **Visual polish** — user may want feedback on Home paycheck line after hard refresh on live site.
 
-**Do not start:** bank sync / Plaid (compliance jump). Remote APNs for reminders can wait; local notifications cover the P1 “reminders” half.
+**Do not start:** bank sync / Plaid. Remote APNs can wait; local iOS reminders cover P1.
 
 ---
 
@@ -50,20 +67,31 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 
 - `docs/ROADMAP.md` Product still says “Push notifications for bill reminders” — treat as **remote push**; local iOS reminders are shipped.
 - Confirm-email Site URL must stay `https://elcomparob111.github.io/budget-studio/` (with path).
-- Leave behavior is **Option A** (keep shared snapshot minus partner’s tagged txs), not the old “personal untouched / no copy-back” note (fixed in SHARED_BUDGETS).
+- Leave behavior is **Option A** (keep shared snapshot minus partner’s tagged txs). See `docs/SHARED_BUDGETS.md`.
 
 ---
 
 ## Verify tips
 
-- Widget: install app once signed-in, then add **Safe to spend** widget; remove/re-add after UI changes.
-- Shared: two accounts, invite via Messages/Contacts, edit both sides, leave keeps own entries.
-- Reminders: toggle on, allow notifications, recurring expense due tomorrow → 9:00 local.
+- **Live web:** https://elcomparob111.github.io/budget-studio/ — **hard refresh** after deploy (SW v65).
+- Shared: two accounts, invite, edit both sides, leave keeps own entries.
+- Pay: Home shows metrics + optional Next; full schedule under Settings → Pay schedule.
+- Recurring web: modal matches iOS (chips, bill reminders toggle, trash on rows).
+- Widget: install signed-in, add **Safe to spend** widget; re-add after UI changes.
 
 ---
 
-## Out of scope for agents unless asked
+## For next agent
 
-- Committing `.claude/`
+- Start from this file + [`AGENTS.md`](../AGENTS.md); **do not explore the whole repo**.
+- Push GitHub Pages **only when the user asks** (recent sessions often requested web UX pushes).
+- **Do not change budget math** unless explicitly asked.
+- Do not commit `.claude/`, `ios/build-*/`, or force-push / amend pushed commits.
+
+---
+
+## Out of scope unless asked
+
+- Committing `.claude/` or local build artifacts
 - Force-push / amending pushed commits
 - Changing budget math without an explicit ask
