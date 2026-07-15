@@ -28,8 +28,15 @@ budget is simply a second row both clients point at.
 ## Security notes
 
 - All three tables are RLS-on, anon fully revoked.
-- Membership/invite writes go through `security definer` RPCs so tokens are
-  never enumerable via SELECT and membership can't be self-granted.
+- `create_shared_budget` is **SECURITY INVOKER** (RLS allows creator insert);
+  owner membership is added by a **private** definer trigger on
+  `shared_budgets` insert — not callable via PostgREST.
+- `accept_budget_invite` is **SECURITY INVOKER** (same pattern): the public RPC
+  inserts into `private.invite_accept_queue`; a **private** definer
+  `BEFORE INSERT` trigger validates the token, inserts membership, marks
+  `used_by`, and sets `budget_id` on the queue row. Queue RLS restricts rows
+  to `requester_id = auth.uid()`; invite tokens are never selectable via RLS.
+  Advisor lint 0029 is cleared for this RPC.
 - `private.is_budget_member()` is a definer helper (non-exposed schema) to avoid
   recursive RLS between `shared_budgets` and `budget_members`.
 - Invite tokens: UUID, 7-day expiry, single-use (`used_by`), revocable by

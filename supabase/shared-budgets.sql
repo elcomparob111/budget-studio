@@ -143,33 +143,57 @@ create policy "Creator revokes invites"
   to authenticated
   using (created_by = auth.uid());
 
--- RPC: create a shared budget seeded from the caller's state, owner membership
--- included, all-or-nothing.
-create or replace function public.create_shared_budget(initial_state jsonb, budget_name text default '')
-returns uuid
+-- Owner membership on create: definer trigger (not PostgREST-exposed) so the
+-- public RPC can stay SECURITY INVOKER and satisfy advisor lint 0029.
+create or replace function private.add_owner_on_shared_budget_create()
+returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  bid uuid;
 begin
-  if auth.uid() is null then
-    raise exception 'not authenticated';
-  end if;
-  insert into public.shared_budgets (state, updated_at, name, created_by)
-  values (initial_state, (extract(epoch from now()) * 1000)::bigint, budget_name, auth.uid())
-  returning id into bid;
   insert into public.budget_members (budget_id, user_id, role)
-  values (bid, auth.uid(), 'owner');
-  return bid;
+  values (new.id, new.created_by, 'owner');
+  return new;
 end;
 $$;
 
--- RPC: redeem an invite token. Validates expiry + single use, adds caller as
--- member, marks token used. Returns the budget id to switch to.
-create or replace function public.accept_budget_invite(invite_token uuid)
-returns uuid
+drop trigger if exists shared_budget_owner_membership on public.shared_budgets;
+create trigger shared_budget_owner_membership
+  after insert on public.shared_budgets
+  for each row execute function private.add_owner_on_shared_budget_create();
+
+-- Invite accept queue (private, not PostgREST-exposed). Public RPC stays
+-- SECURITY INVOKER; privileged lookup/membership/used_by via definer trigger.
+create table if not exists private.invite_accept_queue (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references auth.users (id) on delete cascade,
+  token uuid not null,
+  budget_id uuid references public.shared_budgets (id) on delete set null,
+  error_text text,
+  created_at timestamptz not null default now()
+);
+
+alter table private.invite_accept_queue enable row level security;
+
+revoke all on table private.invite_accept_queue from public, anon;
+grant insert, select on table private.invite_accept_queue to authenticated;
+grant all on table private.invite_accept_queue to service_role;
+
+drop policy if exists "Requester inserts own accept" on private.invite_accept_queue;
+create policy "Requester inserts own accept"
+  on private.invite_accept_queue for insert
+  to authenticated
+  with check (requester_id = (select auth.uid()));
+
+drop policy if exists "Requester reads own accept" on private.invite_accept_queue;
+create policy "Requester reads own accept"
+  on private.invite_accept_queue for select
+  to authenticated
+  using (requester_id = (select auth.uid()));
+
+create or replace function private.process_invite_accept()
+returns trigger
 language plpgsql
 security definer
 set search_path = public
@@ -180,9 +204,14 @@ begin
   if auth.uid() is null then
     raise exception 'not authenticated';
   end if;
+  if new.requester_id is distinct from auth.uid() then
+    raise exception 'requester mismatch';
+  end if;
+
   select * into inv from public.budget_invites
-  where token = invite_token
+  where token = new.token
   for update;
+
   if not found then
     raise exception 'invite not found';
   end if;
@@ -192,18 +221,78 @@ begin
   if inv.expires_at < now() then
     raise exception 'invite expired';
   end if;
+
   insert into public.budget_members (budget_id, user_id, role)
-  values (inv.budget_id, auth.uid(), 'member')
+  values (inv.budget_id, new.requester_id, 'member')
   on conflict (budget_id, user_id) do nothing;
-  update public.budget_invites set used_by = auth.uid() where token = invite_token;
-  return inv.budget_id;
+
+  update public.budget_invites
+  set used_by = new.requester_id
+  where token = new.token;
+
+  new.budget_id := inv.budget_id;
+  return new;
 end;
 $$;
 
-revoke all on function public.create_shared_budget(jsonb, text) from anon, public;
-revoke all on function public.accept_budget_invite(uuid) from anon, public;
+revoke all on function private.process_invite_accept() from public, anon;
+
+drop trigger if exists invite_accept_processor on private.invite_accept_queue;
+create trigger invite_accept_processor
+  before insert on private.invite_accept_queue
+  for each row execute function private.process_invite_accept();
+
+-- RPC: create a shared budget seeded from the caller's state. Owner row is
+-- added by the trigger above; RLS on shared_budgets allows creator insert.
+create or replace function public.create_shared_budget(initial_state jsonb, budget_name text default '')
+returns uuid
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  bid uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  if initial_state is null then
+    raise exception 'initial_state required';
+  end if;
+  insert into public.shared_budgets (state, updated_at, name, created_by)
+  values (initial_state, (extract(epoch from now()) * 1000)::bigint, coalesce(budget_name, ''), auth.uid())
+  returning id into bid;
+  return bid;
+end;
+$$;
+
+-- RPC: redeem an invite token. SECURITY INVOKER enqueues into private queue;
+-- definer trigger above performs invite lookup, membership insert, used_by.
+create or replace function public.accept_budget_invite(invite_token uuid)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  bid uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  insert into private.invite_accept_queue (requester_id, token)
+  values (auth.uid(), invite_token)
+  returning budget_id into bid;
+  return bid;
+end;
+$$;
+
+revoke all on function public.create_shared_budget(jsonb, text) from public, anon;
+revoke all on function public.accept_budget_invite(uuid) from public, anon;
 grant execute on function public.create_shared_budget(jsonb, text) to authenticated;
 grant execute on function public.accept_budget_invite(uuid) to authenticated;
+grant execute on function public.create_shared_budget(jsonb, text) to service_role;
+grant execute on function public.accept_budget_invite(uuid) to service_role;
 
 -- Realtime: partners get live updates when the other writes.
 -- Requires the table added to the supabase_realtime publication:
