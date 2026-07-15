@@ -412,6 +412,10 @@ const elements = {
   settingsNextPayDateInput: document.querySelector("#settingsNextPayDateInput"),
   settingsPayScheduleSubtitle: document.querySelector("#settingsPayScheduleSubtitle"),
   savePayScheduleBtn: document.querySelector("#savePayScheduleBtn"),
+  budgetsDialog: document.querySelector("#budgetsDialog"),
+  editBudgetsBtn: document.querySelector("#editBudgetsBtn"),
+  closeBudgetsBtn: document.querySelector("#closeBudgetsBtn"),
+  settingsBudgetsSubtitle: document.querySelector("#settingsBudgetsSubtitle"),
   netMetric: document.querySelector("#netMetric"),
   savingsMetric: document.querySelector("#savingsMetric"),
   topCategoryBadge: document.querySelector("#topCategoryBadge"),
@@ -1035,14 +1039,20 @@ function attachEvents() {
     if (id) openEditDialog(id);
   });
 
-  elements.budgetEditor.addEventListener("change", (event) => {
+  elements.budgetEditor?.addEventListener("change", (event) => {
     const input = event.target.closest("[data-budget-category]");
     if (!input) return;
     const category = state.categories.find((item) => item.name === input.dataset.budgetCategory);
     if (!category) return;
     category.budget = Math.max(0, Number(input.value) || 0);
     saveState();
+    updateBudgetsSummary();
     renderDashboard();
+  });
+  elements.budgetEditor?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-category]");
+    if (!button) return;
+    deleteCategoryFromBudgets(button.dataset.deleteCategory);
   });
   elements.categoryBuilderForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1124,6 +1134,11 @@ function attachEvents() {
   elements.closePayScheduleBtn?.addEventListener("click", closePayScheduleDialog);
   elements.payScheduleDialog?.addEventListener("click", (event) => {
     if (event.target === elements.payScheduleDialog) closePayScheduleDialog();
+  });
+  elements.editBudgetsBtn?.addEventListener("click", openBudgetsDialog);
+  elements.closeBudgetsBtn?.addEventListener("click", closeBudgetsDialog);
+  elements.budgetsDialog?.addEventListener("click", (event) => {
+    if (event.target === elements.budgetsDialog) closeBudgetsDialog();
   });
   elements.settingsPayFrequencyGrid?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-frequency-id]");
@@ -1306,10 +1321,10 @@ function switchTab(tab) {
   });
   if (activeTab === "settings") {
     updatePayScheduleSummary();
+    updateBudgetsSummary();
     populateRecurringCategorySelect();
     renderRecurringList();
     renderSharedPanel();
-    renderBudgetEditor();
   } else {
     render();
   }
@@ -1360,9 +1375,40 @@ function openPayScheduleDialog() {
 
 function closePayScheduleDialog() {
   if (elements.payScheduleDialog) elements.payScheduleDialog.hidden = true;
-  if (elements.setupWizard?.hidden && elements.editDialog?.hidden) {
-    document.body.classList.remove("wizard-open");
+  syncOverlayBodyClass();
+}
+
+function updateBudgetsSummary() {
+  const expenseCategories = state.categories.filter((category) => category.type === "Expense");
+  const count = expenseCategories.length;
+  const total = expenseCategories.reduce((sum, category) => sum + (Number(category.budget) || 0), 0);
+  let subtitle = "No categories yet";
+  if (count === 1) subtitle = `1 category · ${money(total)}/mo`;
+  else if (count > 1) subtitle = `${count} categories · ${money(total)}/mo`;
+  if (elements.settingsBudgetsSubtitle) {
+    elements.settingsBudgetsSubtitle.textContent = subtitle;
   }
+}
+
+function openBudgetsDialog() {
+  renderBudgetEditor();
+  if (elements.budgetsDialog) elements.budgetsDialog.hidden = false;
+  document.body.classList.add("wizard-open");
+}
+
+function closeBudgetsDialog() {
+  if (elements.budgetsDialog) elements.budgetsDialog.hidden = true;
+  syncOverlayBodyClass();
+  updateBudgetsSummary();
+}
+
+function syncOverlayBodyClass() {
+  const overlayOpen =
+    (elements.setupWizard && !elements.setupWizard.hidden) ||
+    (elements.editDialog && !elements.editDialog.hidden) ||
+    (elements.payScheduleDialog && !elements.payScheduleDialog.hidden) ||
+    (elements.budgetsDialog && !elements.budgetsDialog.hidden);
+  document.body.classList.toggle("wizard-open", overlayOpen);
 }
 
 function savePayScheduleFromSettings() {
@@ -1720,7 +1766,7 @@ function render() {
     renderTransactions();
   } else if (activeTab === "goals") renderGoals();
   else if (activeTab === "overview") renderDashboard();
-  else if (activeTab === "settings") renderBudgetEditor();
+  else if (activeTab === "settings") updateBudgetsSummary();
 }
 
 function renderDashboard() {
@@ -2160,13 +2206,28 @@ function deleteGoal(id) {
 }
 
 function renderBudgetEditor() {
-  elements.budgetEditor.innerHTML = state.categories
-    .filter((category) => category.type === "Expense")
+  if (!elements.budgetEditor) return;
+  const expenseCategories = state.categories.filter((category) => category.type === "Expense");
+  if (!expenseCategories.length) {
+    elements.budgetEditor.innerHTML = `<div class="empty-state">No expense categories yet. Add one below.</div>`;
+    return;
+  }
+  elements.budgetEditor.innerHTML = expenseCategories
     .map(
       (category) => `
-        <label class="budget-item">
-          <strong>${escapeHtml(category.name)}</strong>
-          <small>${escapeHtml(category.group)}</small>
+        <div class="budget-item">
+          <div class="budget-item-head">
+            <div class="budget-item-copy">
+              <strong>${escapeHtml(category.name)}</strong>
+              <small>${escapeHtml(category.group)}</small>
+            </div>
+            <button
+              type="button"
+              class="ghost-button budget-delete-btn"
+              data-delete-category="${escapeHtml(category.name)}"
+              aria-label="Delete ${escapeHtml(category.name)}"
+            >Delete</button>
+          </div>
           <input
             type="number"
             min="0"
@@ -2175,10 +2236,36 @@ function renderBudgetEditor() {
             data-budget-category="${escapeHtml(category.name)}"
             aria-label="${escapeHtml(category.name)} monthly budget"
           />
-        </label>
+        </div>
       `,
     )
     .join("");
+}
+
+function deleteCategoryFromBudgets(name) {
+  const index = state.categories.findIndex((category) => category.name === name && category.type === "Expense");
+  if (index === -1) return;
+  const [removed] = state.categories.splice(index, 1);
+  saveState();
+  populateCategorySelect();
+  populateRecurringCategorySelect();
+  renderBudgetEditor();
+  updateBudgetsSummary();
+  renderDashboard();
+  showToast(`${name} removed.`, "success", {
+    actionLabel: "Undo",
+    duration: 5000,
+    onAction: () => {
+      state.categories.splice(Math.min(index, state.categories.length), 0, removed);
+      saveState();
+      populateCategorySelect();
+      populateRecurringCategorySelect();
+      renderBudgetEditor();
+      updateBudgetsSummary();
+      render();
+      showToast("Category restored.");
+    },
+  });
 }
 
 function addCategoryFromBudgetPanel() {
@@ -2203,6 +2290,9 @@ function addCategoryFromBudgetPanel() {
   });
   saveState();
   populateCategorySelect();
+  populateRecurringCategorySelect();
+  renderBudgetEditor();
+  updateBudgetsSummary();
   render();
   elements.categoryBuilderForm.reset();
   setCategoryBuilderMessage(`${name} added.`);
@@ -3589,9 +3679,7 @@ function openEditDialog(id) {
 function closeEditDialog() {
   editingTransactionId = null;
   elements.editDialog.hidden = true;
-  if (elements.setupWizard.hidden) {
-    document.body.classList.remove("wizard-open");
-  }
+  syncOverlayBodyClass();
 }
 
 function saveEditTransaction(event) {
@@ -3636,6 +3724,11 @@ function installGlobalKeyboard() {
       closePayScheduleDialog();
       return;
     }
+    if (elements.budgetsDialog && !elements.budgetsDialog.hidden) {
+      event.preventDefault();
+      closeBudgetsDialog();
+      return;
+    }
     if (!elements.editDialog.hidden) {
       event.preventDefault();
       closeEditDialog();
@@ -3646,7 +3739,13 @@ function installGlobalKeyboard() {
       closeWizard();
       return;
     }
-    if (activeTab === "settings" && elements.setupWizard.hidden && elements.editDialog.hidden && (!elements.payScheduleDialog || elements.payScheduleDialog.hidden)) {
+    if (
+      activeTab === "settings" &&
+      elements.setupWizard.hidden &&
+      elements.editDialog.hidden &&
+      (!elements.payScheduleDialog || elements.payScheduleDialog.hidden) &&
+      (!elements.budgetsDialog || elements.budgetsDialog.hidden)
+    ) {
       event.preventDefault();
       closeSettingsView();
     }

@@ -741,17 +741,17 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=54"></script>
+    <script type="module" src="./app.js?v=55"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=55").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refreshing || sessionStorage.getItem("bs-sw-reloaded-v54")) return;
+          if (refreshing || sessionStorage.getItem("bs-sw-reloaded-v55")) return;
           refreshing = true;
-          sessionStorage.setItem("bs-sw-reloaded-v54", "1");
+          sessionStorage.setItem("bs-sw-reloaded-v55", "1");
           window.location.reload();
         });
       }
