@@ -24,6 +24,7 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 | Web ↔ iOS sync audit | Done | **Cloud:** budget state fields (`budgets.data` JSON). **Local-only:** theme, Face ID, bill reminders, widget snapshot. |
 | Biweekly pay periods | Done | Periods show payday → next payday; preview on Home + Pay schedule (`0b73f97`). |
 | Supabase security / RPC hardening | Done | `is_budget_member` → `private` schema (`4a91780`); `create_shared_budget` + `accept_budget_invite` → SECURITY INVOKER + private triggers (`1d498e9`). Create-path RLS regression fixed (`18f5395`). Invite → accept **retested Jul 15 — works**. |
+| Shared-budgets SQL ↔ prod sync | Done | **Jul 15 evening:** MCP migration `sync_shared_budgets_sql` applied full `supabase/shared-budgets.sql` to prod. RLS on all 3 tables ✓; 9 policies ✓; no duplicate memberships ✓; `budget_members_one_shared_budget_per_user` unique index **newly applied**. |
 | Shared budgets (web + iOS) | Done | Invite/join/realtime/leave Option A; authorship tags on Activity. Sister onboarded on **own account** (not shared budget); Xcode sideload install worked. |
 | Pay UI (web ↔ iOS parity) | Done | **Option B:** Home metrics-only + optional “Next” line; full schedule in Pay schedule settings. |
 | Recurring web UI | Done | Modal matches iOS: chips, bill reminders, trash rows (`c96fc28`). SW **v65**. |
@@ -91,7 +92,8 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 - **Sync:** cloud = budget JSON state; theme / Face ID / bill reminders stay per-device.
 - Shared: two accounts, invite, edit both sides, leave keeps own entries.
 - **Supabase MCP is configured** (`.mcp.json`, project `dhlaqqghjfmgdlkfxlxg`). Authenticate with `claude /mcp` **from this repo** — running it elsewhere authenticates that directory's project instead. Restart the session afterwards; MCP tools bind at startup.
-- **`supabase/*.sql` is applied by hand** — there is no CLI, no link, no migrations dir. The repo is *not* proof of what prod runs; query the database (`pg_proc.prosecdef`, `pg_policies`) before trusting a file.
+- **`supabase/shared-budgets.sql` synced to prod Jul 15 evening** via MCP `sync_shared_budgets_sql` (5 prior hardening migrations + this sync). Re-verify with queries at bottom of that file if schema changes again.
+- **Orphan shared budgets (ops):** prod has 5 `shared_budgets` rows with **0** `budget_members` (likely from pre-fix create-path testing). Safe to delete if unused, or backfill owner rows for `created_by`.
 - **RLS trap (bit us once):** in a SECURITY INVOKER function, `insert ... returning` applies the **SELECT** policy to the new row. If that policy depends on a row created by an AFTER INSERT trigger, it fails — after-row triggers are queued to end of statement. Don't read back; generate the id up front. See `18f5395`.
 - **Testing a change means testing the current code.** The Jul 14 shared-budget test predated the Jul 15 RPC rewrite and gave false confidence; the create path was broken the whole time.
 - iOS editor: edit amount → swipe sheet down → amount should persist (`79f55db`).
