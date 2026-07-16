@@ -107,7 +107,7 @@ struct SettingsView: View {
                 .appSheetChrome(detents: [.medium, .large])
             }
             .sheet(isPresented: $showBudgetsEditor) {
-                BudgetsView()
+                BudgetsView(onDone: { showBudgetsEditor = false })
                     .appSheetChrome(detents: [.large])
             }
             .onAppear(perform: loadPayScheduleFromStore)

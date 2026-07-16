@@ -2,14 +2,16 @@ import SwiftUI
 
 struct BudgetsView: View {
     @EnvironmentObject private var store: BudgetStore
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    var onDone: (() -> Void)? = nil
 
     @State private var newCategoryName = ""
     @State private var newCategoryGroup = "Needs"
     @State private var newCategoryBudget = ""
-    /// Draft text while typing so each keystroke does not hit cloud sync.
+    /// Draft text while typing; committed on field blur or sheet close (matches web `change`).
     @State private var budgetDrafts: [String: String] = [:]
-    @State private var budgetCommitTask: Task<Void, Never>?
     @State private var editingCategory: BudgetCategory?
     @FocusState private var focusedBudgetName: String?
     @FocusState private var newBudgetFocused: Bool
@@ -40,10 +42,20 @@ struct BudgetsView: View {
                 .navigationTitle("Categories & budgets")
                 .navigationBarTitleDisplayMode(.inline)
                 .decimalPadDoneToolbar()
-                .onChange(of: focusedBudgetName) { _, name in
-                    guard let name else { return }
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done", action: closeSheet)
+                            .font(.app(15, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryText)
+                    }
+                }
+                .onChange(of: focusedBudgetName) { oldName, newName in
+                    if let oldName, oldName != newName {
+                        commitBudgetDraft(for: oldName)
+                    }
+                    guard let newName else { return }
                     withAnimation(.easeInOut(duration: 0.25)) {
-                        proxy.scrollTo(budgetRowID(name), anchor: .center)
+                        proxy.scrollTo(budgetRowID(newName), anchor: .center)
                     }
                 }
                 .onChange(of: newBudgetFocused) { _, focused in
@@ -59,8 +71,7 @@ struct BudgetsView: View {
                         group: category.group,
                         amountText: budgetDisplayValue(for: category.name)
                     ) { newValue in
-                        budgetDrafts[category.name] = newValue
-                        commitBudgetDraft(for: category.name)
+                        persistBudgetAmount(name: category.name, text: newValue)
                     }
                     .appSheetChrome(detents: [.height(280), .medium])
                 }
@@ -212,38 +223,34 @@ struct BudgetsView: View {
     private func budgetTextBinding(for name: String) -> Binding<String> {
         Binding(
             get: { budgetDisplayValue(for: name) },
-            set: { newValue in
-                budgetDrafts[name] = newValue
-                scheduleBudgetCommit()
-            }
+            set: { budgetDrafts[name] = $0 }
         )
     }
 
-    private func scheduleBudgetCommit() {
-        budgetCommitTask?.cancel()
-        budgetCommitTask = Task {
-            do {
-                try await Task.sleep(for: .milliseconds(800))
-            } catch {
-                return
-            }
-            guard !Task.isCancelled else { return }
-            commitAllBudgetDrafts()
-        }
-    }
-
-    private func commitBudgetDraft(for name: String) {
-        guard let draft = budgetDrafts[name] else { return }
-        let parsed = Double(draft.replacingOccurrences(of: ",", with: "")) ?? 0
+    private func persistBudgetAmount(name: String, text: String) {
+        let parsed = Double(text.replacingOccurrences(of: ",", with: "")) ?? 0
         store.updateCategoryBudget(name: name, budget: parsed)
         budgetDrafts[name] = nil
     }
 
+    private func commitBudgetDraft(for name: String) {
+        guard let draft = budgetDrafts[name] else { return }
+        persistBudgetAmount(name: name, text: draft)
+    }
+
     private func commitAllBudgetDrafts() {
-        budgetCommitTask?.cancel()
         let names = Array(budgetDrafts.keys)
         for name in names {
             commitBudgetDraft(for: name)
+        }
+    }
+
+    private func closeSheet() {
+        commitAllBudgetDrafts()
+        if let onDone {
+            onDone()
+        } else {
+            dismiss()
         }
     }
 }
@@ -293,12 +300,6 @@ private struct BudgetAmountEditorSheet: View {
                     .background(AppTheme.inputFill)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                Button("Save") {
-                    onSave(amountText)
-                    dismiss()
-                }
-                .buttonStyle(PrimaryButtonStyle())
-
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, AppTheme.pagePadding)
@@ -311,17 +312,23 @@ private struct BudgetAmountEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .decimalPadDoneToolbar()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: closeSheet)
                         .font(.app(15, weight: .semibold))
                         .foregroundStyle(AppTheme.primaryText)
                 }
             }
+            .onDisappear { onSave(amountText) }
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     amountFocused = true
                 }
             }
         }
+    }
+
+    private func closeSheet() {
+        onSave(amountText)
+        dismiss()
     }
 }
