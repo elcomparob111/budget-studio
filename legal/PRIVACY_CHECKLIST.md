@@ -2,7 +2,7 @@
 
 **Last updated:** July 9, 2026  
 **Public policy:** [`../privacy.html`](../privacy.html)  
-**Contact:** 1munoz.roberto@gmail.com
+**Contact:** mcl.labss@gmail.com
 
 Not legal advice. Align product behavior with the published policy before commercial claims (GDPR/CCPA marketing, paid plans, etc.).
 

@@ -81,7 +81,7 @@ Supabase Auth **Site URL + redirect allowlist** (step 5) control where confirm/r
 
 ### 6. Privacy / terms
 
-[`../privacy.html`](../privacy.html) and [`../terms.html`](../terms.html) are live, linked from Settings and the auth screen. Contact: `1munoz.roberto@gmail.com`. Have counsel review before any commercial launch.
+[`../privacy.html`](../privacy.html) and [`../terms.html`](../terms.html) are live, linked from Settings and the auth screen. Contact: `mcl.labss@gmail.com`. Have counsel review before any commercial launch.
 
 Crisp click-path: [`../LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md). Legal pack: [`../legal/`](../legal/).
 

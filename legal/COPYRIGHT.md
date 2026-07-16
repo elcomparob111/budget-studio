@@ -2,7 +2,7 @@
 
 **Owner:** Roberto Munoz / Budget Studio  
 **Year:** 2026  
-**Contact:** 1munoz.roberto@gmail.com  
+**Contact:** mcl.labss@gmail.com  
 **Last updated:** July 9, 2026
 
 ---
