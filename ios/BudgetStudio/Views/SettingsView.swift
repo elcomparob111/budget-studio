@@ -115,16 +115,20 @@ struct SettingsView: View {
                 if !isShowing { loadPayScheduleFromStore() }
             }
             .confirmationDialog(
-                "Leave the shared budget?",
+                store.isSharedOwner ? "Delete the shared budget?" : "Leave the shared budget?",
                 isPresented: $showLeaveConfirm,
                 titleVisibility: .visible
             ) {
-                Button("Leave shared budget", role: .destructive) {
+                Button(store.isSharedOwner ? "Delete shared budget" : "Leave shared budget", role: .destructive) {
                     Task { await store.leaveSharedBudget() }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("You'll keep your own copy — your entries stay, your partner's transactions drop out, and your partner keeps the shared budget.")
+                Text(
+                    store.isSharedOwner
+                        ? "You'll keep a personal copy, but your partner will lose access to the shared budget."
+                        : "You'll keep your own copy — your entries stay, your partner's transactions drop out, and your partner keeps the shared budget."
+                )
             }
             .sheet(isPresented: $showContactPicker) {
                 ContactPickerSheet(
@@ -331,7 +335,7 @@ struct SettingsView: View {
                 Button {
                     showLeaveConfirm = true
                 } label: {
-                    Text("Leave shared budget")
+                    Text(store.isSharedOwner ? "Delete shared budget" : "Leave shared budget")
                         .font(.app(15, weight: .semibold))
                         .foregroundStyle(AppTheme.expense)
                         .frame(maxWidth: .infinity)

@@ -381,8 +381,19 @@ export async function leaveSharedBudget(budgetId) {
   if (error) throw error;
 }
 
+/** Dissolve the shared budget; the owner-only RLS policy protects this call. */
+export async function deleteSharedBudget(budgetId) {
+  const client = requireClient();
+  await requireSessionUid();
+  const { error } = await client
+    .from("shared_budgets")
+    .delete()
+    .eq("id", budgetId);
+  if (error) throw error;
+}
+
 /**
- * Realtime: notify on any update to the shared budget row. The callback gets
+ * Realtime: notify on any change to the shared budget row. The callback gets
  * no payload — callers refetch, so event size limits and trust don't matter.
  * Returns an unsubscribe function.
  */
@@ -393,6 +404,11 @@ export function subscribeSharedBudget(budgetId, onRemoteChange) {
     .on(
       "postgres_changes",
       { event: "UPDATE", schema: "public", table: "shared_budgets", filter: `id=eq.${budgetId}` },
+      () => onRemoteChange(),
+    )
+    .on(
+      "postgres_changes",
+      { event: "DELETE", schema: "public", table: "shared_budgets", filter: `id=eq.${budgetId}` },
       () => onRemoteChange(),
     )
     .subscribe();

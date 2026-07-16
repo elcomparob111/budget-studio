@@ -1,12 +1,12 @@
-const CACHE = "budget-studio-v66";
+const CACHE = "budget-studio-v67";
 const ASSETS = [
   "./",
   "./index.html",
-  "./app.js?v=55",
+  "./app.js?v=67",
   "./sync.js",
   "./sync-config.js",
   "./security.js",
-  "./styles.css?v=55",
+  "./styles.css?v=67",
   "./manifest.json",
   "./privacy.html",
   "./terms.html",

@@ -22,6 +22,11 @@ create table if not exists public.budget_members (
   primary key (budget_id, user_id)
 );
 
+-- V1 supports one shared budget per user. This fails loudly if an existing
+-- deployment contains duplicate memberships and must be cleaned up first.
+create unique index if not exists budget_members_one_shared_budget_per_user
+  on public.budget_members (user_id);
+
 -- 3. Invite links (single-use, expiring). The token IS the secret — the app
 --    builds the link as https://<app>/?join=<token>.
 create table if not exists public.budget_invites (
@@ -102,7 +107,8 @@ create policy "Owner deletes shared budget"
     )
   );
 
--- budget_members: members see the roster; a user may remove THEMSELF (leave).
+-- budget_members: members see the roster; only a non-owner may remove THEMSELF.
+-- Owners dissolve the shared budget through the shared_budgets delete policy.
 -- Rows are inserted only by the security-definer RPCs below.
 drop policy if exists "Members read roster" on public.budget_members;
 create policy "Members read roster"
@@ -114,7 +120,7 @@ drop policy if exists "Member leaves budget" on public.budget_members;
 create policy "Member leaves budget"
   on public.budget_members for delete
   to authenticated
-  using (user_id = auth.uid());
+  using (user_id = auth.uid() and role = 'member');
 
 -- budget_invites: creator manages their own invites. NOT selectable by token
 -- holders — acceptance goes through the RPC so tokens never leak via SELECT.
@@ -221,10 +227,15 @@ begin
   if inv.expires_at < now() then
     raise exception 'invite expired';
   end if;
+  if exists (
+    select 1 from public.budget_members
+    where user_id = new.requester_id
+  ) then
+    raise exception 'user already has a shared budget';
+  end if;
 
   insert into public.budget_members (budget_id, user_id, role)
-  values (inv.budget_id, new.requester_id, 'member')
-  on conflict (budget_id, user_id) do nothing;
+  values (inv.budget_id, new.requester_id, 'member');
 
   update public.budget_invites
   set used_by = new.requester_id
@@ -263,6 +274,12 @@ begin
   end if;
   if initial_state is null then
     raise exception 'initial_state required';
+  end if;
+  if exists (
+    select 1 from public.budget_members
+    where user_id = auth.uid()
+  ) then
+    raise exception 'user already has a shared budget';
   end if;
   insert into public.shared_budgets (id, state, updated_at, name, created_by)
   values (bid, initial_state, (extract(epoch from now()) * 1000)::bigint, coalesce(budget_name, ''), auth.uid());
@@ -316,3 +333,5 @@ $$;
 --     and tablename in ('shared_budgets','budget_members','budget_invites');
 --   select policyname, tablename, cmd from pg_policies
 --     where tablename in ('shared_budgets','budget_members','budget_invites');
+--   select user_id, count(*) from public.budget_members
+--     group by user_id having count(*) > 1;

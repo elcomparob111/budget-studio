@@ -2,7 +2,8 @@
 
 Status: **shipped (web + iOS, 2026-07-14)**. Schema applied; anon-role
 lockout verified live (all tables/RPCs return 42501 for anon). Invite, join,
-realtime, leave (Option A), and authorship tags are live on web and iOS.
+realtime, leave (Option A), owner dissolution, and authorship tags are live on
+web and iOS.
 Owner-validated smoke across web + iOS; operators may re-run the two-account
 checklist below after schema or RPC changes.
 
@@ -63,13 +64,19 @@ budget is simply a second row both clients point at.
 - **On leave (Option A)**: leaver keeps a personal copy of the shared
   snapshot with the partner's tagged transactions removed. Not the earlier
   “old personal untouched / no copy-back” plan.
-- **V1 scope**: one shared budget per user — no switcher UI; you're solo or
-  in one shared budget.
+- **V1 scope**: one shared budget per user — enforced by a unique membership
+  index; no switcher UI; you're solo or in one shared budget.
+- **Owner exit**: the owner dissolves the shared budget and keeps a personal
+  copy. A member may leave and keeps a personal copy while the shared budget
+  remains available to the owner and other members.
 
 ## Rollout
 
-1. Review this doc + SQL. 2. Run SQL in Supabase SQL editor (staging first if
-available). 3. Verify with the queries at the bottom of the SQL file. 4. Build
-client layer behind a “Share budget” entry point. 5. Two-account smoke test
-(invite, join, both-sides edit, realtime, leave) — web + iOS validated by
-owner. 6. Ship.
+1. Review this doc + SQL. 2. Before releasing the updated clients, apply the
+current SQL in Supabase SQL editor (staging first if available). The unique
+membership index intentionally fails if duplicate memberships need cleanup;
+use the verification query at the bottom of the SQL file before retrying. 3.
+Verify policies and indexes with the queries at the bottom of the SQL file. 4.
+Build client layer behind a “Share budget” entry point. 5. Two-account smoke
+test (invite, join, both-sides edit, realtime, leave, owner dissolution) — web
+and iOS validated by owner. 6. Ship.

@@ -100,7 +100,7 @@ final class SupabaseService {
     }
 
     func resetPassword(email: String) async throws {
-        try await client.auth.resetPasswordForEmail(email)
+        try await client.auth.resetPasswordForEmail(email, redirectTo: Self.emailRedirectURL)
     }
 
     func fetchBudget(userId: UUID) async throws -> CloudBudgetPayload? {
@@ -400,12 +400,22 @@ final class SupabaseService {
             .execute()
     }
 
-    /// Realtime: notify on shared_budgets UPDATE. Callback should refetch.
+    /// Dissolve the shared budget; the owner-only RLS policy protects this call.
+    func deleteSharedBudget(budgetId: UUID) async throws {
+        _ = try await requireSessionUid()
+        try await client
+            .from("shared_budgets")
+            .delete()
+            .eq("id", value: budgetId.uuidString)
+            .execute()
+    }
+
+    /// Realtime: notify on shared_budgets changes. Callback should refetch.
     func subscribeSharedBudget(budgetId: UUID, onRemoteChange: @escaping @Sendable () -> Void) async {
         await unsubscribeSharedBudget()
         let channel = client.channel("shared-budget-\(budgetId.uuidString.lowercased())")
-        let updates = channel.postgresChange(
-            UpdateAction.self,
+        let changes = channel.postgresChange(
+            AnyAction.self,
             schema: "public",
             table: "shared_budgets",
             filter: .eq("id", value: budgetId.uuidString.lowercased())
@@ -417,7 +427,7 @@ final class SupabaseService {
         }
         sharedChannel = channel
         sharedListenTask = Task {
-            for await _ in updates {
+            for await _ in changes {
                 onRemoteChange()
             }
         }

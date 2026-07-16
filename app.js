@@ -19,6 +19,7 @@ import {
   acceptBudgetInvite,
   listBudgetMembers,
   leaveSharedBudget,
+  deleteSharedBudget,
   subscribeSharedBudget,
 } from "./sync.js";
 import {
@@ -815,6 +816,10 @@ async function refreshPersonalFromCloud() {
 async function refreshSharedFromCloud() {
   if (!sharedBudget) return;
   const remote = await fetchSharedBudget(sharedBudget.id);
+  if (!remote) {
+    restorePersonalCopyAfterSharedDeletion();
+    return;
+  }
   const local = readCachePayload(currentUser.uid);
   const remoteAt = remote?.updatedAt || 0;
   const localAt = local?.updatedAt || 0;
@@ -848,6 +853,19 @@ function teardownShared() {
   unsubscribeSharedChannel = null;
   sharedBudget = null;
   lastSharedAppliedAt = 0;
+}
+
+function restorePersonalCopyAfterSharedDeletion() {
+  if (!sharedBudget || !currentUser) return;
+  const kept = { ...state, transactions: keepOnLeave(state.transactions, currentUser.uid) };
+  teardownShared();
+  state = normalizeState(kept);
+  populateCategorySelect();
+  saveState();
+  render();
+  renderSharedPanel();
+  setSharedMessage("");
+  showToast("The shared budget was deleted — your copy is saved.");
 }
 
 /** Stash ?join=<token> from the URL so it survives the sign-in/confirm dance. */
@@ -903,6 +921,10 @@ async function resolveSharedMembership() {
 async function loadSharedState() {
   try {
     const remote = await fetchSharedBudget(sharedBudget.id);
+    if (!remote) {
+      restorePersonalCopyAfterSharedDeletion();
+      return;
+    }
     const local = readCachePayload(currentUser.uid);
     if (remote && (!local || remote.updatedAt >= (local.updatedAt || 0))) {
       lastSharedAppliedAt = remote.updatedAt;
@@ -939,8 +961,12 @@ async function applyRemoteSharedChange() {
   if (!sharedBudget) return;
   try {
     const remote = await fetchSharedBudget(sharedBudget.id);
+    if (!remote) {
+      restorePersonalCopyAfterSharedDeletion();
+      return;
+    }
     // Skip our own write echoes and stale events.
-    if (!remote || remote.updatedAt <= lastSharedAppliedAt) return;
+    if (remote.updatedAt <= lastSharedAppliedAt) return;
     lastSharedAppliedAt = remote.updatedAt;
     state = normalizeState(remote.state);
     writeCachePayload(currentUser.uid, { state, updatedAt: remote.updatedAt, name: remote.name });
@@ -970,9 +996,11 @@ function renderSharedPanel() {
     elements.inviteRow.hidden = true;
     return;
   }
-  elements.newInviteBtn.hidden = sharedBudget.role !== "owner";
+  const isOwner = sharedBudget.role === "owner";
+  elements.newInviteBtn.hidden = !isOwner;
+  elements.leaveSharedBtn.textContent = isOwner ? "Delete shared budget" : "Leave shared budget";
   elements.sharedMembersLine.textContent =
-    sharedBudget.role === "owner" ? "You own this shared budget." : "You're in a shared budget.";
+    isOwner ? "You own this shared budget." : "You're in a shared budget.";
   listBudgetMembers(sharedBudget.id)
     .then((members) => {
       if (!sharedBudget) return;
@@ -1026,15 +1054,22 @@ function keepOnLeave(transactions, uid) {
 
 async function leaveSharedFlow() {
   if (!sharedBudget || !currentUser) return;
+  const isOwner = sharedBudget.role === "owner";
   const sure = window.confirm(
-    "Leave the shared budget? You'll keep your own copy — your entries stay, your partner's transactions drop out, and your partner keeps the shared budget.",
+    isOwner
+      ? "Delete the shared budget? You'll keep a personal copy, but your partner will lose access to the shared budget."
+      : "Leave the shared budget? You'll keep your own copy — your entries stay, your partner's transactions drop out, and your partner keeps the shared budget.",
   );
   if (!sure) return;
   try {
     const budgetId = sharedBudget.id;
     // Snapshot the shared budget as it stands, minus the partner's entries.
     const kept = { ...state, transactions: keepOnLeave(state.transactions, currentUser.uid) };
-    await leaveSharedBudget(budgetId);
+    if (isOwner) {
+      await deleteSharedBudget(budgetId);
+    } else {
+      await leaveSharedBudget(budgetId);
+    }
     teardownShared();
     // Personal mode now: this snapshot becomes and overwrites the personal
     // budget. saveState() caches it immediately and syncs to the personal row.
@@ -1044,7 +1079,7 @@ async function leaveSharedFlow() {
     render();
     renderSharedPanel();
     setSharedMessage("");
-    showToast("Left the shared budget — your copy is saved.");
+    showToast(isOwner ? "Deleted the shared budget — your copy is saved." : "Left the shared budget — your copy is saved.");
   } catch (error) {
     setSharedMessage(friendlyAuthError(error) || "Couldn't leave right now. Try again.", true);
   }

@@ -749,10 +749,44 @@ final class BudgetStore: ObservableObject {
         }
     }
 
+    private func personalCopyAfterSharedExit(for userId: UUID) -> BudgetState {
+        let keptTransactions = state.transactions
+            .filter { tx in
+                guard let addedBy = tx.addedBy else { return true }
+                return addedBy.lowercased() == userId.uuidString.lowercased()
+            }
+            .map { tx -> BudgetTransaction in
+                var copy = tx
+                copy.addedBy = nil
+                copy.addedByName = nil
+                return copy
+            }
+        var kept = state
+        kept.transactions = keptTransactions
+        return kept
+    }
+
+    private func handleSharedBudgetDeleted() async {
+        guard let userId = supabase.currentUser?.id else { return }
+        let kept = personalCopyAfterSharedExit(for: userId)
+        await teardownShared()
+        state = kept
+        saveLocal()
+        await pushCloud(notifyOnFailure: true)
+        showToast("The shared budget was deleted — your copy is saved.")
+    }
+
     private func loadSharedState(userId: UUID) async {
         guard let membership = sharedMembership else { return }
         do {
             let remote = try await supabase.fetchSharedBudget(budgetId: membership.id)
+            guard remote != nil else {
+                if let local = loadLocal(userId: userId) {
+                    applyLoadedState(local.state, updatedAt: local.updatedAt, persistCleanup: false)
+                }
+                await handleSharedBudgetDeleted()
+                return
+            }
             let local = loadLocal(userId: userId)
             let remoteAt = remote?.updatedAt ?? 0
             let localAt = local?.updatedAt ?? 0
@@ -797,7 +831,11 @@ final class BudgetStore: ObservableObject {
         guard let membership = sharedMembership else { return }
         do {
             let remote = try await supabase.fetchSharedBudget(budgetId: membership.id)
-            guard let remote, remote.updatedAt > lastSharedAppliedAt else { return }
+            guard let remote else {
+                await handleSharedBudgetDeleted()
+                return
+            }
+            guard remote.updatedAt > lastSharedAppliedAt else { return }
             lastSharedAppliedAt = remote.updatedAt
             applyLoadedState(remote.state, updatedAt: remote.updatedAt, persistCleanup: true)
             await refreshBillReminders()
@@ -865,26 +903,22 @@ final class BudgetStore: ObservableObject {
         defer { isSharedBusy = false }
         do {
             // Option A: keep shared snapshot minus partner's tagged entries.
-            let keptTransactions = state.transactions
-                .filter { tx in
-                    guard let addedBy = tx.addedBy else { return true }
-                    return addedBy.lowercased() == uid.uuidString.lowercased()
-                }
-                .map { tx -> BudgetTransaction in
-                    var copy = tx
-                    copy.addedBy = nil
-                    copy.addedByName = nil
-                    return copy
-                }
-            var kept = state
-            kept.transactions = keptTransactions
-            try await supabase.leaveSharedBudget(budgetId: membership.id)
+            let kept = personalCopyAfterSharedExit(for: uid)
+            if membership.role == "owner" {
+                try await supabase.deleteSharedBudget(budgetId: membership.id)
+            } else {
+                try await supabase.leaveSharedBudget(budgetId: membership.id)
+            }
             await teardownShared()
             state = kept
             saveLocal()
             await pushCloud(notifyOnFailure: true)
             sharedStatusMessage = nil
-            showToast("Left the shared budget — your copy is saved.")
+            showToast(
+                membership.role == "owner"
+                    ? "Deleted the shared budget — your copy is saved."
+                    : "Left the shared budget — your copy is saved."
+            )
         } catch {
             sharedStatusMessage = supabase.friendlyAuthError(error)
         }
@@ -923,6 +957,10 @@ final class BudgetStore: ObservableObject {
         guard let membership = sharedMembership else { return }
         do {
             let remote = try await supabase.fetchSharedBudget(budgetId: membership.id)
+            guard remote != nil else {
+                await handleSharedBudgetDeleted()
+                return
+            }
             guard let userId = supabase.currentUser?.id else { return }
             let local = loadLocal(userId: userId)
             let remoteAt = remote?.updatedAt ?? 0
