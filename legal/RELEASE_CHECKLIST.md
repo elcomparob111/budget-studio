@@ -38,6 +38,7 @@ Use this for each production cut (web and/or iOS). Mark only what you verified.
 - [ ] Hard-refresh / SW update: users get new assets (`sw.js` cache bump **only if** runtime assets changed)
 - [ ] Auth, sync, offline shell, privacy/terms links work on live URL
 - [ ] Optional: deploy behind Netlify/Vercel/Cloudflare for real CSP headers
+- [ ] Optional: Hallmark skill ([`.agents/skills/hallmark`](../.agents/skills/hallmark)) for landing/legal polish or `hallmark audit` before public publish — do not casually redesign the live PWA
 
 ### iOS
 

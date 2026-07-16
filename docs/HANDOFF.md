@@ -45,7 +45,7 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 |------|------|
 | `LAUNCH_CHECKLIST.md`, `legal/RELEASE_CHECKLIST.md` | Auth rate limits / CAPTCHA / leaked-password wording (“before public publish”) |
 | `skills-lock.json` | Agent skills lockfile |
-| `.agents/skills/supabase/`, `.agents/skills/supabase-postgres-best-practices/` | Untracked skill installs (plus duplicate `* 2.md` copies — ignore) |
+| `.agents/skills/supabase/`, `.agents/skills/supabase-postgres-best-practices/`, `.agents/skills/hallmark/` | Agent skills (plus duplicate `* 2.md` copies — ignore) |
 | `ios/build-*/`, `ios/BudgetStudio 2.xcodeproj/` | Untracked local build dirs / duplicate xcodeproj — ignore / do not commit |
 
 The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were committed in `692b97c`; `Info.plist` ended up unchanged once the fullscreen flag was reverted.
@@ -59,7 +59,7 @@ The iOS items above (`project.yml`, `Info.plist`, `SupabaseService.swift`) were 
 3. **TestFlight** — family on real devices (shared budgets, reminders, widget, Savings). See `ios/README.md` / `docs/DEPLOYMENT.md`.
 4. **Launch smoke test** — [`LAUNCH_CHECKLIST.md`](../LAUNCH_CHECKLIST.md) §3 (confirm email, sync, isolation, delete cloud data).
 5. **Before public publish (auth)** — rate limits + CAPTCHA are configurable now; leaked-password protection is **Pro-only** and cannot be enabled on the current plan. Fine to defer for family/TestFlight.
-6. **Visual polish** — user may want feedback on Home paycheck line after hard refresh on live site.
+6. **Visual polish** — Hallmark skill installed (`.agents/skills/hallmark`); use for landing/legal polish or `hallmark audit` before public publish — do not casually redesign the live PWA. User may still want feedback on Home paycheck line after hard refresh on live site.
 7. **iPad Home metrics grid (optional)** — on regular width the metric grid is **4 columns**; Income + Spent leave two empty cells (same structural class of bug as the pre-`a160c7e` ring card). Only if user asks.
 8. **Pay period vs month duplication (optional, ask first)** — Pay period card may echo Home metric numbers (Income/Spent/Cash left vs Check left); may be intentional when month ≈ pay period. Review with user before changing.
 

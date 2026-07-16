@@ -51,3 +51,4 @@ Expect `rowsecurity = true` and four policies (SELECT / INSERT / UPDATE / DELETE
 
 - [ ] Host with real CSP/`frame-ancestors` headers (Netlify/Vercel/Cloudflare) — GitHub Pages cannot set them
 - [ ] Counsel-reviewed legal copy if you commercialize
+- [ ] **Visual / marketing polish (optional):** Hallmark skill installed at [`.agents/skills/hallmark`](.agents/skills/hallmark) — use for landing, legal, or marketing copy polish, or run `hallmark audit` on the web shell before public publish. Do not casually redesign the live PWA.
