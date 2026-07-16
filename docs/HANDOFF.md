@@ -1,7 +1,7 @@
 # Handoff — Budget Studio
 
 **Pinned:** July 15, 2026 (evening)  
-**Branch / tip:** `main` @ `d8e925e` (pushed)  
+**Branch / tip:** `main` (HANDOFF refreshed Jul 15 evening; `git log -1`)  
 **Owner preference:** stop feature crunch; product is **good for day-to-day use**. Next agent picks from **Recommended next** below.
 
 Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipped P0 work unless fixing a bug.
