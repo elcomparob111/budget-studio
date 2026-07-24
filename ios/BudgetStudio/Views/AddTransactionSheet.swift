@@ -27,13 +27,24 @@ struct AddTransactionSheet: View {
     @State private var scanError: String?
     @State private var didAutoPresentScan = false
     @State private var showDeleteConfirm = false
+    @State private var showAddCategory = false
+    @State private var newCategoryName = ""
+    @State private var newCategoryGroup = "Needs"
+    @State private var newCategoryBudget = ""
+    @State private var addCategoryMessage: String?
 
     private var categories: [BudgetCategory] {
-        store.state.categories.filter { $0.type == type }
+        store.state.categories
+            .filter { $0.type == type }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     private var canSave: Bool {
         Double(amount) != nil && !category.isEmpty
+    }
+
+    private var canAddCategory: Bool {
+        !newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var cameraAvailable: Bool {
@@ -88,12 +99,34 @@ struct AddTransactionSheet: View {
                         }
 
                         fieldLabel("Category") {
-                            Picker("", selection: $category) {
-                                ForEach(categories, id: \.id) { item in
-                                    Text(item.name).tag(item.name)
+                            VStack(alignment: .leading, spacing: AppTheme.sm) {
+                                Picker("", selection: $category) {
+                                    Text("Select category").tag("")
+                                    ForEach(categories, id: \.id) { item in
+                                        Text(item.name).tag(item.name)
+                                    }
+                                }
+                                .labelsHidden()
+
+                                Button {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        showAddCategory.toggle()
+                                        addCategoryMessage = nil
+                                    }
+                                } label: {
+                                    Label(
+                                        showAddCategory ? "Cancel new category" : "Add category",
+                                        systemImage: showAddCategory ? "xmark" : "plus"
+                                    )
+                                    .font(.app(13, weight: .semibold))
+                                    .foregroundStyle(AppTheme.primaryText)
+                                }
+                                .buttonStyle(.plain)
+
+                                if showAddCategory {
+                                    addCategoryForm
                                 }
                             }
-                            .labelsHidden()
                         }
 
                         fieldLabel("Account") {
@@ -164,8 +197,15 @@ struct AddTransactionSheet: View {
                     presentScanIfRequested()
                 }
                 .onChange(of: type) { _, _ in
-                    if !categories.contains(where: { $0.name == category }) {
-                        category = categories.first?.name ?? ""
+                    if existing == nil {
+                        category = ""
+                    } else if !categories.contains(where: { $0.name == category }) {
+                        category = ""
+                    }
+                    if type == "Income" {
+                        newCategoryGroup = "Income"
+                    } else if newCategoryGroup == "Income" {
+                        newCategoryGroup = "Needs"
                     }
                 }
                 .onChange(of: amountFocused) { _, focused in
@@ -285,6 +325,49 @@ struct AddTransactionSheet: View {
         }
     }
 
+    private var addCategoryForm: some View {
+        VStack(alignment: .leading, spacing: AppTheme.sm) {
+            TextField(type == "Income" ? "New income category" : "New category", text: $newCategoryName)
+                .font(.app(15, weight: .medium))
+                .appInputText()
+                .padding(.horizontal, AppTheme.md)
+                .padding(.vertical, AppTheme.sm)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            if type == "Expense" {
+                Picker("Group", selection: $newCategoryGroup) {
+                    Text("Needs").tag("Needs")
+                    Text("Wants").tag("Wants")
+                    Text("Savings").tag("Savings")
+                }
+                .pickerStyle(.segmented)
+
+                TextField("Monthly budget (optional)", text: $newCategoryBudget)
+                    .font(.app(15, weight: .medium))
+                    .keyboardType(.decimalPad)
+                    .appInputText()
+                    .padding(.horizontal, AppTheme.md)
+                    .padding(.vertical, AppTheme.sm)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            if let addCategoryMessage {
+                Text(addCategoryMessage)
+                    .font(.app(12, weight: .medium))
+                    .foregroundStyle(AppTheme.expense)
+            }
+
+            Button("Add category") {
+                createCategory()
+            }
+            .buttonStyle(PrimaryButtonStyle(disabled: !canAddCategory))
+            .disabled(!canAddCategory)
+        }
+        .padding(.top, AppTheme.xs)
+    }
+
     private func fieldLabel<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.sm) {
             Text(title)
@@ -310,7 +393,31 @@ struct AddTransactionSheet: View {
         } else if let prefill {
             applyPrefill(prefill, announce: false)
         } else {
-            category = categories.first?.name ?? ""
+            category = ""
+        }
+    }
+
+    private func createCategory() {
+        let trimmed = newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        if store.state.categories.contains(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            addCategoryMessage = "That category already exists."
+            return
+        }
+
+        store.addCategory(
+            name: trimmed,
+            group: type == "Income" ? "Income" : newCategoryGroup,
+            budget: Double(newCategoryBudget) ?? 0,
+            type: type
+        )
+        category = trimmed
+        newCategoryName = ""
+        newCategoryBudget = ""
+        addCategoryMessage = nil
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            showAddCategory = false
         }
     }
 
@@ -323,12 +430,12 @@ struct AddTransactionSheet: View {
             account = acct
         }
 
-        // Resolve category after type is set
+        // Resolve category after type is set — only set when OCR/prefill knows one.
         if let cat = prefill.category,
            store.state.categories.contains(where: { $0.name == cat && $0.type == type }) {
             category = cat
         } else if !categories.contains(where: { $0.name == category }) {
-            category = categories.first?.name ?? ""
+            category = ""
         }
 
         if announce {

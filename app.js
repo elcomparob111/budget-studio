@@ -2,6 +2,9 @@ import {
   initSync,
   signUp,
   signIn,
+  signInWithOAuthProvider,
+  signInWithPasskey,
+  registerPasskey,
   signOutUser,
   resetPassword,
   resendConfirmation,
@@ -21,6 +24,7 @@ import {
   leaveSharedBudget,
   deleteSharedBudget,
   subscribeSharedBudget,
+  getCaptchaSiteKey,
 } from "./sync.js";
 import {
   AUTH_PASSWORD_HINT,
@@ -580,6 +584,11 @@ const elements = {
   authTitle: document.querySelector("#authTitle"),
   authCopy: document.querySelector("#authCopy"),
   authForm: document.querySelector("#authForm"),
+  authProviders: document.querySelector("#authProviders"),
+  authPasskeyBtn: document.querySelector("#authPasskeyBtn"),
+  authAppleBtn: document.querySelector("#authAppleBtn"),
+  authGoogleBtn: document.querySelector("#authGoogleBtn"),
+  authCaptcha: document.querySelector("#authCaptcha"),
   authNameLabel: document.querySelector("#authNameLabel"),
   authNameInput: document.querySelector("#authNameInput"),
   authEmailLabel: document.querySelector("#authEmailLabel"),
@@ -594,6 +603,8 @@ const elements = {
   authModeToggleBtn: document.querySelector("#authModeToggleBtn"),
   authForgotBtn: document.querySelector("#authForgotBtn"),
   authMessage: document.querySelector("#authMessage"),
+  addPasskeyBtn: document.querySelector("#addPasskeyBtn"),
+  passkeyHint: document.querySelector("#passkeyHint"),
   signOutBtn: document.querySelector("#signOutBtn"),
 };
 
@@ -1425,6 +1436,10 @@ function attachEvents() {
   elements.authForgotBtn.addEventListener("click", handleForgotPassword);
   elements.authResendBtn.addEventListener("click", handleResendConfirmation);
   elements.authConfirmedBtn.addEventListener("click", () => attemptConfirmedSignIn(false));
+  elements.authPasskeyBtn?.addEventListener("click", handlePasskeySignIn);
+  elements.authAppleBtn?.addEventListener("click", () => handleOAuthSignIn("apple"));
+  elements.authGoogleBtn?.addEventListener("click", () => handleOAuthSignIn("google"));
+  elements.addPasskeyBtn?.addEventListener("click", handleAddPasskey);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     if (authMode === "confirm") attemptConfirmedSignIn(true);
@@ -1433,6 +1448,7 @@ function attachEvents() {
   elements.signOutBtn.addEventListener("click", async () => {
     await handleSignOut();
   });
+  initAuthCaptcha();
 
   elements.themeToggleBtn.addEventListener("click", toggleTheme);
   elements.closeEditBtn.addEventListener("click", closeEditDialog);
@@ -3295,6 +3311,7 @@ function setAuthMode(mode) {
   const signup = mode === "signup";
   const recovery = mode === "recovery";
   const confirm = mode === "confirm";
+  const showProviders = !recovery && !confirm;
 
   elements.authTitle.textContent = confirm
     ? "Check your email"
@@ -3309,6 +3326,8 @@ function setAuthMode(mode) {
       ? `Enter a new password for your Budget Studio account. ${AUTH_PASSWORD_HINT}.`
       : "Sign in and your budget follows you on every device — private to your account only.";
 
+  if (elements.authProviders) elements.authProviders.hidden = !showProviders;
+  if (elements.authPasskeyBtn) elements.authPasskeyBtn.hidden = signup;
   elements.authNameLabel.hidden = !signup;
   elements.authNameInput.required = signup;
   elements.authEmailLabel.hidden = recovery || confirm;
@@ -3336,6 +3355,10 @@ function setAuthMode(mode) {
     : signup
       ? "Already have an account? Sign in"
       : "New here? Create an account";
+  if (elements.authCaptcha) {
+    elements.authCaptcha.hidden = confirm || !getCaptchaSiteKey();
+  }
+  resetAuthCaptcha();
   setAuthMessage("");
 }
 
@@ -3453,11 +3476,14 @@ async function handleForgotPassword() {
   elements.authForgotBtn.disabled = true;
   setAuthMessage("Sending reset email...");
   try {
-    await resetPassword(emailCheck.value);
+    const captchaToken = requireCaptchaToken();
+    await resetPassword(emailCheck.value, captchaToken);
     // Generic success — do not reveal whether the email exists.
     setAuthMessage("If an account exists for that email, a reset link is on the way. Check spam if nothing arrives.");
+    resetAuthCaptcha();
   } catch (error) {
     setAuthMessage(friendlyAuthError(error), true);
+    resetAuthCaptcha();
   } finally {
     elements.authForgotBtn.disabled = false;
   }
@@ -3466,6 +3492,134 @@ async function handleForgotPassword() {
 function setAuthMessage(message, isError = false) {
   elements.authMessage.textContent = message;
   elements.authMessage.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+let authCaptchaToken = "";
+let authCaptchaWidgetId = null;
+let authCaptchaScriptPromise = null;
+
+function initAuthCaptcha() {
+  const siteKey = getCaptchaSiteKey();
+  if (!siteKey || !elements.authCaptcha) return;
+  elements.authCaptcha.hidden = false;
+  ensureTurnstileScript().then(() => {
+    if (!window.turnstile || authCaptchaWidgetId != null) return;
+    authCaptchaWidgetId = window.turnstile.render(elements.authCaptcha, {
+      sitekey: siteKey,
+      callback: (token) => {
+        authCaptchaToken = token || "";
+      },
+      "expired-callback": () => {
+        authCaptchaToken = "";
+      },
+      "error-callback": () => {
+        authCaptchaToken = "";
+      },
+    });
+  }).catch(() => {
+    safeLog("warn", "Turnstile failed to load");
+  });
+}
+
+function ensureTurnstileScript() {
+  if (window.turnstile) return Promise.resolve();
+  if (authCaptchaScriptPromise) return authCaptchaScriptPromise;
+  authCaptchaScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector("script[data-budget-turnstile]");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("turnstile")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.dataset.budgetTurnstile = "1";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("turnstile"));
+    document.head.appendChild(script);
+  });
+  return authCaptchaScriptPromise;
+}
+
+function resetAuthCaptcha() {
+  authCaptchaToken = "";
+  if (window.turnstile && authCaptchaWidgetId != null) {
+    try {
+      window.turnstile.reset(authCaptchaWidgetId);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function requireCaptchaToken() {
+  if (!getCaptchaSiteKey()) return "";
+  if (!authCaptchaToken) {
+    throw new Error("Complete the CAPTCHA check and try again.");
+  }
+  return authCaptchaToken;
+}
+
+function setAuthProviderBusy(busy) {
+  [
+    elements.authPasskeyBtn,
+    elements.authAppleBtn,
+    elements.authGoogleBtn,
+    elements.authSubmitBtn,
+    elements.authForgotBtn,
+  ].forEach((btn) => {
+    if (btn) btn.disabled = busy;
+  });
+}
+
+async function handleOAuthSignIn(provider) {
+  const lock = getAuthLockout();
+  if (lock.locked) {
+    setAuthMessage(`Too many attempts. Wait ${Math.ceil(lock.retryAfterMs / 1000)}s and try again.`, true);
+    return;
+  }
+  setAuthProviderBusy(true);
+  setAuthMessage(provider === "apple" ? "Opening Apple…" : "Opening Google…");
+  try {
+    await signInWithOAuthProvider(provider);
+    // Browser navigates away; if it doesn't, restore UI shortly.
+  } catch (error) {
+    setAuthMessage(friendlyAuthError(error), true);
+    setAuthProviderBusy(false);
+  }
+}
+
+async function handlePasskeySignIn() {
+  const lock = getAuthLockout();
+  if (lock.locked) {
+    setAuthMessage(`Too many attempts. Wait ${Math.ceil(lock.retryAfterMs / 1000)}s and try again.`, true);
+    return;
+  }
+  setAuthProviderBusy(true);
+  setAuthMessage("Waiting for passkey…");
+  try {
+    await signInWithPasskey();
+    clearAuthFailures();
+    // onAuthStateChanged drives the rest
+  } catch (error) {
+    setAuthMessage(friendlyAuthError(error), true);
+  } finally {
+    setAuthProviderBusy(false);
+  }
+}
+
+async function handleAddPasskey() {
+  if (!elements.addPasskeyBtn) return;
+  elements.addPasskeyBtn.disabled = true;
+  try {
+    await registerPasskey();
+    showToast("Passkey added. You can use it next time you sign in.");
+  } catch (error) {
+    showToast(friendlyAuthError(error), "error");
+  } finally {
+    elements.addPasskeyBtn.disabled = false;
+  }
 }
 
 async function handleAuthSubmit(event) {
@@ -3537,10 +3691,12 @@ async function handleAuthSubmit(event) {
   elements.authSubmitBtn.disabled = true;
   setAuthMessage(authMode === "signup" ? "Creating your account..." : "Signing in...");
   try {
+    const captchaToken = requireCaptchaToken();
     if (authMode === "signup") {
-      const result = await signUp(name, emailCheck.value, password);
+      const result = await signUp(name, emailCheck.value, password, captchaToken);
       elements.authPasswordInput.value = "";
       clearAuthFailures();
+      resetAuthCaptcha();
       if (result.existingAccount) {
         setAuthMode("signin");
         elements.authEmailInput.value = emailCheck.value;
@@ -3552,13 +3708,15 @@ async function handleAuthSubmit(event) {
       }
       // Otherwise onAuthStateChanged drives the rest.
     } else {
-      await signIn(emailCheck.value, password);
+      await signIn(emailCheck.value, password, captchaToken);
       elements.authPasswordInput.value = "";
       clearAuthFailures();
+      resetAuthCaptcha();
       // onAuthStateChanged drives the rest
     }
   } catch (error) {
     safeLog("warn", "Auth submit failed", { mode: authMode });
+    resetAuthCaptcha();
     if (error?.code === "email_not_confirmed" || /email not confirmed/i.test(String(error?.message || ""))) {
       showConfirmEmailState(emailCheck.value, "Your email isn't confirmed yet — find the link in your inbox, or resend it below.", password);
     } else {
@@ -3664,6 +3822,12 @@ function renderIdentityUI() {
     if (onOverview) elements.appSubtitle.textContent = `Safe to spend in ${formatMonthLabel(elements.monthInput.value)}`;
   }
   elements.signOutBtn.hidden = localOnlyMode || !currentUser;
+  if (elements.addPasskeyBtn) {
+    elements.addPasskeyBtn.hidden = localOnlyMode || !currentUser;
+  }
+  if (elements.passkeyHint) {
+    elements.passkeyHint.hidden = localOnlyMode || !currentUser;
+  }
   if (elements.deleteAccountBtn) {
     elements.deleteAccountBtn.hidden = localOnlyMode || !currentUser;
   }

@@ -26,6 +26,7 @@ Live site: https://elcomparob111.github.io/budget-studio/
 Then as needed:
 
 - [`docs/SECURITY.md`](docs/SECURITY.md)
+- [`docs/AUTH_PROVIDERS.md`](docs/AUTH_PROVIDERS.md) — Apple / Google / passkeys / CAPTCHA (Free plan)
 - [`docs/API.md`](docs/API.md)
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 - [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md)

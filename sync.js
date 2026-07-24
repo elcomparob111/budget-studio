@@ -1,4 +1,4 @@
-// Cloud sync layer: Supabase Auth (email/password) + Postgres.
+// Cloud sync layer: Supabase Auth (email/password, OAuth, passkeys) + Postgres.
 // Each user's budget lives in the budgets table, readable/writable only by them (row level security).
 // Password hashing, session cookies, and Auth rate limits are handled by Supabase Auth — not this file.
 import { syncConfig } from "./sync-config.js";
@@ -20,6 +20,9 @@ let lastUid = null;
 
 /** Live GitHub Pages app (project site — not the user Pages root). */
 const PROD_APP_URL = "https://elcomparob111.github.io/budget-studio/";
+
+/** OAuth providers enabled in the UI (must also be enabled in Supabase Dashboard). */
+export const OAUTH_PROVIDERS = ["apple", "google"];
 
 /**
  * Where Auth confirmation / recovery emails should send the user.
@@ -64,12 +67,14 @@ export async function initSync(onUserChanged) {
     return false;
   }
 
-  const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+  // Pin to a release that includes passkeys (experimental API).
+  const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.1/+esm");
   supabase = createClient(syncConfig.url, syncConfig.anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      experimental: { passkey: true },
     },
   });
 
@@ -96,7 +101,16 @@ function assertNotLocked() {
   }
 }
 
-export async function signUp(name, email, password) {
+function captchaOptions(captchaToken) {
+  const token = String(captchaToken || "").trim();
+  return token ? { captchaToken: token } : {};
+}
+
+export function getCaptchaSiteKey() {
+  return String(syncConfig?.captchaSiteKey || "").trim();
+}
+
+export async function signUp(name, email, password, captchaToken = "") {
   assertNotLocked();
   const emailCheck = validateEmail(email);
   if (!emailCheck.ok) throw new Error(emailCheck.message);
@@ -111,6 +125,7 @@ export async function signUp(name, email, password) {
       data: { name: String(name || "").trim().slice(0, 40) },
       // Without this, Supabase falls back to dashboard Site URL (must include /budget-studio/).
       emailRedirectTo: authEmailRedirectTo(),
+      ...captchaOptions(captchaToken),
     },
   });
   if (error) {
@@ -144,7 +159,7 @@ export async function resendConfirmation(email) {
   }
 }
 
-export async function signIn(email, password) {
+export async function signIn(email, password, captchaToken = "") {
   assertNotLocked();
   const emailCheck = validateEmail(email);
   if (!emailCheck.ok) throw new Error(emailCheck.message);
@@ -155,6 +170,7 @@ export async function signIn(email, password) {
   const { data, error } = await client.auth.signInWithPassword({
     email: emailCheck.value,
     password: String(password),
+    options: captchaOptions(captchaToken),
   });
   if (error) {
     // Unconfirmed email is not a credential guess — don't count it toward lockout,
@@ -165,6 +181,76 @@ export async function signIn(email, password) {
   }
   clearAuthFailures();
   return toAppUser(data.user);
+}
+
+/** Redirects to Apple or Google OAuth, then back to the app URL. */
+export async function signInWithOAuthProvider(provider) {
+  assertNotLocked();
+  const name = String(provider || "").toLowerCase();
+  if (!OAUTH_PROVIDERS.includes(name)) throw new Error("Unsupported sign-in provider.");
+  const client = requireClient();
+  const { error } = await client.auth.signInWithOAuth({
+    provider: name,
+    options: {
+      redirectTo: authEmailRedirectTo(),
+      skipBrowserRedirect: false,
+    },
+  });
+  if (error) {
+    recordAuthFailure();
+    safeLog("warn", "OAuth sign-in failed", { code: error.code || "oauth", provider: name });
+    throw error;
+  }
+}
+
+/** Discoverable passkey sign-in (no email required). Requires dashboard Passkeys enabled. */
+export async function signInWithPasskey() {
+  assertNotLocked();
+  if (!window.PublicKeyCredential) {
+    throw new Error("Passkeys are not supported in this browser.");
+  }
+  const client = requireClient();
+  const { data, error } = await client.auth.signInWithPasskey();
+  if (error) {
+    if (!/cancel|abort|not allowed/i.test(String(error.message || ""))) {
+      recordAuthFailure();
+    }
+    safeLog("warn", "Passkey sign-in failed", { code: error.code || "passkey" });
+    throw error;
+  }
+  clearAuthFailures();
+  return toAppUser(data.user);
+}
+
+/** Register a passkey for the currently signed-in, confirmed user. */
+export async function registerPasskey() {
+  if (!window.PublicKeyCredential) {
+    throw new Error("Passkeys are not supported in this browser.");
+  }
+  const client = requireClient();
+  const { data: sessionData } = await client.auth.getSession();
+  if (!sessionData.session?.user) {
+    throw new Error("Sign in first, then add a passkey.");
+  }
+  const { data, error } = await client.auth.registerPasskey();
+  if (error) {
+    safeLog("warn", "Passkey registration failed", { code: error.code || "passkey" });
+    throw error;
+  }
+  return data;
+}
+
+export async function listPasskeys() {
+  const client = requireClient();
+  const { data, error } = await client.auth.passkey.list();
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function deletePasskey(passkeyId) {
+  const client = requireClient();
+  const { error } = await client.auth.passkey.delete({ passkeyId });
+  if (error) throw error;
 }
 
 /** Clears Supabase session and returns so the UI can wipe local caches. */
@@ -178,7 +264,7 @@ export async function signOutUser() {
   clearAuthFailures();
 }
 
-export async function resetPassword(email) {
+export async function resetPassword(email, captchaToken = "") {
   assertNotLocked();
   const emailCheck = validateEmail(email);
   if (!emailCheck.ok) throw new Error(emailCheck.message);
@@ -186,7 +272,10 @@ export async function resetPassword(email) {
   // Prefer production: reset emails are often opened later when localhost is not running.
   const redirectTo = authEmailRedirectTo({ preferProduction: true });
   const client = requireClient();
-  const { error } = await client.auth.resetPasswordForEmail(emailCheck.value, { redirectTo });
+  const { error } = await client.auth.resetPasswordForEmail(emailCheck.value, {
+    redirectTo,
+    ...captchaOptions(captchaToken),
+  });
   if (error) {
     recordAuthFailure();
     safeLog("warn", "Password reset request failed", { code: error.code || "reset" });
@@ -471,8 +560,17 @@ export function friendlyAuthError(error) {
   if (error?.code === "over_email_send_rate_limit" || /rate limit/i.test(String(error?.message || ""))) {
     return "Too many emails sent recently. Wait a few minutes and try again.";
   }
-  // Prefer client validation messages we threw ourselves.
+  if (error?.code === "passkey_disabled") {
+    return "Passkeys aren't enabled yet for this project.";
+  }
+  if (error?.code === "captcha_failed" || /captcha/i.test(String(error?.message || ""))) {
+    return "Complete the CAPTCHA check and try again.";
+  }
   const raw = String(error?.message || "");
+  if (/cancel|abort|not allowed/i.test(raw) && /passkey|webauthn|credential/i.test(raw)) {
+    return "Passkey sign-in was cancelled.";
+  }
+  // Prefer client validation messages we threw ourselves.
   if (
     raw.startsWith("Enter ") ||
     raw.startsWith("Password ") ||
@@ -483,7 +581,10 @@ export function friendlyAuthError(error) {
     raw.startsWith("Something went") ||
     raw.startsWith("Cloud sync") ||
     raw.startsWith("You can only") ||
-    raw.startsWith("You must be")
+    raw.startsWith("You must be") ||
+    raw.startsWith("Passkeys ") ||
+    raw.startsWith("Sign in first") ||
+    raw.startsWith("Unsupported ")
   ) {
     return raw;
   }

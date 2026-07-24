@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 struct AuthView: View {
@@ -54,6 +55,13 @@ struct AuthView: View {
                         ConfirmEmailCard()
                     } else {
                     VStack(spacing: AppTheme.md) {
+                        providerButtons
+
+                        Text("or use email")
+                            .font(.app(12, weight: .semibold))
+                            .foregroundStyle(AppTheme.secondaryText)
+                            .frame(maxWidth: .infinity)
+
                         if mode == .signUp {
                             AuthField(title: "Your name", text: $name, placeholder: "Rob, Mom, Alex...")
                         }
@@ -132,6 +140,70 @@ struct AuthView: View {
             }
         }
         .background(AppTheme.background.ignoresSafeArea())
+    }
+
+    @ViewBuilder
+    private var providerButtons: some View {
+        VStack(spacing: AppTheme.sm) {
+            if mode == .signIn {
+                Button {
+                    Task { await store.signInWithPasskey() }
+                } label: {
+                    Label("Sign in with passkey", systemImage: "person.badge.key.fill")
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.inputFill)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .disabled(store.isLoading)
+            }
+
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.email, .fullName]
+            } onCompletion: { result in
+                Task { await handleAppleCompletion(result) }
+            }
+            .signInWithAppleButtonStyle(.black)
+            .frame(height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .disabled(store.isLoading)
+
+            Button {
+                Task { await store.signInWithGoogle() }
+            } label: {
+                Label("Continue with Google", systemImage: "g.circle.fill")
+                    .font(.app(15, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.inputFill)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .disabled(store.isLoading)
+        }
+    }
+
+    private func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) async {
+        switch result {
+        case .failure(let error):
+            let ns = error as NSError
+            if ns.domain == ASAuthorizationError.errorDomain,
+               ns.code == ASAuthorizationError.canceled.rawValue {
+                store.authError = nil
+                return
+            }
+            store.authError = "Something went wrong with Apple sign-in. Please try again."
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken,
+                  let idToken = String(data: tokenData, encoding: .utf8) else {
+                store.authError = "Apple sign-in didn't return a token. Try again."
+                return
+            }
+            await store.signInWithApple(idToken: idToken, fullName: credential.fullName)
+        }
     }
 }
 

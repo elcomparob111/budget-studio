@@ -334,6 +334,8 @@
               Restore
               <input id="importJsonInput" type="file" accept="application/json" />
             </label>
+            <button id="addPasskeyBtn" class="secondary-button" type="button" hidden>Add passkey</button>
+            <p id="passkeyHint" class="hint" hidden>Passkeys let you sign in with Face ID, Touch ID, or your device PIN — no password to remember.</p>
             <button id="signOutBtn" class="danger-button" type="button" hidden>Sign out</button>
             <button id="deleteAccountBtn" class="danger-button" type="button" hidden>Delete cloud data</button>
             <p class="hint">Removes your personal cloud budget, leaves or dissolves shared budgets, then signs you out. Auth login may still exist in Supabase until you delete it there.</p>
@@ -496,6 +498,21 @@
           Sign in and your budget follows you on every device — private to your account only.
         </p>
         <form id="authForm" class="profile-form">
+          <div id="authProviders" class="auth-providers">
+            <button id="authPasskeyBtn" class="auth-provider-btn" type="button">
+              <span class="auth-provider-icon" aria-hidden="true">🔑</span>
+              Sign in with passkey
+            </button>
+            <button id="authAppleBtn" class="auth-provider-btn" type="button">
+              <span class="auth-provider-icon" aria-hidden="true"></span>
+              Continue with Apple
+            </button>
+            <button id="authGoogleBtn" class="auth-provider-btn" type="button">
+              <span class="auth-provider-icon" aria-hidden="true">G</span>
+              Continue with Google
+            </button>
+            <p class="auth-divider" id="authDivider"><span>or use email</span></p>
+          </div>
           <label id="authNameLabel" hidden>
             <span>Your name</span>
             <input id="authNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="name" />
@@ -509,6 +526,7 @@
             <input id="authPasswordInput" type="password" minlength="1" placeholder="Your password" autocomplete="current-password" required />
             <small id="authPasswordHelp" class="auth-password-help" hidden></small>
           </label>
+          <div id="authCaptcha" class="auth-captcha" hidden></div>
           <button id="authSubmitBtn" class="primary-button" type="submit">Sign in</button>
           <button id="authConfirmedBtn" class="primary-button" type="button" hidden>I clicked the link — sign me in</button>
           <button id="authResendBtn" class="ghost-button" type="button" hidden>Resend confirmation email</button>
@@ -788,7 +806,7 @@
     <script type="module" src="./app.js?v=67"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=67").then((reg) => {
+        navigator.serviceWorker.register("./sw.js?v=68").then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;

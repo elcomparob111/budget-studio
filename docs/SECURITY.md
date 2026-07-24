@@ -50,11 +50,12 @@ Expect `rowsecurity = true` and SELECT/INSERT/UPDATE/DELETE policies scoped to `
 
 ### 3. Auth settings (Supabase Dashboard → Authentication)
 
-1. **Providers** → Email enabled; disable unused providers.
-2. **Email** → enable **Confirm email** for production (recommended).
-3. **Password** → minimum length **8**; require letters + digits if the UI offers it (match client rules in `security.js`).
-4. **Rate limits** → keep defaults or tighten sign-in / sign-up / recovery limits.
-5. **URL configuration** (critical for email confirm + password reset)
+1. **Providers** → Email enabled; enable **Apple** and **Google** when ready (see [`AUTH_PROVIDERS.md`](AUTH_PROVIDERS.md)). Disable unused providers.
+2. **Passkeys** → enable with RP ID `elcomparob111.github.io` (details in AUTH_PROVIDERS).
+3. **Email** → enable **Confirm email** for production (recommended).
+4. **Password** → minimum length **8**; require letters + digits if the UI offers it (match client rules in `security.js`).
+5. **Rate limits** → keep defaults or tighten sign-in / sign-up / recovery limits (Free plan).
+6. **URL configuration** (critical for email confirm + password reset + OAuth)
    - **Site URL** must be exactly: `https://elcomparob111.github.io/budget-studio/`
      - Include the trailing `/budget-studio/` path. A bare `https://elcomparob111.github.io` lands on a GitHub Pages **404** (no site at the user root).
      - Confirmation emails use Site URL when the client omits `emailRedirectTo` (web signup now always passes it).
@@ -62,7 +63,8 @@ Expect `rowsecurity = true` and SELECT/INSERT/UPDATE/DELETE policies scoped to `
      - `https://elcomparob111.github.io/budget-studio/`
      - `https://elcomparob111.github.io/budget-studio/**`
      - `http://localhost:3000/**` (dev only)
-6. **Attack protection** — enable CAPTCHA / leaked-password protection if available on your plan.
+     - `budgetstudio://auth-callback` (iOS OAuth)
+7. **Attack protection** — enable CAPTCHA (Turnstile/hCaptcha) on Free; set `captchaSiteKey` in `sync-config.js`. **Leaked-password protection is Pro-only** — defer until upgrade.
 
 ### 4. API / CORS (Supabase Dashboard → Settings → API + Auth URL config)
 

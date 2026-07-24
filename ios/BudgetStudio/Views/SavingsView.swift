@@ -13,35 +13,58 @@ struct SavingsView: View {
         goals.reduce(0) { $0 + max(0, $1.current) }
     }
 
+    private var targetTotal: Double {
+        goals.reduce(0) { $0 + max(0, $1.target) }
+    }
+
     private var leftTotal: Double {
-        max(0, goals.reduce(0) { $0 + max(0, $1.target) } - savedTotal)
+        max(0, targetTotal - savedTotal)
+    }
+
+    private var overallProgress: Double {
+        targetTotal > 0 ? min(1, savedTotal / targetTotal) : 0
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
-                    summaryCard
+                VStack(alignment: .leading, spacing: AppTheme.xxl) {
+                    heroComposition
+
                     if goals.isEmpty {
                         emptyState
                     } else {
-                        ForEach(goals) { goal in
-                            goalCard(goal)
-                        }
+                        goalsSection
                     }
                 }
                 .padding(.horizontal, AppTheme.pagePadding)
-                .padding(.top, AppTheme.lg)
+                .padding(.top, AppTheme.md)
                 .padding(.bottom, AppTheme.xxl)
                 .readableWidth()
             }
             .background(AppTheme.background.ignoresSafeArea())
-            .navigationTitle("Savings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("New goal") { showNewGoal = true }
-                        .font(.app(15, weight: .semibold))
+                ToolbarItem(placement: .topBarLeading) {
+                    Text("Savings")
+                        .font(.app(17, weight: .bold))
                         .foregroundStyle(AppTheme.primaryText)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showNewGoal = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryText)
+                            .frame(width: 36, height: 36)
+                            .background(AppTheme.surface)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+                    }
+                    .accessibilityLabel("New goal")
                 }
             }
             .sheet(isPresented: $showNewGoal) {
@@ -65,42 +88,120 @@ struct SavingsView: View {
         }
     }
 
-    private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.md) {
-            VStack(alignment: .leading, spacing: AppTheme.xs) {
-                Text("Savings")
-                    .font(.app(12, weight: .bold))
-                    .foregroundStyle(AppTheme.secondaryText)
-                    .textCase(.uppercase)
-                Text("Your goals")
-                    .font(.app(22, weight: .bold))
-                    .foregroundStyle(AppTheme.primaryText)
+    // MARK: - Hero
+
+    private var heroComposition: some View {
+        VStack(alignment: .leading, spacing: AppTheme.xl) {
+            HStack(alignment: .top, spacing: AppTheme.lg) {
+                VStack(alignment: .leading, spacing: AppTheme.sm) {
+                    Text("Saved so far")
+                        .font(.app(12, weight: .bold))
+                        .foregroundStyle(AppTheme.secondaryText)
+                        .textCase(.uppercase)
+                        .tracking(1.2)
+
+                    Text(currency(savedTotal))
+                        .font(.app(48, weight: .bold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.65)
+                        .lineLimit(1)
+                        .contentTransition(.numericText())
+
+                    Text(goals.isEmpty ? "No goals yet" : "\(goals.count) goal\(goals.count == 1 ? "" : "s") · \(currency(leftTotal)) to go")
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if !goals.isEmpty {
+                    ZStack {
+                        Circle()
+                            .stroke(AppTheme.ringTrack, lineWidth: 8)
+                        Circle()
+                            .trim(from: 0, to: overallProgress)
+                            .stroke(AppTheme.income, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(.spring(response: 0.5, dampingFraction: 0.85), value: overallProgress)
+
+                        VStack(spacing: 2) {
+                            Text("\(Int((overallProgress * 100).rounded()))%")
+                                .font(.app(16, weight: .bold))
+                                .foregroundStyle(AppTheme.primaryText)
+                                .monospacedDigit()
+                            Text("done")
+                                .font(.app(10, weight: .semibold))
+                                .foregroundStyle(AppTheme.secondaryText)
+                                .textCase(.uppercase)
+                        }
+                    }
+                    .frame(width: 84, height: 84)
+                }
             }
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.sm) {
-                summaryStat("Saved", currency(savedTotal))
-                summaryStat("Left to go", currency(leftTotal))
-                summaryStat("Goals", "\(goals.count)")
+            if !goals.isEmpty {
+                HStack(alignment: .firstTextBaseline, spacing: AppTheme.xl) {
+                    heroInlineStat(label: "Target", value: currency(targetTotal), color: AppTheme.primaryText)
+                    heroInlineStat(label: "Left", value: currency(leftTotal), color: AppTheme.secondaryText)
+                    Spacer(minLength: 0)
+                }
             }
         }
-        .appCard()
+        .padding(AppTheme.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            AppTheme.pastelGreen.opacity(0.55),
+                            AppTheme.pastelBlue.opacity(0.35),
+                            AppTheme.surface,
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(AppTheme.cardStroke, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
     }
 
-    private func summaryStat(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.xs) {
-            Text(title)
-                .font(.app(12, weight: .medium))
+    private func heroInlineStat(label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.app(11, weight: .bold))
                 .foregroundStyle(AppTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.8)
             Text(value)
                 .font(.app(18, weight: .bold))
-                .foregroundStyle(AppTheme.primaryText)
+                .foregroundStyle(color)
+                .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(AppTheme.md)
-        .background(AppTheme.inputFill)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    // MARK: - Goals
+
+    private var goalsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.lg) {
+            Text("Goals")
+                .font(.app(13, weight: .bold))
+                .foregroundStyle(AppTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.8)
+
+            VStack(spacing: AppTheme.md) {
+                ForEach(goals) { goal in
+                    goalCard(goal)
+                }
+            }
+        }
     }
 
     private var emptyState: some View {
@@ -113,8 +214,17 @@ struct SavingsView: View {
                 .foregroundStyle(AppTheme.secondaryText)
             Button("Create your first goal") { showNewGoal = true }
                 .buttonStyle(PrimaryButtonStyle())
+                .padding(.top, AppTheme.xs)
         }
-        .appCard()
+        .padding(AppTheme.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppTheme.cardStroke, lineWidth: 1)
+        )
     }
 
     private func goalCard(_ goal: SavingsGoal) -> some View {
@@ -124,31 +234,38 @@ struct SavingsView: View {
         let done = goal.current >= goal.target
 
         return VStack(alignment: .leading, spacing: AppTheme.md) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: AppTheme.xs) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(goal.name)
-                        .font(.app(18, weight: .bold))
+                        .font(.app(17, weight: .bold))
                         .foregroundStyle(AppTheme.primaryText)
                     Text("\(currency(goal.current)) of \(currency(goal.target))")
-                        .font(.app(14, weight: .medium))
+                        .font(.app(13, weight: .medium))
                         .foregroundStyle(AppTheme.secondaryText)
+                        .monospacedDigit()
                 }
                 Spacer()
                 Text("\(percent)%")
-                    .font(.app(28, weight: .bold))
-                    .foregroundStyle(AppTheme.primaryText)
+                    .font(.app(24, weight: .bold))
+                    .foregroundStyle(done ? AppTheme.income : AppTheme.primaryText)
                     .monospacedDigit()
             }
 
-            ProgressView(value: progress)
-                .tint(done ? AppTheme.income : AppTheme.primaryText)
-
-            HStack {
-                Text(done ? "Goal reached" : "\(currency(left)) to go")
-                    .font(.app(13, weight: .semibold))
-                    .foregroundStyle(AppTheme.secondaryText)
-                Spacer()
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(AppTheme.ringTrack)
+                        .frame(height: 6)
+                    Capsule()
+                        .fill(done ? AppTheme.income : AppTheme.pastelGreen)
+                        .frame(width: max(6, geo.size.width * progress), height: 6)
+                }
             }
+            .frame(height: 6)
+
+            Text(done ? "Goal reached" : "\(currency(left)) to go")
+                .font(.app(12, weight: .semibold))
+                .foregroundStyle(AppTheme.secondaryText)
 
             HStack(spacing: AppTheme.sm) {
                 if !done {
@@ -171,10 +288,13 @@ struct SavingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
-        .appCard()
+        .padding(AppTheme.lg)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(done ? AppTheme.income.opacity(0.35) : Color.clear, lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(done ? AppTheme.income.opacity(0.35) : AppTheme.cardStroke, lineWidth: done ? 1.5 : 1)
         )
     }
 }

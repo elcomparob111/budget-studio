@@ -49,24 +49,34 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.sectionSpacing) {
-                    appearanceSection
-                    payScheduleSummaryRow
-                    budgetsSummaryRow
+                VStack(alignment: .leading, spacing: AppTheme.xxl) {
+                    settingsHero
 
-                    recurringSection
-
-                    sharedBudgetSection
-
-                    VStack(spacing: AppTheme.sm) {
-                        settingsButton(title: "Setup wizard", emoji: "🪄") { showSetup = true }
-                        settingsButton(title: "Load demo data", emoji: "🧪") { store.loadDemo() }
+                    settingsGroup("Preferences") {
+                        appearanceSection
+                        if BiometricAuth.isAvailable {
+                            faceIDSection
+                        } else {
+                            faceIDUnavailableSection
+                        }
+                        passkeySection
                     }
 
-                    if BiometricAuth.isAvailable {
-                        faceIDSection
-                    } else {
-                        faceIDUnavailableSection
+                    settingsGroup("Money") {
+                        payScheduleSummaryRow
+                        budgetsSummaryRow
+                        recurringSection
+                    }
+
+                    settingsGroup("Sharing") {
+                        sharedBudgetSection
+                    }
+
+                    settingsGroup("Tools") {
+                        VStack(spacing: AppTheme.sm) {
+                            settingsButton(title: "Setup wizard", emoji: "🪄") { showSetup = true }
+                            settingsButton(title: "Load demo data", emoji: "🧪") { store.loadDemo() }
+                        }
                     }
 
                     Button {
@@ -80,14 +90,24 @@ struct SettingsView: View {
                             .background(AppTheme.pastelPink.opacity(0.35))
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
+                    .padding(.top, AppTheme.sm)
                 }
                 .padding(.horizontal, AppTheme.pagePadding)
-                .padding(.top, AppTheme.lg)
+                .padding(.top, AppTheme.md)
                 .padding(.bottom, AppTheme.xxl)
                 .readableWidth(AdaptiveLayout.formMaxWidth)
             }
             .background(AppTheme.background.ignoresSafeArea())
-            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Text("Settings")
+                        .font(.app(17, weight: .bold))
+                        .foregroundStyle(AppTheme.primaryText)
+                }
+            }
             .sheet(isPresented: $showRecurringEditor) {
                 RecurringEditorSheet(onDone: { showRecurringEditor = false })
                     .appSheetChrome(detents: [.medium, .large])
@@ -152,6 +172,58 @@ struct SettingsView: View {
                 )
                 .ignoresSafeArea()
             }
+        }
+    }
+
+    private var settingsHero: some View {
+        VStack(alignment: .leading, spacing: AppTheme.sm) {
+            Text("Account")
+                .font(.app(12, weight: .bold))
+                .foregroundStyle(AppTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(1.2)
+
+            Text(store.userName.isEmpty ? "Budget Studio" : store.userName)
+                .font(.app(32, weight: .bold))
+                .foregroundStyle(AppTheme.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Text(store.isInSharedBudget ? "Shared budget · \(sharedSubtitle)" : "Personal budget")
+                .font(.app(14, weight: .medium))
+                .foregroundStyle(AppTheme.secondaryText)
+                .lineLimit(2)
+        }
+        .padding(AppTheme.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            AppTheme.pastelPurple.opacity(0.45),
+                            AppTheme.pastelBlue.opacity(0.35),
+                            AppTheme.surface,
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(AppTheme.cardStroke, lineWidth: 1)
+        }
+    }
+
+    private func settingsGroup<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            Text(title)
+                .font(.app(13, weight: .bold))
+                .foregroundStyle(AppTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.8)
+            content()
         }
     }
 
@@ -259,6 +331,42 @@ struct SettingsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
+        }
+        .appCard()
+    }
+
+    private var passkeySection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack(spacing: AppTheme.md) {
+                Image(systemName: "person.badge.key.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.pastelBlue.opacity(0.45), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Passkey")
+                        .font(.app(16, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                    Text("Sign in with Face ID or your device PIN — no password.")
+                        .font(.app(12, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer(minLength: 0)
+            }
+
+            Button {
+                Task { await store.registerPasskey() }
+            } label: {
+                Text(store.isLoading ? "Adding…" : "Add passkey")
+                    .font(.app(14, weight: .semibold))
+                    .foregroundStyle(AppTheme.primaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.inputFill)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(store.isLoading)
         }
         .appCard()
     }

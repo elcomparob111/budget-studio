@@ -215,6 +215,72 @@ final class BudgetStore: ObservableObject {
         }
     }
 
+    /// Completes session after Apple / Google / passkey (no Keychain password to store).
+    private func finishPasswordlessSignIn() async {
+        pendingConfirmEmail = nil
+        pendingConfirmPassword = ""
+        userName = supabase.displayName
+        await resolveSharedAndLoad(userId: supabase.currentUser!.id)
+        isAuthenticated = true
+        isUnlocked = true
+    }
+
+    func signInWithApple(idToken: String, fullName: PersonNameComponents?) async {
+        authError = nil
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await supabase.signInWithApple(idToken: idToken, fullName: fullName)
+            await finishPasswordlessSignIn()
+        } catch {
+            authError = supabase.friendlyAuthError(error)
+        }
+    }
+
+    func signInWithGoogle() async {
+        authError = nil
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await supabase.signInWithOAuthProvider(.google)
+            await finishPasswordlessSignIn()
+        } catch {
+            authError = supabase.friendlyAuthError(error)
+        }
+    }
+
+    func signInWithPasskey() async {
+        authError = nil
+        guard let anchor = SupabaseService.presentationAnchor() else {
+            authError = "Couldn't open the passkey prompt on this device."
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await supabase.signInWithPasskey(presentationAnchor: anchor)
+            await finishPasswordlessSignIn()
+        } catch {
+            authError = supabase.friendlyAuthError(error)
+        }
+    }
+
+    func registerPasskey() async {
+        authError = nil
+        guard let anchor = SupabaseService.presentationAnchor() else {
+            showToast("Couldn't open the passkey prompt on this device.")
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            _ = try await supabase.registerPasskey(presentationAnchor: anchor)
+            showToast("Passkey added. You can use it next time you sign in.")
+        } catch {
+            showToast(supabase.friendlyAuthError(error))
+        }
+    }
+
     /// Retry sign-in from the check-your-email screen. Succeeds once the
     /// confirmation link has been clicked on any device.
     func retryConfirmedSignIn(silent: Bool = false) async {
@@ -532,11 +598,20 @@ final class BudgetStore: ObservableObject {
         scheduleCloudSave()
     }
 
-    func addCategory(name: String, group: String, budget: Double) {
+    func addCategory(name: String, group: String, budget: Double, type: String = "Expense") {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard !state.categories.contains(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
-        state.categories.append(BudgetCategory(name: trimmed, type: "Expense", group: group, budget: budget))
+        let resolvedType = type == "Income" ? "Income" : "Expense"
+        let resolvedGroup = resolvedType == "Income" ? "Income" : group
+        state.categories.append(
+            BudgetCategory(
+                name: String(trimmed.prefix(40)),
+                type: resolvedType,
+                group: resolvedGroup,
+                budget: max(0, budget)
+            )
+        )
         saveLocal()
         scheduleCloudSave()
     }

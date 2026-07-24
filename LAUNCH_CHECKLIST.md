@@ -38,7 +38,8 @@ Expect `rowsecurity = true` and four policies (SELECT / INSERT / UPDATE / DELETE
 | Email confirm | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) | Enable **Confirm email** for production |
 | Password | [Auth → Providers → Email](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers) (or Password settings) | Min length **8**; prefer letters + digits (matches app) |
 | Rate limits | [Auth → Rate Limits](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/rate-limits) | **Before public publish:** confirm limits are enabled; optionally tighten sign-in / sign-up / recovery below defaults. Fine to leave defaults for family/TestFlight. |
-| Attack protection | [Auth → Attack Protection](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/protection) | **Before public publish:** enable CAPTCHA. **Leaked-password protection is a Pro-plan feature** — not available on the current plan, so the `auth_leaked_password_protection` advisor stays WARN until an upgrade. Web client lockout in `security.js` is UX-only — not a substitute. |
+| Apple / Google / Passkeys | [docs/AUTH_PROVIDERS.md](docs/AUTH_PROVIDERS.md) | Enable providers + passkeys; add `budgetstudio://auth-callback` to Redirect URLs. Web Apple needs Services ID + 6‑month secret rotation. |
+| Attack protection | [Auth → Attack Protection](https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/protection) | **Before public publish:** enable CAPTCHA (Turnstile) and set `captchaSiteKey` in `sync-config.js`. **Leaked-password protection is Pro-only** — skip for now. Web client lockout in `security.js` is UX-only — not a substitute. |
 
 ### 3. Smoke test
 

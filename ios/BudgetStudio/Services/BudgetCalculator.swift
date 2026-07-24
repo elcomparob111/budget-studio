@@ -40,10 +40,23 @@ enum BudgetCalculator {
     static func payPeriodSummary(state: BudgetState, month: String, now: Date = Date()) -> PayPeriodSummary? {
         guard let profile = state.setupProfile else { return nil }
         let today = todayString(now: now)
+        let isCurrentMonth = month == String(today.prefix(7))
+        let firstOfMonth = "\(month)-01"
         // When browsing the current month, use today; otherwise use the 1st of that month
         // so the paycheck window matches the selected month (same as web).
-        let referenceDate = month == String(today.prefix(7)) ? today : "\(month)-01"
-        guard let period = payPeriod(for: referenceDate, profile: profile) else { return nil }
+        let referenceDate = isCurrentMonth ? today : firstOfMonth
+        guard var period = payPeriod(for: referenceDate, profile: profile) else { return nil }
+
+        // Non-current months: a period that started in the prior month belongs there,
+        // not here — advance to the first period that starts in the viewed month
+        // (e.g. Aug view → Aug 5–19, not Jul 22–Aug 5). Matches web getPayPeriodSummary.
+        if !isCurrentMonth,
+           period.start < firstOfMonth,
+           let endDate = parseDate(period.end),
+           let dayAfter = Calendar.current.date(byAdding: .day, value: 1, to: endDate),
+           let next = payPeriod(for: formatISO(dayAfter), profile: profile) {
+            period = next
+        }
 
         let transactions = state.transactions.filter {
             dateInRange($0.date, start: period.start, end: period.end)

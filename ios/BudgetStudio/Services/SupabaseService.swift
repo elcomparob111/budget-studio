@@ -1,10 +1,14 @@
+import AuthenticationServices
 import Foundation
-import Supabase
+@_spi(Experimental) import Supabase
+import UIKit
 
 enum SyncConfig {
     // Anon / publishable key only — never embed service_role in the app.
     static let url = URL(string: "https://dhlaqqghjfmgdlkfxlxg.supabase.co")!
     static let anonKey = "sb_publishable_poVoneGFjZxQ2ecE7fQSiA_7YJinWt6"
+    /// Deep-link callback for Google (and web-style) OAuth on iOS.
+    static let oauthRedirectURL = URL(string: "budgetstudio://auth-callback")!
 }
 
 struct CloudBudgetPayload: Codable {
@@ -92,6 +96,55 @@ final class SupabaseService {
     func signIn(email: String, password: String) async throws {
         _ = try await client.auth.signIn(email: email, password: password)
         currentUser = try await client.auth.session.user
+    }
+
+    /// Native Sign in with Apple → Supabase session via identity token.
+    func signInWithApple(
+        idToken: String,
+        fullName: PersonNameComponents? = nil
+    ) async throws {
+        _ = try await client.auth.signInWithIdToken(
+            credentials: .init(provider: .apple, idToken: idToken)
+        )
+        if let fullName {
+            var parts: [String] = []
+            if let given = fullName.givenName { parts.append(given) }
+            if let middle = fullName.middleName { parts.append(middle) }
+            if let family = fullName.familyName { parts.append(family) }
+            let joined = parts.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !joined.isEmpty {
+                try? await client.auth.update(
+                    user: UserAttributes(
+                        data: [
+                            "name": .string(String(joined.prefix(40))),
+                            "full_name": .string(joined),
+                            "given_name": .string(fullName.givenName ?? ""),
+                            "family_name": .string(fullName.familyName ?? ""),
+                        ]
+                    )
+                )
+            }
+        }
+        currentUser = try await client.auth.session.user
+    }
+
+    /// Google (and other OAuth providers) via ASWebAuthenticationSession.
+    func signInWithOAuthProvider(_ provider: Provider) async throws {
+        _ = try await client.auth.signInWithOAuth(
+            provider: provider,
+            redirectTo: SyncConfig.oauthRedirectURL
+        )
+        currentUser = try await client.auth.session.user
+    }
+
+    func signInWithPasskey(presentationAnchor: ASPresentationAnchor) async throws {
+        _ = try await client.auth.signInWithPasskey(presentationAnchor: presentationAnchor)
+        currentUser = try await client.auth.session.user
+    }
+
+    @discardableResult
+    func registerPasskey(presentationAnchor: ASPresentationAnchor) async throws -> PasskeyListItem {
+        try await client.auth.registerPasskey(presentationAnchor: presentationAnchor)
     }
 
     func signOut() async throws {
@@ -499,6 +552,12 @@ final class SupabaseService {
         if message.contains("at least") && message.contains("character") {
             return "Password does not meet the requirements."
         }
+        if message.contains("cancel") || message.contains("canceled") || message.contains("cancelled") {
+            return "Sign-in was cancelled."
+        }
+        if message.contains("passkey") && message.contains("disabled") {
+            return "Passkeys aren't enabled yet for this project."
+        }
         if message.contains("invalid login")
             || message.contains("invalid credentials")
             || message.contains("already registered")
@@ -506,5 +565,13 @@ final class SupabaseService {
             return "Unable to sign in with those details. Check your email and password, or create an account."
         }
         return "Something went wrong. Please try again."
+    }
+
+    /// Key window for passkey / ASWebAuthentication presentation.
+    static func presentationAnchor() -> ASPresentationAnchor? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
     }
 }
