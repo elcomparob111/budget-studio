@@ -12,14 +12,14 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Web Check-left Home parity | Done | Web Home matches iOS: Check left hero + wash, check ring (period spent/income), In/Out, month stepper in hero, Month plan bar, Needs/Wants/Savings groups, tap-to-expand expenses. SW **v69**. |
-| Web Activity / Savings / Settings polish | Done | Activity type+category chips + day-grouped list (charts kept). Savings “Saved so far” hero. Settings section labels + account hero. |
-| iOS Check-left redesign (prior) | Done | `410f1f8d` — Home/Activity/Savings/Settings polish; August pay-period fix; auth-provider docs. |
+| Home richness (web + iOS) | Done | Under Check left: payday countdown, over-plan / on-watch line, Recent (5 txs), Goals peek (2). Order: hero → Coming up → Recent → Goals → Where it went. SW **v70**. |
+| Web Check-left Home parity | Done | Check left hero + wash, check ring, In/Out, month stepper, Month plan, Needs/Wants/Savings expand. |
+| iOS Check-left redesign (prior) | Done | `410f1f8d` — Home/Activity/Savings/Settings polish. |
 
 ### Paths to know
 
-- Web: `app.js`, `styles.css`, `index.html`, `sw.js` (cache `budget-studio-v69`)
-- iOS: `ios/BudgetStudio/Views/OverviewView.swift` (source of truth for Home composition)
+- Web: `app.js`, `styles.css`, `index.html`, `sw.js` (`budget-studio-v70`)
+- iOS Home: `ios/BudgetStudio/Views/OverviewView.swift`
 - Live: https://elcomparob111.github.io/budget-studio/ — hard refresh after deploy
 
 ---

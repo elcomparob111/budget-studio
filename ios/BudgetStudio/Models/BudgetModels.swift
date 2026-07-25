@@ -86,6 +86,8 @@ struct MonthSummary {
 
 struct PayPeriodSummary {
     var rangeLabel: String
+    /// ISO end date of the paycheck window (typically next payday).
+    var end: String
     var income: Double
     var spent: Double
     /// Pay-period income (logged, else configured check amount) minus period spent.

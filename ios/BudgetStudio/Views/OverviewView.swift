@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OverviewView: View {
     @EnvironmentObject private var store: BudgetStore
+    @Binding var selectedTab: Int
     @Binding var showSetup: Bool
     @Binding var showAddTransaction: Bool
     var onAddManually: (() -> Void)? = nil
@@ -17,6 +18,12 @@ struct OverviewView: View {
 
                     if !upcomingBills.isEmpty {
                         upcomingSection
+                    }
+
+                    recentSection
+
+                    if !goalsPeek.isEmpty {
+                        goalsPeekSection
                     }
 
                     categoryProgressSection
@@ -309,6 +316,211 @@ struct OverviewView: View {
                 }
             }
             .frame(height: 6)
+
+            if let countdown = paydayCountdownLabel {
+                Text(countdown)
+                    .font(.app(12, weight: .medium))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+
+            if let watch = planWatchLabel {
+                Text(watch)
+                    .font(.app(12, weight: .bold))
+                    .foregroundStyle(watch.hasSuffix("over plan") ? AppTheme.expense : AppTheme.primaryText)
+            }
+        }
+    }
+
+    private var isCurrentMonth: Bool {
+        store.monthKey == String(BudgetCalculator.todayString().prefix(7))
+    }
+
+    private var paydayCountdownLabel: String? {
+        guard isCurrentMonth, let end = store.payPeriodSummary?.end else { return nil }
+        return BudgetCalculator.paydayCountdownLabel(periodEnd: end)
+    }
+
+    private var planWatchLabel: String? {
+        let budgeted = store.categorySpending.filter { $0.category.budget > 0 }
+        let over = budgeted.filter { $0.spent > $0.category.budget }
+        if !over.isEmpty {
+            return "\(over.count) \(over.count == 1 ? "category" : "categories") over plan"
+        }
+        let watch = budgeted.filter { $0.spent / $0.category.budget >= 0.85 }
+        if !watch.isEmpty {
+            return "\(watch.count) \(watch.count == 1 ? "category" : "categories") on watch"
+        }
+        return nil
+    }
+
+    // MARK: - Recent
+
+    private var recentTransactions: [BudgetTransaction] {
+        store.state.transactions
+            .filter { $0.date.hasPrefix(store.monthKey) }
+            .sorted { $0.date > $1.date }
+            .prefix(5)
+            .map { $0 }
+    }
+
+    private var recentSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack {
+                Text("Recent")
+                    .font(.app(13, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                Spacer()
+                Button("See all") { selectedTab = 1 }
+                    .font(.app(13, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+
+            if recentTransactions.isEmpty {
+                VStack(alignment: .leading, spacing: AppTheme.sm) {
+                    Text("Nothing logged this month yet.")
+                        .font(.app(14, weight: .medium))
+                        .foregroundStyle(AppTheme.secondaryText)
+                    Button("Add transaction") {
+                        if let onAddManually {
+                            onAddManually()
+                        } else {
+                            showAddTransaction = true
+                        }
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                }
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(recentTransactions.enumerated()), id: \.element.id) { index, item in
+                        Button {
+                            editingTransaction = item
+                        } label: {
+                            HStack(spacing: AppTheme.md) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.description.isEmpty ? item.category : item.description)
+                                        .font(.app(15, weight: .semibold))
+                                        .foregroundStyle(AppTheme.primaryText)
+                                        .lineLimit(1)
+                                    Text("\(formatExpenseDate(item.date)) · \(item.category)")
+                                        .font(.app(12, weight: .medium))
+                                        .foregroundStyle(AppTheme.secondaryText)
+                                        .lineLimit(1)
+                                }
+                                Spacer(minLength: AppTheme.xs)
+                                Text("\(item.type == "Income" ? "+" : "")\(currency(item.amount))")
+                                    .font(.app(15, weight: .bold))
+                                    .foregroundStyle(item.type == "Income" ? AppTheme.income : AppTheme.primaryText)
+                                    .monospacedDigit()
+                            }
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if index < recentTransactions.count - 1 {
+                            Divider().opacity(0.3)
+                        }
+                    }
+                }
+                .padding(.horizontal, AppTheme.md)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(AppTheme.cardStroke, lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    // MARK: - Goals peek
+
+    private var goalsPeek: [SavingsGoal] {
+        store.state.goals
+            .map { goal -> (SavingsGoal, Double, Bool) in
+                let progress = goal.target > 0 ? min(1, goal.current / goal.target) : 0
+                return (goal, progress, goal.current < goal.target)
+            }
+            .sorted { lhs, rhs in
+                if lhs.2 != rhs.2 { return lhs.2 && !rhs.2 }
+                return lhs.1 > rhs.1
+            }
+            .prefix(2)
+            .map(\.0)
+    }
+
+    private var goalsPeekSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack {
+                Text("Goals")
+                    .font(.app(13, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                Spacer()
+                Button("See all") { selectedTab = 2 }
+                    .font(.app(13, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(goalsPeek.enumerated()), id: \.element.id) { index, goal in
+                    let progress = goal.target > 0 ? min(1, goal.current / goal.target) : 0
+                    let percent = Int((progress * 100).rounded())
+                    Button {
+                        selectedTab = 2
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(goal.name)
+                                        .font(.app(15, weight: .semibold))
+                                        .foregroundStyle(AppTheme.primaryText)
+                                        .lineLimit(1)
+                                    Text("\(currency(goal.current)) of \(currency(goal.target))")
+                                        .font(.app(12, weight: .medium))
+                                        .foregroundStyle(AppTheme.secondaryText)
+                                        .monospacedDigit()
+                                }
+                                Spacer()
+                                Text("\(percent)%")
+                                    .font(.app(16, weight: .bold))
+                                    .foregroundStyle(AppTheme.primaryText)
+                                    .monospacedDigit()
+                            }
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(AppTheme.ringTrack)
+                                        .frame(height: 5)
+                                    Capsule()
+                                        .fill(AppTheme.pastelGreen)
+                                        .frame(width: max(4, geo.size.width * progress), height: 5)
+                                }
+                            }
+                            .frame(height: 5)
+                        }
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if index < goalsPeek.count - 1 {
+                        Divider().opacity(0.3)
+                    }
+                }
+            }
+            .padding(.horizontal, AppTheme.md)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppTheme.cardStroke, lineWidth: 1)
+            )
         }
     }
 

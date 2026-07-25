@@ -10,6 +10,7 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             OverviewView(
+                selectedTab: $selectedTab,
                 showSetup: $showSetup,
                 showAddTransaction: $showAddTransaction,
                 onAddManually: { openAdd(preferScan: false) },

@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=69" />
+    <link rel="stylesheet" href="./styles.css?v=70" />
   </head>
   <body>
     <main class="app-shell" data-tab="overview">
@@ -88,12 +88,30 @@
             <div class="home-month-plan-track" aria-hidden="true">
               <div id="monthPlanFill" class="home-month-plan-fill"></div>
             </div>
+            <p id="paydayCountdown" class="home-hero-hint" hidden></p>
+            <p id="planWatchLine" class="home-watch-line" hidden></p>
           </div>
         </section>
 
         <section id="upcomingPanel" class="upcoming-section" hidden>
           <p class="section-label">Coming up</p>
           <div id="upcomingList" class="upcoming-list"></div>
+        </section>
+
+        <section id="recentPanel" class="home-feed-section" aria-label="Recent transactions">
+          <div class="section-label-row">
+            <p class="section-label">Recent</p>
+            <button id="recentSeeAllBtn" class="section-link" type="button">See all</button>
+          </div>
+          <div id="recentList" class="home-feed-card"></div>
+        </section>
+
+        <section id="goalsPeekPanel" class="home-feed-section" aria-label="Goals" hidden>
+          <div class="section-label-row">
+            <p class="section-label">Goals</p>
+            <button id="goalsSeeAllBtn" class="section-link" type="button">See all</button>
+          </div>
+          <div id="goalsPeekList" class="home-feed-card"></div>
         </section>
 
         <section class="where-section" aria-label="Category progress">
@@ -799,7 +817,7 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=69"></script>
+    <script type="module" src="./app.js?v=70"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js?v=68").then((reg) => {

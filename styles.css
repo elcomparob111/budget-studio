@@ -3330,3 +3330,150 @@ td.amount { font-weight: 700; color: var(--ink); }
     width: 100%;
   }
 }
+
+/* —— Home richness: watch, recent, goals peek —— */
+.home-watch-line {
+  margin: 10px 0 0;
+  color: var(--amber);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.home-watch-line.is-over {
+  color: var(--red);
+}
+
+.section-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-label-row .section-label {
+  margin: 0;
+}
+
+.section-link {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.section-link:hover,
+.section-link:focus-visible {
+  color: var(--ink);
+}
+
+.home-feed-section {
+  display: grid;
+  gap: 10px;
+}
+
+.home-feed-card {
+  display: grid;
+  gap: 0;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.home-feed-empty {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 14px 4px;
+}
+
+.home-feed-empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.home-feed-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 4px;
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-feed-row:first-child {
+  border-top: 0;
+}
+
+.home-feed-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-feed-copy strong {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-feed-copy small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-feed-amount {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-feed-amount.is-income {
+  color: var(--green);
+}
+
+.home-goal-row {
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+}
+
+.home-goal-pct {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-goal-bar {
+  grid-column: 1 / -1;
+  display: block;
+  height: 5px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: var(--input);
+  overflow: hidden;
+}
+
+.home-goal-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--soft-green);
+}

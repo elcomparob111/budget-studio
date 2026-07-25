@@ -421,6 +421,14 @@ const elements = {
   heroSpentMetric: document.querySelector("#heroSpentMetric"),
   monthPlanLabel: document.querySelector("#monthPlanLabel"),
   monthPlanFill: document.querySelector("#monthPlanFill"),
+  paydayCountdown: document.querySelector("#paydayCountdown"),
+  planWatchLine: document.querySelector("#planWatchLine"),
+  recentPanel: document.querySelector("#recentPanel"),
+  recentList: document.querySelector("#recentList"),
+  recentSeeAllBtn: document.querySelector("#recentSeeAllBtn"),
+  goalsPeekPanel: document.querySelector("#goalsPeekPanel"),
+  goalsPeekList: document.querySelector("#goalsPeekList"),
+  goalsSeeAllBtn: document.querySelector("#goalsSeeAllBtn"),
   paySchedulePeriodPreview: document.querySelector("#paySchedulePeriodPreview"),
   payScheduleForm: document.querySelector("#payScheduleForm"),
   payScheduleDialog: document.querySelector("#payScheduleDialog"),
@@ -1126,6 +1134,20 @@ function attachEvents() {
   elements.nextMonthBtn?.addEventListener("click", () => shiftMonth(1));
   elements.homePrevMonthBtn?.addEventListener("click", () => shiftMonth(-1));
   elements.homeNextMonthBtn?.addEventListener("click", () => shiftMonth(1));
+  elements.recentSeeAllBtn?.addEventListener("click", () => switchTab("activity"));
+  elements.goalsSeeAllBtn?.addEventListener("click", () => switchTab("goals"));
+  elements.recentList?.addEventListener("click", (event) => {
+    const addBtn = event.target.closest("[data-recent-add]");
+    if (addBtn) {
+      openQuickAdd();
+      return;
+    }
+    const row = event.target.closest("[data-recent-id]");
+    if (row?.dataset.recentId) openEditDialog(row.dataset.recentId);
+  });
+  elements.goalsPeekList?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-goals-tab]")) switchTab("goals");
+  });
   const openMonthPicker = () => {
     try {
       elements.monthInput.showPicker();
@@ -2084,10 +2106,144 @@ function renderDashboard() {
     elements.monthPlanFill.classList.toggle("is-over", planRatio > 1);
   }
 
+  renderPaydayCountdown(paySummary, month);
+  renderPlanWatch(summary.categoryRows);
   updatePayScheduleSummary();
   renderProgress(summary.categoryRows);
   renderUpcoming();
+  renderRecentTransactions(month);
+  renderGoalsPeek();
   renderIdentityUI();
+}
+
+function paydayCountdownLabel(periodEnd, today = todayString()) {
+  const end = parseLocalDate(periodEnd);
+  const now = parseLocalDate(today);
+  if (!end || !now) return null;
+  const days = Math.round((end - now) / 86400000);
+  if (days === 0) return "Payday today";
+  if (days === 1) return "Payday in 1 day";
+  if (days > 1) return `Payday in ${days} days`;
+  if (days === -1) return "Payday was yesterday";
+  return null;
+}
+
+function renderPaydayCountdown(paySummary, month) {
+  if (!elements.paydayCountdown) return;
+  const isCurrentMonth = month === currentMonthKey();
+  const label =
+    paySummary && isCurrentMonth && paySummary.end
+      ? paydayCountdownLabel(paySummary.end)
+      : null;
+  if (label) {
+    elements.paydayCountdown.textContent = label;
+    elements.paydayCountdown.hidden = false;
+  } else {
+    elements.paydayCountdown.textContent = "";
+    elements.paydayCountdown.hidden = true;
+  }
+}
+
+function planWatchLabel(categoryRows) {
+  const budgeted = categoryRows.filter((row) => row.budget > 0);
+  const over = budgeted.filter((row) => row.spent > row.budget);
+  if (over.length) {
+    return `${over.length} ${over.length === 1 ? "category" : "categories"} over plan`;
+  }
+  const watch = budgeted.filter((row) => row.spent / row.budget >= 0.85);
+  if (watch.length) {
+    return `${watch.length} ${watch.length === 1 ? "category" : "categories"} on watch`;
+  }
+  return null;
+}
+
+function renderPlanWatch(categoryRows) {
+  if (!elements.planWatchLine) return;
+  const label = planWatchLabel(categoryRows);
+  if (label) {
+    elements.planWatchLine.textContent = label;
+    elements.planWatchLine.hidden = false;
+    elements.planWatchLine.classList.toggle("is-over", /over plan$/.test(label));
+  } else {
+    elements.planWatchLine.textContent = "";
+    elements.planWatchLine.hidden = true;
+    elements.planWatchLine.classList.remove("is-over");
+  }
+}
+
+function renderRecentTransactions(month) {
+  if (!elements.recentList) return;
+  const rows = state.transactions
+    .filter((item) => monthKeyFromDate(item.date) === month)
+    .sort((a, b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)))
+    .slice(0, 5);
+
+  if (!rows.length) {
+    elements.recentList.innerHTML = `
+      <div class="home-feed-empty">
+        <p>Nothing logged this month yet.</p>
+        <button class="primary-button" type="button" data-recent-add>Add transaction</button>
+      </div>
+    `;
+    return;
+  }
+
+  elements.recentList.innerHTML = rows
+    .map((item) => {
+      const income = item.type === "Income";
+      const title = item.description || item.category;
+      return `
+        <button class="home-feed-row" type="button" data-recent-id="${escapeHtml(item.id)}">
+          <span class="home-feed-copy">
+            <strong>${escapeHtml(title)}</strong>
+            <small>${escapeHtml(formatShortDate(item.date))}${item.category ? ` · ${escapeHtml(item.category)}` : ""}</small>
+          </span>
+          <span class="home-feed-amount ${income ? "is-income" : ""}">${income ? "+" : ""}${money(item.amount)}</span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function renderGoalsPeek() {
+  if (!elements.goalsPeekPanel || !elements.goalsPeekList) return;
+  if (!Array.isArray(state.savingsGoals)) state.savingsGoals = [];
+  const goals = [...state.savingsGoals];
+  if (!goals.length) {
+    elements.goalsPeekPanel.hidden = true;
+    elements.goalsPeekList.innerHTML = "";
+    return;
+  }
+  elements.goalsPeekPanel.hidden = false;
+
+  const ranked = goals
+    .map((goal) => {
+      const progress = goal.target > 0 ? Math.min(1, goal.current / goal.target) : 0;
+      const incomplete = goal.current < goal.target;
+      return { goal, progress, incomplete };
+    })
+    .sort((a, b) => {
+      if (a.incomplete !== b.incomplete) return a.incomplete ? -1 : 1;
+      return b.progress - a.progress;
+    })
+    .slice(0, 2);
+
+  elements.goalsPeekList.innerHTML = ranked
+    .map(({ goal, progress }) => {
+      const width = Math.round(progress * 100);
+      const done = goal.current >= goal.target;
+      return `
+        <button class="home-feed-row home-goal-row" type="button" data-goals-tab>
+          <span class="home-feed-copy">
+            <strong>${escapeHtml(goal.name)}</strong>
+            <small>${money(goal.current)} of ${money(goal.target)}${done ? " · Done" : ""}</small>
+          </span>
+          <span class="home-goal-pct">${width}%</span>
+          <span class="home-goal-bar" aria-hidden="true"><span style="width:${width}%"></span></span>
+        </button>
+      `;
+    })
+    .join("");
 }
 
 function renderActivityCharts() {

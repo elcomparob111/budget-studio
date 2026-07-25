@@ -69,6 +69,7 @@ enum BudgetCalculator {
         let left = income - spent
         return PayPeriodSummary(
             rangeLabel: "\(formatShort(period.start)) – \(formatShort(period.end))",
+            end: period.end,
             income: income,
             spent: spent,
             left: left
@@ -219,7 +220,19 @@ enum BudgetCalculator {
         date >= start && date <= end
     }
 
-    private static func parseDate(_ value: String) -> Date? {
+    /// Days-until label for the current paycheck window end (next payday).
+    static func paydayCountdownLabel(periodEnd: String, now: Date = Date()) -> String? {
+        guard let endDate = parseDate(periodEnd),
+              let today = parseDate(todayString(now: now)) else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: today, to: endDate).day ?? 0
+        if days == 0 { return "Payday today" }
+        if days == 1 { return "Payday in 1 day" }
+        if days > 1 { return "Payday in \(days) days" }
+        if days == -1 { return "Payday was yesterday" }
+        return nil
+    }
+
+    static func parseDate(_ value: String) -> Date? {
         let formatter = DateFormatter()
         formatter.calendar = Calendar.current
         formatter.locale = Locale(identifier: "en_US_POSIX")
