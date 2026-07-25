@@ -26,7 +26,7 @@ import {
   subscribeSharedBudget,
   getCaptchaSiteKey,
   getAuthProviders,
-} from "./sync.js";
+} from "./sync.js?v=77";
 import {
   AUTH_PASSWORD_HINT,
   assertImportFileSize,
@@ -43,7 +43,7 @@ import {
   validateEmail,
   validatePassword,
   validateTransactionType,
-} from "./security.js";
+} from "./security.js?v=77";
 
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
@@ -2135,13 +2135,45 @@ function renderDashboard() {
     elements.monthPlanFill.classList.toggle("is-over", planRatio > 1);
   }
 
-  renderPaydayCountdown(paySummary, month);
-  renderPlanWatch(summary.categoryRows);
-  updatePayScheduleSummary();
-  renderProgress(summary.categoryRows);
-  renderUpcoming();
-  renderRecentTransactions(month);
-  renderGoalsPeek();
+  // Keep Home usable even if one section throws (stale SW / bad profile data).
+  try {
+    renderPaydayCountdown(paySummary, month);
+  } catch (error) {
+    safeLog("warn", "Payday countdown render failed", { message: String(error?.message || error) });
+  }
+  try {
+    renderPlanWatch(summary.categoryRows);
+  } catch (error) {
+    safeLog("warn", "Plan watch render failed", { message: String(error?.message || error) });
+  }
+  try {
+    updatePayScheduleSummary();
+  } catch (error) {
+    safeLog("warn", "Pay schedule summary failed", { message: String(error?.message || error) });
+  }
+  try {
+    renderProgress(summary.categoryRows);
+  } catch (error) {
+    safeLog("warn", "Category progress render failed", { message: String(error?.message || error) });
+    if (elements.categoryProgress) {
+      elements.categoryProgress.innerHTML = `<div class="empty-state">Set budgets or log spending to track progress.</div>`;
+    }
+  }
+  try {
+    renderUpcoming();
+  } catch (error) {
+    safeLog("warn", "Upcoming render failed", { message: String(error?.message || error) });
+  }
+  try {
+    renderRecentTransactions(month);
+  } catch (error) {
+    safeLog("warn", "Recent render failed", { message: String(error?.message || error) });
+  }
+  try {
+    renderGoalsPeek();
+  } catch (error) {
+    safeLog("warn", "Goals peek render failed", { message: String(error?.message || error) });
+  }
   renderIdentityUI();
 }
 
