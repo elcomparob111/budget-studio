@@ -25,6 +25,7 @@ import {
   deleteSharedBudget,
   subscribeSharedBudget,
   getCaptchaSiteKey,
+  getAuthProviders,
 } from "./sync.js";
 import {
   AUTH_PASSWORD_HINT,
@@ -617,6 +618,7 @@ const elements = {
   authPasskeyBtn: document.querySelector("#authPasskeyBtn"),
   authAppleBtn: document.querySelector("#authAppleBtn"),
   authGoogleBtn: document.querySelector("#authGoogleBtn"),
+  authDivider: document.querySelector("#authDivider"),
   authCaptcha: document.querySelector("#authCaptcha"),
   authNameLabel: document.querySelector("#authNameLabel"),
   authNameInput: document.querySelector("#authNameInput"),
@@ -3848,8 +3850,7 @@ function setAuthMode(mode) {
       ? `Enter a new password for your Budget Studio account. ${AUTH_PASSWORD_HINT}.`
       : "Sign in and your budget follows you on every device — private to your account only.";
 
-  if (elements.authProviders) elements.authProviders.hidden = !showProviders;
-  if (elements.authPasskeyBtn) elements.authPasskeyBtn.hidden = signup;
+  applyAuthProviderVisibility(showProviders, signup);
   elements.authNameLabel.hidden = !signup;
   elements.authNameInput.required = signup;
   elements.authEmailLabel.hidden = recovery || confirm;
@@ -4081,6 +4082,25 @@ function requireCaptchaToken() {
     throw new Error("Complete the CAPTCHA check and try again.");
   }
   return authCaptchaToken;
+}
+
+function applyAuthProviderVisibility(showProviders, signup) {
+  const providers = getAuthProviders();
+  const any =
+    providers.google || providers.apple || (providers.passkey && !signup);
+  if (elements.authProviders) elements.authProviders.hidden = !showProviders || !any;
+  if (elements.authPasskeyBtn) {
+    elements.authPasskeyBtn.hidden = !providers.passkey || signup || !showProviders;
+  }
+  if (elements.authAppleBtn) {
+    elements.authAppleBtn.hidden = !providers.apple || !showProviders;
+  }
+  if (elements.authGoogleBtn) {
+    elements.authGoogleBtn.hidden = !providers.google || !showProviders;
+  }
+  if (elements.authDivider) {
+    elements.authDivider.hidden = !showProviders || !any;
+  }
 }
 
 function setAuthProviderBusy(busy) {
@@ -4347,11 +4367,12 @@ function renderIdentityUI() {
     elements.appSubtitle.textContent = "";
   }
   elements.signOutBtn.hidden = localOnlyMode || !currentUser;
+  const passkeyOn = getAuthProviders().passkey;
   if (elements.addPasskeyBtn) {
-    elements.addPasskeyBtn.hidden = localOnlyMode || !currentUser;
+    elements.addPasskeyBtn.hidden = !passkeyOn || localOnlyMode || !currentUser;
   }
   if (elements.passkeyHint) {
-    elements.passkeyHint.hidden = localOnlyMode || !currentUser;
+    elements.passkeyHint.hidden = !passkeyOn || localOnlyMode || !currentUser;
   }
   if (elements.deleteAccountBtn) {
     elements.deleteAccountBtn.hidden = localOnlyMode || !currentUser;

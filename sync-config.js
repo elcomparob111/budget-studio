@@ -11,4 +11,11 @@ export const syncConfig = {
   // in Supabase Dashboard → Authentication → Attack Protection (Free plan).
   // When set, the auth form shows a Turnstile widget and passes captchaToken.
   captchaSiteKey: "",
+  // UI toggles — keep scaffolding in sync.js; flip these when the provider
+  // is enabled in Supabase (and Apple Developer for Sign in with Apple).
+  authProviders: {
+    google: true,
+    apple: false,
+    passkey: false,
+  },
 };

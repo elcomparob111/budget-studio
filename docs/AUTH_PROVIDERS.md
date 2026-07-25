@@ -2,6 +2,8 @@
 
 Free-plan setup for Budget Studio. **Leaked-password protection stays Pro-only** and is out of scope here.
 
+**UI status:** Apple + passkey buttons are hidden (`authProviders` in `sync-config.js` / `SyncConfig` on iOS). Google + email stay visible. Flip the flags when the provider is enabled in Supabase.
+
 Live app: https://elcomparob111.github.io/budget-studio/  
 Dashboard: https://supabase.com/dashboard/project/dhlaqqghjfmgdlkfxlxg/auth/providers
 

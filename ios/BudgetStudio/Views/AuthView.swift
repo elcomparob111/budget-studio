@@ -145,7 +145,7 @@ struct AuthView: View {
     @ViewBuilder
     private var providerButtons: some View {
         VStack(spacing: AppTheme.sm) {
-            if mode == .signIn {
+            if SyncConfig.authPasskeyEnabled, mode == .signIn {
                 Button {
                     Task { await store.signInWithPasskey() }
                 } label: {
@@ -160,28 +160,32 @@ struct AuthView: View {
                 .disabled(store.isLoading)
             }
 
-            SignInWithAppleButton(.signIn) { request in
-                request.requestedScopes = [.email, .fullName]
-            } onCompletion: { result in
-                Task { await handleAppleCompletion(result) }
+            if SyncConfig.authAppleEnabled {
+                SignInWithAppleButton(.signIn) { request in
+                    request.requestedScopes = [.email, .fullName]
+                } onCompletion: { result in
+                    Task { await handleAppleCompletion(result) }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .disabled(store.isLoading)
             }
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: 48)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .disabled(store.isLoading)
 
-            Button {
-                Task { await store.signInWithGoogle() }
-            } label: {
-                Label("Continue with Google", systemImage: "g.circle.fill")
-                    .font(.app(15, weight: .semibold))
-                    .foregroundStyle(AppTheme.primaryText)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(AppTheme.inputFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            if SyncConfig.authGoogleEnabled {
+                Button {
+                    Task { await store.signInWithGoogle() }
+                } label: {
+                    Label("Continue with Google", systemImage: "g.circle.fill")
+                        .font(.app(15, weight: .semibold))
+                        .foregroundStyle(AppTheme.primaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.inputFill)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .disabled(store.isLoading)
             }
-            .disabled(store.isLoading)
         }
     }
 

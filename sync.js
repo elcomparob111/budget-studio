@@ -110,6 +110,16 @@ export function getCaptchaSiteKey() {
   return String(syncConfig?.captchaSiteKey || "").trim();
 }
 
+/** Which auth provider buttons the UI should show (flags in sync-config.js). */
+export function getAuthProviders() {
+  const p = syncConfig?.authProviders || {};
+  return {
+    google: p.google !== false,
+    apple: Boolean(p.apple),
+    passkey: Boolean(p.passkey),
+  };
+}
+
 export async function signUp(name, email, password, captchaToken = "") {
   assertNotLocked();
   const emailCheck = validateEmail(email);

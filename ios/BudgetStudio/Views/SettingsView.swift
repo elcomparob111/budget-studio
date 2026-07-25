@@ -59,7 +59,9 @@ struct SettingsView: View {
                         } else {
                             faceIDUnavailableSection
                         }
-                        passkeySection
+                        if SyncConfig.authPasskeyEnabled {
+                            passkeySection
+                        }
                     }
 
                     settingsGroup("Money") {
