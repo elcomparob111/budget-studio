@@ -26,7 +26,7 @@ import {
   subscribeSharedBudget,
   getCaptchaSiteKey,
   getAuthProviders,
-} from "./sync.js?v=80";
+} from "./sync.js?v=95";
 import {
   AUTH_PASSWORD_HINT,
   assertImportFileSize,
@@ -43,11 +43,16 @@ import {
   validateEmail,
   validatePassword,
   validateTransactionType,
-} from "./security.js?v=80";
+} from "./security.js?v=95";
 
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
 const THEME_KEY = "budget-studio-theme";
+
+function mascotMarkHtml(size = 56) {
+  const src = document.querySelector(".brand-logo")?.getAttribute("src") || "./icons/icon-192.png";
+  return `<img class="mascot-mark" src="${src}" width="${size}" height="${size}" alt="" />`;
+}
 const PROFILES_KEY = "budget-studio-profiles";
 const CLOUD_DIRTY_KEY = "budget-studio-cloud-dirty";
 const QUICK_ADD_PREFS_KEY = "budget-studio-quick-add-prefs";
@@ -71,6 +76,7 @@ const ICON_TRASH =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>';
 
 const BILL_REMINDERS_KEY = "budget-studio-bill-reminders";
+const AUTH_KNOWN_KEY = "budget-studio-auth-known";
 const BILL_REMINDERS_NOTIFIED_PREFIX = "budget-studio-bill-reminders-notified";
 
 const groupChartColors = {
@@ -440,7 +446,7 @@ const elements = {
   categoryProgress: document.querySelector("#categoryProgress"),
   transactionsList: document.querySelector("#transactionsList"),
   typeFilterChips: document.querySelector("#typeFilterChips"),
-  categoryFilterChips: document.querySelector("#categoryFilterChips"),
+  categoryFilter: document.querySelector("#categoryFilter"),
   activityCalendarGrid: document.querySelector("#activityCalendarGrid"),
   activityCalendarMonth: document.querySelector("#activityCalendarMonth"),
   activityDayStrip: document.querySelector("#activityDayStrip"),
@@ -526,7 +532,7 @@ const elements = {
   activityIncomeMetric: document.querySelector("#activityIncomeMetric"),
   activitySpentMetric: document.querySelector("#activitySpentMetric"),
   activityNetMetric: document.querySelector("#activityNetMetric"),
-  activityNetChip: document.querySelector("#activityNetChip"),
+  activityNetCaption: document.querySelector("#activityNetCaption"),
   goalsList: document.querySelector("#goalsList"),
   goalsSavedTotal: document.querySelector("#goalsSavedTotal"),
   goalsLeftTotal: document.querySelector("#goalsLeftTotal"),
@@ -715,7 +721,9 @@ async function handleUserChanged(user, info) {
     state = createEmptyState();
     renderIdentityUI();
     render();
-    openAuthGate();
+    // First-time visitors (no prior successful sign-in on this device) land on the
+    // sign-up form, not "Welcome back" — most strangers arriving here are new.
+    openAuthGate(localStorage.getItem(AUTH_KNOWN_KEY) ? "signin" : "signup");
     return;
   }
 
@@ -733,6 +741,7 @@ async function handleUserChanged(user, info) {
   }
 
   closeAuthGate();
+  localStorage.setItem(AUTH_KNOWN_KEY, "1");
   state = loadState();
   populateCategorySelect();
   renderIdentityUI();
@@ -1210,12 +1219,9 @@ function attachEvents() {
     syncTypeFilterChips();
     renderTransactions();
   });
-  elements.categoryFilterChips?.addEventListener("click", (event) => {
-    const chip = event.target.closest("[data-category-filter]");
-    if (!chip) return;
-    const value = chip.dataset.categoryFilter;
+  elements.categoryFilter?.addEventListener("change", () => {
+    const value = elements.categoryFilter.value;
     activityCategoryFilter = value === "" ? null : value;
-    renderCategoryFilterChips();
     renderTransactions();
   });
 
@@ -1239,9 +1245,9 @@ function attachEvents() {
         elements.searchInput.value = "";
         elements.typeFilter.value = "All";
         activityCategoryFilter = null;
+        if (elements.categoryFilter) elements.categoryFilter.value = "";
         activityDayFilter = null;
         syncTypeFilterChips();
-        renderCategoryFilterChips();
         renderActivityCalendar();
         renderTransactions();
       } else {
@@ -2180,7 +2186,12 @@ function renderDashboard() {
   } catch (error) {
     safeLog("warn", "Category progress render failed", { message: String(error?.message || error) });
     if (elements.categoryProgress) {
-      elements.categoryProgress.innerHTML = `<div class="empty-state">Set budgets or log spending to track progress.</div>`;
+      elements.categoryProgress.innerHTML = `
+        <div class="empty-state mascot-empty">
+          ${mascotMarkHtml(64)}
+          <p>Set budgets or log spending to track progress.</p>
+        </div>
+      `;
     }
   }
   try {
@@ -2265,7 +2276,8 @@ function renderRecentTransactions(month) {
 
   if (!rows.length) {
     elements.recentList.innerHTML = `
-      <div class="home-feed-empty">
+      <div class="home-feed-empty mascot-empty">
+        ${mascotMarkHtml(56)}
         <p>Nothing logged this month yet.</p>
         <button class="primary-button" type="button" data-recent-add>Add transaction</button>
       </div>
@@ -2377,7 +2389,12 @@ function renderProgress(rows) {
   // Dynamic: hide idle $0/$0; reappear when spent > 0 or budget > 0.
   const visible = rows.filter((row) => row.spent > 0 || row.budget > 0);
   if (!visible.length) {
-    elements.categoryProgress.innerHTML = `<div class="empty-state">Set budgets or log spending to track progress.</div>`;
+    elements.categoryProgress.innerHTML = `
+      <div class="empty-state mascot-empty">
+        ${mascotMarkHtml(64)}
+        <p>Set budgets or log spending to track progress.</p>
+      </div>
+    `;
     return;
   }
 
@@ -2461,7 +2478,12 @@ function renderBarChart(rows) {
   if (!elements.categoryChart) return;
   const data = rows.filter((row) => row.spent > 0).slice(0, 8);
   if (!data.length) {
-    elements.categoryChart.innerHTML = `<div class="empty-state">No spending logged for this month.</div>`;
+    elements.categoryChart.innerHTML = `
+      <div class="empty-state mascot-empty">
+        ${mascotMarkHtml(64)}
+        <p>No spending logged for this month.</p>
+      </div>
+    `;
     return;
   }
 
@@ -2563,8 +2585,8 @@ function syncTypeFilterChips() {
   });
 }
 
-function renderCategoryFilterChips() {
-  if (!elements.categoryFilterChips) return;
+function renderCategoryFilter() {
+  if (!elements.categoryFilter) return;
   const selectedMonth = elements.monthInput.value;
   const names = [
     ...new Set(
@@ -2579,15 +2601,12 @@ function renderCategoryFilterChips() {
     activityCategoryFilter = null;
   }
 
-  const chips = [
-    `<button type="button" class="filter-chip ${activityCategoryFilter == null ? "selected" : ""}" data-category-filter="">All categories</button>`,
-    ...names.map(
-      (name) => `
-        <button type="button" class="filter-chip ${activityCategoryFilter === name ? "selected" : ""}" data-category-filter="${escapeHtml(name)}">${escapeHtml(name)}</button>
-      `,
-    ),
-  ];
-  elements.categoryFilterChips.innerHTML = chips.join("");
+  const current = activityCategoryFilter || "";
+  elements.categoryFilter.innerHTML = [
+    `<option value="">All categories</option>`,
+    ...names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`),
+  ].join("");
+  elements.categoryFilter.value = current;
 }
 
 function dayTotalsForMonth(month) {
@@ -2688,7 +2707,7 @@ function renderActivityCalendar() {
 
 function renderTransactions() {
   syncTypeFilterChips();
-  renderCategoryFilterChips();
+  renderCategoryFilter();
   const query = elements.searchInput.value.trim().toLowerCase();
   const type = elements.typeFilter.value;
   const selectedMonth = elements.monthInput.value;
@@ -2713,13 +2732,15 @@ function renderTransactions() {
   if (!rows.length) {
     const empty = filtersActive
       ? `
-        <div class="tx-empty">
+        <div class="tx-empty mascot-empty">
+          ${mascotMarkHtml(56)}
           <p>No transactions match your search or filter.</p>
           <button class="ghost-button" data-empty-action="clear-filters" type="button">Clear filters</button>
         </div>
       `
       : `
-        <div class="tx-empty">
+        <div class="tx-empty mascot-empty">
+          ${mascotMarkHtml(64)}
           <p>Nothing logged in ${escapeHtml(monthLabel)} yet.</p>
           <button class="primary-button" data-empty-action="quick-add" type="button">Add your first transaction</button>
         </div>
@@ -2738,6 +2759,9 @@ function renderTransactions() {
   if (elements.transactionsList) {
     elements.transactionsList.innerHTML = [...byDay.entries()]
       .map(([date, items]) => {
+        const dayTotal = items.reduce((sum, item) => {
+          return sum + (item.type === "Income" ? item.amount : -item.amount);
+        }, 0);
         const dayRows = items
           .map((item) => {
             const title = item.description || item.category;
@@ -2749,18 +2773,22 @@ function renderTransactions() {
                   <div class="tx-row-title">${escapeHtml(title)}${authorTag(item)}</div>
                   <div class="tx-row-meta">${escapeHtml(meta)}</div>
                 </div>
-                <div class="tx-row-amount ${income ? "is-income" : "is-expense"}">${income ? "+" : ""}${money(item.amount)}</div>
-                <div class="tx-row-actions">
-                  <button class="edit-button" data-edit-id="${escapeHtml(item.id)}" type="button">Edit</button>
-                  <button class="delete-button" data-delete-id="${escapeHtml(item.id)}" type="button">Delete</button>
-                </div>
+                <div class="tx-row-amount ${income ? "is-income" : "is-expense"}">${income ? "+" : "−"}${money(item.amount)}</div>
+                <button class="tx-delete-btn" data-delete-id="${escapeHtml(item.id)}" type="button" aria-label="Delete ${escapeHtml(title)}">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 4h6m-8 4h10m-1.5 0-.7 11.2a1.5 1.5 0 0 1-1.5 1.4H9.7a1.5 1.5 0 0 1-1.5-1.4L7.5 8m3 3.5v6m3-6v6" />
+                  </svg>
+                </button>
               </div>
             `;
           })
           .join("");
         return `
           <section class="tx-day-group">
-            <p class="tx-day-label">${escapeHtml(formatShortDate(date))}</p>
+            <div class="tx-day-head">
+              <p class="tx-day-label">${escapeHtml(formatShortDate(date))}</p>
+              <span class="tx-day-total ${dayTotal >= 0 ? "is-income" : "is-expense"}">${dayTotal >= 0 ? "+" : "−"}${money(Math.abs(dayTotal))}</span>
+            </div>
             ${dayRows}
           </section>
         `;
@@ -2800,9 +2828,11 @@ function renderActivityCashflow() {
     elements.activityNetMetric.textContent = money(net);
     elements.activityNetMetric.classList.toggle("is-negative", net < 0);
   }
-  if (elements.activityNetChip) {
-    elements.activityNetChip.textContent = `${money(net)} net`;
-    elements.activityNetChip.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
+  if (elements.activityNetCaption) {
+    const label = formatMonthLabel(month);
+    elements.activityNetCaption.textContent = label
+      ? `Net for ${label}`
+      : "Net after income and spending";
   }
 }
 
@@ -2836,7 +2866,8 @@ function renderGoals() {
 
   if (!goals.length) {
     elements.goalsList.innerHTML = `
-      <div class="goals-empty">
+      <div class="goals-empty mascot-empty">
+        ${mascotMarkHtml(72)}
         <strong>What are you saving for?</strong>
         <p>Emergency fund, a trip, a new laptop — pick a target and watch it grow.</p>
         <button class="primary-button" type="button" data-empty-new-goal>Create your first goal</button>
@@ -3351,15 +3382,22 @@ function renderUpcoming() {
   if (!due.length) return;
   const dayFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
   elements.upcomingList.innerHTML = due
-    .map(
-      ({ item, date }) => `
+    .map(({ item, date }) => {
+      const income = item.type === "Income";
+      const meta = [item.category, item.account, income ? "Income" : null]
+        .filter(Boolean)
+        .join(" · ");
+      return `
         <div class="upcoming-row">
           <span class="upcoming-date">${dayFormat.format(date)}</span>
-          <span class="upcoming-name">${escapeHtml(item.description)}</span>
-          <span class="upcoming-amount ${item.type === "Income" ? "is-income" : ""}">${item.type === "Income" ? "+" : ""}${money(item.amount)}</span>
+          <div class="upcoming-copy">
+            <span class="upcoming-name">${escapeHtml(item.description || item.category || "Upcoming")}</span>
+            <small class="upcoming-meta">${escapeHtml(meta)}</small>
+          </div>
+          <span class="upcoming-amount ${income ? "is-income" : ""}">${income ? "+" : "−"}${money(item.amount)}</span>
         </div>
-      `,
-    )
+      `;
+    })
     .join("");
 }
 
@@ -4898,7 +4936,7 @@ function applyTheme(theme) {
     elements.themeToggleBtn.setAttribute("aria-label", elements.themeToggleBtn.title);
   }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = isDark ? "#121212" : "#F9F9F9";
+  if (meta) meta.content = isDark ? "#2A221C" : "#F7F1EA";
 }
 
 function toggleTheme() {

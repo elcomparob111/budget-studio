@@ -1,19 +1,19 @@
-const CACHE = "budget-studio-v80";
+const CACHE = "budget-studio-v95";
 const ASSETS = [
   "./",
   "./index.html",
-  "./boot.js?v=80",
-  "./app.js?v=80",
-  "./sync.js?v=80",
-  "./sync-config.js?v=80",
-  "./security.js?v=80",
-  "./tokens.css?v=80",
-  "./styles.css?v=80",
+  "./boot.js?v=95",
+  "./app.js?v=95",
+  "./sync.js?v=95",
+  "./sync-config.js?v=95",
+  "./security.js?v=95",
+  "./tokens.css?v=95",
+  "./styles.css?v=95",
   "./manifest.json",
   "./privacy.html",
   "./terms.html",
-  "./icons/icon-192.png?v=80",
-  "./icons/icon-512.png?v=80",
+  "./icons/icon-192.png?v=95",
+  "./icons/icon-512.png?v=95",
 ];
 
 self.addEventListener("install", (event) => {

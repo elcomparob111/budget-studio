@@ -19,7 +19,7 @@
     <meta property="og:url" content="https://elcomparob111.github.io/budget-studio/" />
     <meta
       property="og:image"
-      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=80"
+      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=95"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -35,7 +35,7 @@
     />
     <meta
       name="twitter:image"
-      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=80"
+      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=95"
     />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -47,9 +47,9 @@
     />
     <title>Budget Studio — Know what is left before payday</title>
     <!-- External only: meta CSP script-src has no 'unsafe-inline'. -->
-    <script src="./boot.js?v=80"></script>
-    <link rel="icon" href="./icons/icon-192.png?v=80" type="image/png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=80" />
+    <script src="./boot.js?v=95"></script>
+    <link rel="icon" href="./icons/icon-192.png?v=95" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=95" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -57,14 +57,20 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./tokens.css?v=80" />
-    <link rel="stylesheet" href="./styles.css?v=80" />
+    <link rel="stylesheet" href="./tokens.css?v=95" />
+    <link rel="stylesheet" href="./styles.css?v=95" />
   </head>
   <body>
     <main class="app-shell" data-tab="overview">
       <header class="app-header">
         <div class="brand-lockup">
-          <img class="brand-logo" src="./icons/icon-192.png?v=80" width="36" height="36" alt="" />
+          <img
+            class="brand-logo"
+            src="./icons/icon-192.png?v=95"
+            width="48"
+            height="48"
+            alt="Budget Studio dogs"
+          />
           <div>
             <h1 id="appTitle">Budget Studio</h1>
             <p id="appSubtitle" class="header-subtitle" hidden></p>
@@ -171,20 +177,17 @@
 
       <section id="activityTab" class="tab-panel" data-tab-panel="activity" hidden>
         <section class="activity-hero" aria-label="Income versus spending">
-          <div class="activity-hero-top">
-            <div>
-              <p class="home-hero-label">This month</p>
-              <p id="activityNetMetric" class="home-hero-amount">$0</p>
-              <p class="home-hero-caption">Net after income and spending</p>
-            </div>
-            <span id="activityNetChip" class="money-chip">$0 net</span>
+          <div class="activity-hero-main">
+            <p class="home-hero-label">This month</p>
+            <p id="activityNetMetric" class="home-hero-amount">$0</p>
+            <p id="activityNetCaption" class="home-hero-caption">Net after income and spending</p>
           </div>
-          <div class="home-hero-stats activity-hero-stats">
-            <div class="home-hero-stat">
+          <div class="activity-hero-breakdown" role="group" aria-label="Income and spending">
+            <div class="activity-hero-cell">
               <span>In</span>
               <strong id="activityIncomeMetric" class="is-income">$0</strong>
             </div>
-            <div class="home-hero-stat">
+            <div class="activity-hero-cell">
               <span>Out</span>
               <strong id="activitySpentMetric" class="is-expense">$0</strong>
             </div>
@@ -224,21 +227,27 @@
           </div>
         </section>
 
-        <section class="panel table-panel">
+        <section class="panel table-panel activity-tx-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Review</p>
               <h2>Transactions</h2>
             </div>
           </div>
           <div class="activity-filters">
-            <input id="searchInput" type="search" placeholder="Search description, category, account" />
-            <div id="typeFilterChips" class="filter-chip-row" role="group" aria-label="Transaction type">
-              <button type="button" class="filter-chip selected" data-type-filter="All">All</button>
-              <button type="button" class="filter-chip" data-type-filter="Expense">Expense</button>
-              <button type="button" class="filter-chip" data-type-filter="Income">Income</button>
+            <input id="searchInput" type="search" placeholder="Search transactions" />
+            <div class="activity-filter-bar">
+              <div id="typeFilterChips" class="filter-chip-row" role="group" aria-label="Transaction type">
+                <button type="button" class="filter-chip selected" data-type-filter="All">All</button>
+                <button type="button" class="filter-chip" data-type-filter="Expense">Expense</button>
+                <button type="button" class="filter-chip" data-type-filter="Income">Income</button>
+              </div>
+              <label class="activity-category-filter">
+                <span class="visually-hidden">Category</span>
+                <select id="categoryFilter" aria-label="Filter by category">
+                  <option value="">All categories</option>
+                </select>
+              </label>
             </div>
-            <div id="categoryFilterChips" class="filter-chip-row" role="group" aria-label="Category filter"></div>
             <select id="typeFilter" class="visually-hidden" tabindex="-1" aria-hidden="true">
               <option value="All">All types</option>
               <option value="Expense">Expenses</option>
@@ -318,9 +327,20 @@
 
       <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
         <section id="settingsHero" class="settings-hero" aria-label="Account">
-          <p class="home-hero-label">Account</p>
-          <p id="settingsHeroName" class="settings-hero-name">Budget Studio</p>
-          <p id="settingsHeroSub" class="home-hero-caption">Local budget</p>
+          <div class="settings-hero-top">
+            <img
+              class="settings-hero-mark"
+              src="./icons/icon-192.png?v=95"
+              width="72"
+              height="72"
+              alt=""
+            />
+            <div class="settings-hero-copy">
+              <p class="home-hero-label">Account</p>
+              <p id="settingsHeroName" class="settings-hero-name">Budget Studio</p>
+              <p id="settingsHeroSub" class="home-hero-caption">Local budget</p>
+            </div>
+          </div>
         </section>
 
         <p class="section-label">Money</p>
@@ -589,7 +609,13 @@
       <div class="public-gate-shell">
         <header class="public-nav">
           <a class="public-brand" href="./" aria-label="Budget Studio home">
-            <img src="./icons/icon-192.png?v=80" width="52" height="52" alt="" />
+            <img
+              class="public-brand-mark"
+              src="./icons/icon-192.png?v=95"
+              width="64"
+              height="64"
+              alt=""
+            />
             <span>Budget Studio</span>
           </a>
           <nav aria-label="Legal">
@@ -619,21 +645,42 @@
               </div>
               <ul class="public-trust" aria-label="Product highlights">
                 <li>Paycheck planning</li>
-                <li>Web + iPhone sync</li>
+                <li>iPhone app coming soon</li>
                 <li>CSV + JSON export</li>
               </ul>
             </section>
 
+            <aside class="public-mascot" aria-label="Budget Studio mascots">
+              <div class="public-mascot-mark">
+                <img
+                  src="./icons/icon-512.png?v=95"
+                  width="140"
+                  height="140"
+                  alt="Charlie the golden retriever and Luna the dachshund guarding a stack of cash"
+                />
+              </div>
+              <div class="public-mascot-copy">
+                <p class="public-mascot-kicker">The mascots</p>
+                <p class="public-mascot-title">Charlie and Luna watch the budget so you don't have to.</p>
+                <p class="public-mascot-lede">
+                  Soft hearts, short legs, and strong opinions about the cash pile.
+                </p>
+              </div>
+            </aside>
+
             <figure class="public-preview">
               <figcaption>
-                <span>Sample data</span>
-                <strong>Sample paycheck</strong>
+                <span class="public-preview-badge">
+                  <img src="./icons/icon-192.png?v=95" width="22" height="22" alt="" />
+                  Sample data
+                </span>
+                <strong>What a real paycheck looks like here</strong>
               </figcaption>
               <div class="preview-summary">
                 <div>
                   <span>Check left</span>
                   <strong>$1,284</strong>
-                  <small>this pay period</small>
+                  <small>Jul 19 – Aug 2 · payday in 8 days</small>
                 </div>
                 <div class="preview-ring" aria-label="39 percent spent" role="img">
                   <span>39%</span>
@@ -644,31 +691,105 @@
                 <span><small>In</small><strong>$2,100</strong></span>
                 <span><small>Out</small><strong>$816</strong></span>
               </div>
+              <div class="preview-plan" aria-label="Month plan">
+                <div class="preview-plan-head">
+                  <span>Month plan</span>
+                  <span>13% used</span>
+                </div>
+                <div class="preview-plan-track" aria-hidden="true">
+                  <div class="preview-plan-fill"></div>
+                </div>
+              </div>
+              <div class="preview-feed">
+                <div class="preview-feed-head">
+                  <strong>Coming up</strong>
+                </div>
+                <div class="preview-feed-row">
+                  <span>Jul 25</span>
+                  <div>
+                    <strong>Internet bill</strong>
+                    <small>Utilities · Checking</small>
+                  </div>
+                  <em>$60</em>
+                </div>
+                <div class="preview-feed-row">
+                  <span>Aug 1</span>
+                  <div>
+                    <strong>Rent</strong>
+                    <small>Housing · Checking</small>
+                  </div>
+                  <em>$1,800</em>
+                </div>
+              </div>
+              <div class="preview-feed">
+                <div class="preview-feed-head">
+                  <strong>Recent</strong>
+                </div>
+                <div class="preview-feed-row">
+                  <span>Today</span>
+                  <div>
+                    <strong>Streaming</strong>
+                    <small>Subscriptions</small>
+                  </div>
+                  <em>−$39.99</em>
+                </div>
+                <div class="preview-feed-row">
+                  <span>Jul 23</span>
+                  <div>
+                    <strong>Dinner</strong>
+                    <small>Dining Out</small>
+                  </div>
+                  <em>−$64.20</em>
+                </div>
+                <div class="preview-feed-row preview-feed-row-income">
+                  <span>Jul 19</span>
+                  <div>
+                    <strong>Paycheck</strong>
+                    <small>Salary</small>
+                  </div>
+                  <em>+$2,100</em>
+                </div>
+              </div>
               <div class="preview-ledger">
                 <div class="preview-ledger-head">
                   <strong>Where it went</strong>
-                  <span>Budget</span>
+                  <span>Left in budget</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-dot preview-dot-coral" aria-hidden="true"></span>
-                  <div><strong>Groceries</strong><small>$286 spent</small></div>
-                  <span>$234 left</span>
+                  <div><strong>Groceries</strong><small>$128 spent of $650</small></div>
+                  <span>$522 left</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-dot preview-dot-olive" aria-hidden="true"></span>
-                  <div><strong>Transportation</strong><small>$92 spent</small></div>
-                  <span>$108 left</span>
+                  <div><strong>Transportation</strong><small>$46 spent of $400</small></div>
+                  <span>$354 left</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-dot preview-dot-gold" aria-hidden="true"></span>
-                  <div><strong>Dining out</strong><small>$64 spent</small></div>
-                  <span>$86 left</span>
+                  <div><strong>Dining out</strong><small>$64 spent of $350</small></div>
+                  <span>$286 left</span>
                 </div>
               </div>
+              <div class="preview-goal">
+                <div>
+                  <strong>Emergency fund</strong>
+                  <small>$750 of $3,000</small>
+                </div>
+                <span>25%</span>
+              </div>
+              <p class="preview-footnote">Same sample you can open and click around — no account needed.</p>
             </figure>
           </div>
 
           <aside id="publicAuthPanel" class="edit-card profile-card auth-card" aria-labelledby="authTitle">
+            <img
+              class="app-logo public-auth-logo"
+              src="./icons/icon-192.png?v=95"
+              width="72"
+              height="72"
+              alt=""
+            />
             <p class="auth-kicker">Your account</p>
             <h2 id="authTitle">Welcome back</h2>
             <p id="authCopy" class="wizard-copy">
@@ -991,6 +1112,6 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=80"></script>
+    <script type="module" src="./app.js?v=95"></script>
   </body>
 </html>

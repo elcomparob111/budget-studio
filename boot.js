@@ -7,7 +7,7 @@
   }
 
   if (!("serviceWorker" in navigator)) return;
-  var swUrl = new URL("sw.js?v=80", location.href);
+  var swUrl = new URL("sw.js?v=95", location.href);
   navigator.serviceWorker
     .register(swUrl.href)
     .then(function (reg) {
