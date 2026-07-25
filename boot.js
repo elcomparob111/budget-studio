@@ -7,19 +7,11 @@
   }
 
   if (!("serviceWorker" in navigator)) return;
-  var swUrl = new URL("sw.js?v=95", location.href);
+  var swUrl = new URL("sw.js?v=99", location.href);
   navigator.serviceWorker
     .register(swUrl.href)
     .then(function (reg) {
       return reg.update();
     })
     .catch(function () {});
-
-  var refreshing = false;
-  navigator.serviceWorker.addEventListener("controllerchange", function () {
-    if (refreshing || sessionStorage.getItem("bs-sw-reloaded-v80")) return;
-    refreshing = true;
-    sessionStorage.setItem("bs-sw-reloaded-v80", "1");
-    location.reload();
-  });
 })();

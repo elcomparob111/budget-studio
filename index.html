@@ -19,7 +19,7 @@
     <meta property="og:url" content="https://elcomparob111.github.io/budget-studio/" />
     <meta
       property="og:image"
-      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=95"
+      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=99"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -35,7 +35,7 @@
     />
     <meta
       name="twitter:image"
-      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=95"
+      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=99"
     />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -47,9 +47,9 @@
     />
     <title>Budget Studio — Know what is left before payday</title>
     <!-- External only: meta CSP script-src has no 'unsafe-inline'. -->
-    <script src="./boot.js?v=95"></script>
-    <link rel="icon" href="./icons/icon-192.png?v=95" type="image/png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=95" />
+    <script src="./boot.js?v=99"></script>
+    <link rel="icon" href="./icons/icon-192.png?v=99" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=99" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -57,16 +57,16 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./tokens.css?v=95" />
-    <link rel="stylesheet" href="./styles.css?v=95" />
+    <link rel="stylesheet" href="./tokens.css?v=99" />
+    <link rel="stylesheet" href="./styles.css?v=99" />
   </head>
-  <body>
+  <body class="app-booting">
     <main class="app-shell" data-tab="overview">
       <header class="app-header">
         <div class="brand-lockup">
           <img
             class="brand-logo"
-            src="./icons/icon-192.png?v=95"
+            src="./icons/icon-192.png?v=99"
             width="48"
             height="48"
             alt="Budget Studio dogs"
@@ -255,6 +255,9 @@
             </select>
           </div>
           <div id="transactionsList" class="transactions-list"></div>
+          <button id="activityLoadMoreBtn" class="activity-load-more ghost-button" type="button" hidden>
+            Show more
+          </button>
           <div class="table-wrap activity-table-fallback">
             <table>
               <thead>
@@ -330,7 +333,7 @@
           <div class="settings-hero-top">
             <img
               class="settings-hero-mark"
-              src="./icons/icon-192.png?v=95"
+              src="./icons/icon-192.png?v=99"
               width="72"
               height="72"
               alt=""
@@ -611,7 +614,7 @@
           <a class="public-brand" href="./" aria-label="Budget Studio home">
             <img
               class="public-brand-mark"
-              src="./icons/icon-192.png?v=95"
+              src="./icons/icon-192.png?v=99"
               width="64"
               height="64"
               alt=""
@@ -639,9 +642,6 @@
                     <path d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
                 </button>
-                <button id="publicCreateAccountBtn" class="public-secondary" type="button">
-                  Create an account
-                </button>
               </div>
               <ul class="public-trust" aria-label="Product highlights">
                 <li>Paycheck planning</li>
@@ -653,7 +653,7 @@
             <figure class="public-preview">
               <figcaption>
                 <span class="public-preview-badge">
-                  <img src="./icons/icon-192.png?v=95" width="22" height="22" alt="" />
+                  <img src="./icons/icon-192.png?v=99" width="22" height="22" alt="" />
                   Sample data
                 </span>
                 <strong>What a real paycheck looks like here</strong>
@@ -767,7 +767,7 @@
           <aside id="publicAuthPanel" class="edit-card profile-card auth-card" aria-labelledby="authTitle">
             <img
               class="app-logo public-auth-logo"
-              src="./icons/icon-192.png?v=95"
+              src="./icons/icon-192.png?v=99"
               width="72"
               height="72"
               alt=""
@@ -1022,26 +1022,29 @@
           <div id="budgetEditor" class="budget-editor"></div>
         </div>
         <footer class="budgets-sheet-footer">
-          <form id="categoryBuilderForm" class="category-builder">
-            <label>
-              <span>New category</span>
-              <input id="categoryBuilderNameInput" type="text" placeholder="Cell phone, pets, childcare..." autocomplete="off" />
-            </label>
-            <label>
-              <span>Group</span>
-              <select id="categoryBuilderGroupInput">
-                <option>Needs</option>
-                <option>Wants</option>
-                <option>Savings</option>
-              </select>
-            </label>
-            <label>
-              <span>Monthly budget</span>
-              <input id="categoryBuilderBudgetInput" type="number" min="0" step="10" placeholder="0" />
-            </label>
-            <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
-            <p id="categoryBuilderMessage" class="form-message" role="status"></p>
-          </form>
+          <details class="category-builder-disclosure">
+            <summary>Add a category</summary>
+            <form id="categoryBuilderForm" class="category-builder">
+              <label>
+                <span>Category name</span>
+                <input id="categoryBuilderNameInput" type="text" placeholder="Cell phone, pets, childcare..." autocomplete="off" />
+              </label>
+              <label>
+                <span>Group</span>
+                <select id="categoryBuilderGroupInput">
+                  <option>Needs</option>
+                  <option>Wants</option>
+                  <option>Savings</option>
+                </select>
+              </label>
+              <label>
+                <span>Monthly budget</span>
+                <input id="categoryBuilderBudgetInput" type="number" min="0" step="10" placeholder="0" />
+              </label>
+              <button id="categoryBuilderAddBtn" class="secondary-button" type="submit">Add category</button>
+              <p id="categoryBuilderMessage" class="form-message" role="status"></p>
+            </form>
+          </details>
         </footer>
       </div>
     </section>
@@ -1094,6 +1097,6 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=95"></script>
+    <script type="module" src="./app.js?v=99"></script>
   </body>
 </html>

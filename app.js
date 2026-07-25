@@ -26,7 +26,7 @@ import {
   subscribeSharedBudget,
   getCaptchaSiteKey,
   getAuthProviders,
-} from "./sync.js?v=95";
+} from "./sync.js?v=99";
 import {
   AUTH_PASSWORD_HINT,
   assertImportFileSize,
@@ -43,7 +43,7 @@ import {
   validateEmail,
   validatePassword,
   validateTransactionType,
-} from "./security.js?v=95";
+} from "./security.js?v=99";
 
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
@@ -445,6 +445,7 @@ const elements = {
   trendChart: document.querySelector("#trendChart"),
   categoryProgress: document.querySelector("#categoryProgress"),
   transactionsList: document.querySelector("#transactionsList"),
+  activityLoadMoreBtn: document.querySelector("#activityLoadMoreBtn"),
   typeFilterChips: document.querySelector("#typeFilterChips"),
   categoryFilter: document.querySelector("#categoryFilter"),
   activityCalendarGrid: document.querySelector("#activityCalendarGrid"),
@@ -607,7 +608,6 @@ const elements = {
   demoExitBtn: document.querySelector("#demoExitBtn"),
   authGate: document.querySelector("#authGate"),
   publicDemoBtn: document.querySelector("#publicDemoBtn"),
-  publicCreateAccountBtn: document.querySelector("#publicCreateAccountBtn"),
   publicAuthPanel: document.querySelector("#publicAuthPanel"),
   authTitle: document.querySelector("#authTitle"),
   authCopy: document.querySelector("#authCopy"),
@@ -644,6 +644,9 @@ let expandedCategoryName = null;
 let activityCategoryFilter = null;
 /** Activity calendar day filter; ISO date `yyyy-MM-dd` or null. */
 let activityDayFilter = null;
+const ACTIVITY_PAGE_SIZE = 20;
+let activityVisibleCount = ACTIVITY_PAGE_SIZE;
+let activityFilterSignature = "";
 
 let currentUser = null;
 let localOnlyMode = false;
@@ -690,6 +693,7 @@ function init() {
     window.addEventListener("focus", () => refreshFromCloudIfNeeded());
   } catch (error) {
     safeLog("error", "App boot failed", { message: String(error?.message || error) });
+    finishInitialBoot();
     if (elements.tabBar) elements.tabBar.hidden = false;
     const banner = document.createElement("p");
     banner.className = "boot-error";
@@ -697,6 +701,10 @@ function init() {
     banner.textContent = "Budget Studio hit a startup error. Refresh, or open the URL with a trailing slash.";
     document.querySelector("main")?.prepend(banner);
   }
+}
+
+function finishInitialBoot() {
+  document.body.classList.remove("app-booting");
 }
 
 async function handleUserChanged(user, info) {
@@ -711,6 +719,7 @@ async function handleUserChanged(user, info) {
     render();
     if (!state.setupComplete) openWizard(false);
     postDueRecurring();
+    finishInitialBoot();
     return;
   }
 
@@ -724,6 +733,7 @@ async function handleUserChanged(user, info) {
     // First-time visitors (no prior successful sign-in on this device) land on the
     // sign-up form, not "Welcome back" — most strangers arriving here are new.
     openAuthGate(localStorage.getItem(AUTH_KNOWN_KEY) ? "signin" : "signup");
+    finishInitialBoot();
     return;
   }
 
@@ -737,6 +747,7 @@ async function handleUserChanged(user, info) {
     openAuthGate();
     setAuthMode("recovery");
     elements.authPasswordInput.focus();
+    finishInitialBoot();
     return;
   }
 
@@ -746,6 +757,7 @@ async function handleUserChanged(user, info) {
   populateCategorySelect();
   renderIdentityUI();
   render();
+  finishInitialBoot();
 
   // Shared budgets: redeem a pending invite, then check membership. When in a
   // shared budget, its row replaces the personal cloud flow entirely.
@@ -1208,6 +1220,10 @@ function attachEvents() {
   elements.homeMonthLabel?.addEventListener("click", openMonthPicker);
 
   elements.searchInput?.addEventListener("input", renderTransactions);
+  elements.activityLoadMoreBtn?.addEventListener("click", () => {
+    activityVisibleCount += ACTIVITY_PAGE_SIZE;
+    renderTransactions();
+  });
   elements.typeFilter?.addEventListener("change", () => {
     syncTypeFilterChips();
     renderTransactions();
@@ -1495,11 +1511,6 @@ function attachEvents() {
     setMessage("Demo mode loaded. Use Setup when you are ready to make it yours.");
   });
   elements.publicDemoBtn?.addEventListener("click", startPublicDemo);
-  elements.publicCreateAccountBtn?.addEventListener("click", () => {
-    setAuthMode("signup");
-    elements.publicAuthPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.setTimeout(() => elements.authNameInput?.focus(), 240);
-  });
   elements.demoCreateAccountBtn?.addEventListener("click", () => exitPublicDemo("signup"));
   elements.demoExitBtn?.addEventListener("click", () => exitPublicDemo("signin"));
   elements.wizardBackBtn?.addEventListener("click", () => {
@@ -2487,37 +2498,36 @@ function renderBarChart(rows) {
     return;
   }
 
-  const width = 760;
-  const rowHeight = 30;
-  const height = 48 + data.length * rowHeight;
-  const labelWidth = 150;
-  const barWidth = 470;
   const max = Math.max(...data.map((row) => row.spent));
-
-  const rowsSvg = data
-    .map((row, index) => {
-      const y = 34 + index * rowHeight;
-      const w = Math.max(8, (row.spent / max) * barWidth);
-      const fill = chartColorForCategory(row, index);
+  const rowsHtml = data
+    .map((row) => {
+      const width = Math.max(4, (row.spent / max) * 100);
+      const tint = groupTintClass(row.group);
       return `
-        <text x="0" y="${y + 15}" class="svg-label">${escapeHtml(row.name)}</text>
-        <rect x="${labelWidth}" y="${y}" width="${w}" height="18" rx="6" fill="${fill}"></rect>
-        <text x="${labelWidth + w + 10}" y="${y + 14}" class="svg-value">${money(row.spent)}</text>
+        <div class="spend-chart-row" role="listitem">
+          <div class="spend-chart-copy">
+            <span>${escapeHtml(row.name)}</span>
+            <strong>${money(row.spent)}</strong>
+          </div>
+          <div class="spend-chart-track" aria-hidden="true">
+            <span class="tint-${tint}" style="width:${width}%"></span>
+          </div>
+        </div>
       `;
     })
     .join("");
 
   elements.categoryChart.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Spending by category">
-      ${rowsSvg}
-    </svg>
+    <div class="spend-chart-list" role="list" aria-label="Spending by category">
+      ${rowsHtml}
+    </div>
   `;
 }
 
 function renderTrendChart(selectedMonth) {
   if (!elements.trendChart) return;
-  const months = monthRange(selectedMonth, 11);
-  // One pass over all transactions instead of 12 full getMonthSummary() scans.
+  const months = monthRange(selectedMonth, 4);
+  // One pass over all transactions instead of repeated getMonthSummary() scans.
   const byMonth = new Map(months.map((month) => [month, { income: 0, expenses: 0 }]));
   for (const item of state.transactions) {
     const bucket = byMonth.get(monthKeyFromDate(item.date));
@@ -2536,9 +2546,9 @@ function renderTrendChart(selectedMonth) {
     };
   });
 
-  const width = 820;
-  const height = 260;
-  const padding = { top: 18, right: 26, bottom: 42, left: 62 };
+  const width = 420;
+  const height = 220;
+  const padding = { top: 14, right: 14, bottom: 36, left: 52 };
   const values = points.flatMap((point) => [point.income, point.expenses, point.net, 0]);
   const max = Math.max(...values, 100);
   const min = Math.min(...values, 0);
@@ -2564,17 +2574,21 @@ function renderTrendChart(selectedMonth) {
     .join("");
 
   elements.trendChart.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Income, spending, and cash flow trend">
-      ${grid}
-      <line class="zero-line" x1="${padding.left}" x2="${width - padding.right}" y1="${y(0)}" y2="${y(0)}" />
-      <path class="series-income" d="${pathFor("income")}" fill="none" stroke-width="3" stroke-linecap="round" />
-      <path class="series-expense" d="${pathFor("expenses")}" fill="none" stroke-width="3" stroke-linecap="round" />
-      <path class="series-net" d="${pathFor("net")}" fill="none" stroke-width="3" stroke-linecap="round" />
-      ${labels}
-      <circle class="dot-income" cx="610" cy="18" r="5"></circle><text x="620" y="22" class="legend">Income</text>
-      <circle class="dot-expense" cx="690" cy="18" r="5"></circle><text x="700" y="22" class="legend">Spent</text>
-      <circle class="dot-net" cx="760" cy="18" r="5"></circle><text x="770" y="22" class="legend">Net</text>
-    </svg>
+    <div class="trend-chart-key" aria-hidden="true">
+      <span><i class="is-income"></i>Income</span>
+      <span><i class="is-expense"></i>Spent</span>
+      <span><i class="is-net"></i>Net</span>
+    </div>
+    <div class="trend-chart-scroll">
+      <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Income, spending, and cash flow trend">
+        ${grid}
+        <line class="zero-line" x1="${padding.left}" x2="${width - padding.right}" y1="${y(0)}" y2="${y(0)}" />
+        <path class="series-income" d="${pathFor("income")}" fill="none" stroke-width="3" stroke-linecap="round" />
+        <path class="series-expense" d="${pathFor("expenses")}" fill="none" stroke-width="3" stroke-linecap="round" />
+        <path class="series-net" d="${pathFor("net")}" fill="none" stroke-width="3" stroke-linecap="round" />
+        ${labels}
+      </svg>
+    </div>
   `;
 }
 
@@ -2728,6 +2742,17 @@ function renderTransactions() {
   const filtersActive =
     Boolean(query) || type !== "All" || activityCategoryFilter != null || activityDayFilter != null;
   const monthLabel = formatMonthLabel(selectedMonth);
+  const filterSignature = [
+    selectedMonth,
+    query,
+    type,
+    activityCategoryFilter || "",
+    activityDayFilter || "",
+  ].join("|");
+  if (filterSignature !== activityFilterSignature) {
+    activityFilterSignature = filterSignature;
+    activityVisibleCount = ACTIVITY_PAGE_SIZE;
+  }
 
   if (!rows.length) {
     const empty = filtersActive
@@ -2747,11 +2772,13 @@ function renderTransactions() {
       `;
     if (elements.transactionsList) elements.transactionsList.innerHTML = empty;
     if (elements.transactionsBody) elements.transactionsBody.innerHTML = "";
+    if (elements.activityLoadMoreBtn) elements.activityLoadMoreBtn.hidden = true;
     return;
   }
 
+  const visibleRows = rows.slice(0, activityVisibleCount);
   const byDay = new Map();
-  for (const item of rows) {
+  for (const item of visibleRows) {
     if (!byDay.has(item.date)) byDay.set(item.date, []);
     byDay.get(item.date).push(item);
   }
@@ -2797,7 +2824,7 @@ function renderTransactions() {
   }
 
   if (elements.transactionsBody) {
-    elements.transactionsBody.innerHTML = rows
+    elements.transactionsBody.innerHTML = visibleRows
       .map(
         (item) => `
           <tr class="table-row-clickable" data-transaction-id="${escapeHtml(item.id)}">
@@ -2815,6 +2842,14 @@ function renderTransactions() {
         `,
       )
       .join("");
+  }
+
+  if (elements.activityLoadMoreBtn) {
+    const remaining = Math.max(0, rows.length - visibleRows.length);
+    elements.activityLoadMoreBtn.hidden = remaining === 0;
+    elements.activityLoadMoreBtn.textContent = remaining
+      ? `Show ${Math.min(ACTIVITY_PAGE_SIZE, remaining)} more · ${remaining} left`
+      : "Show more";
   }
 }
 
@@ -3774,9 +3809,53 @@ function createEmptyState() {
 function createDemoState() {
   const today = parseLocalDate(todayString());
   const demoDate = (offset) => toDateString(addDays(today, offset));
+  const demoMonthDate = (monthOffset, day) => {
+    const monthStart = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+    const lastDay = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+    monthStart.setDate(Math.min(day, lastDay));
+    return toDateString(monthStart);
+  };
+  const history = [-1, -2, -3].flatMap((monthOffset, index) => [
+    transaction(demoMonthDate(monthOffset, 2), "Income", "Salary", "Paycheck", "Checking", 2100),
+    transaction(demoMonthDate(monthOffset, 16), "Income", "Salary", "Paycheck", "Checking", 2100),
+    transaction(demoMonthDate(monthOffset, 3), "Expense", "Housing", "Rent", "Checking", 1800),
+    transaction(
+      demoMonthDate(monthOffset, 8),
+      "Expense",
+      "Groceries",
+      "Groceries",
+      "Credit Card",
+      485 + index * 22,
+    ),
+    transaction(
+      demoMonthDate(monthOffset, 12),
+      "Expense",
+      "Utilities",
+      "Utilities",
+      "Checking",
+      148 + index * 9,
+    ),
+    transaction(
+      demoMonthDate(monthOffset, 20),
+      "Expense",
+      "Dining Out",
+      "Dining out",
+      "Credit Card",
+      176 + index * 18,
+    ),
+    transaction(
+      demoMonthDate(monthOffset, 24),
+      "Expense",
+      "Transportation",
+      "Gas and transit",
+      "Credit Card",
+      132 + index * 11,
+    ),
+  ]);
   return {
     categories: structuredClone(defaultCategories),
     transactions: [
+      ...history,
       transaction(demoDate(-6), "Income", "Salary", "Paycheck", "Checking", 2100),
       transaction(demoDate(-5), "Expense", "Housing", "Rent set-aside", "Checking", 450),
       transaction(demoDate(-4), "Expense", "Groceries", "Weekly groceries", "Credit Card", 128.47),
@@ -3957,9 +4036,8 @@ function openAuthGate(mode = "signin") {
     setAuthMessage("Sign in — or create an account — to join the shared budget.");
   }
   elements.authGate.hidden = false;
-  elements.authGate.scrollTop = 0;
-  document.body.classList.add("wizard-open");
   document.body.classList.add("public-gate-open");
+  window.scrollTo({ top: 0, left: 0 });
   if (elements.appShell) {
     elements.appShell.hidden = true;
     elements.appShell.inert = true;

@@ -1,5 +1,5 @@
 /* Hallmark · macrostructure: Workbench · genre: Modern Minimal · theme: Coral · hero: H2 Split Diptych · nav: N1a · footer: Ft2 · enrichment: Tier A live product sample · contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57) */
-/* Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 /* Authenticated UI shares Hallmark Coral tokens from tokens.css */
 :root {
   --page: var(--color-paper);
@@ -74,11 +74,18 @@
 
 body {
   margin: 0;
+  min-height: 100svh;
   background: var(--page);
   color: var(--ink);
   font-family: var(--font-body);
   font-weight: 500;
   -webkit-font-smoothing: antialiased;
+}
+
+.app-booting .app-shell,
+.app-booting .tab-bar,
+.app-booting .public-gate {
+  visibility: hidden;
 }
 
 body:not(.public-gate-open) {
@@ -593,9 +600,100 @@ body.wizard-open { overflow: hidden; }
   font-size: 13px;
 }
 
-.chart-panel, .trend-panel { min-height: 280px; }
+.chart-panel, .trend-panel { min-height: 0; }
 .chart-area { min-height: 220px; }
 .chart-area svg { display: block; width: 100%; height: auto; }
+
+#categoryChart {
+  min-height: 0;
+}
+
+.spend-chart-list {
+  display: grid;
+  gap: 14px;
+}
+
+.spend-chart-row {
+  display: grid;
+  gap: 7px;
+}
+
+.spend-chart-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.spend-chart-copy span {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spend-chart-copy strong {
+  flex: none;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.spend-chart-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--ink) 14%, var(--panel));
+}
+
+.spend-chart-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}
+
+.spend-chart-track > .tint-needs { background: var(--color-accent); }
+.spend-chart-track > .tint-wants { background: var(--color-gold); }
+.spend-chart-track > .tint-savings { background: var(--color-olive); }
+
+.chart-area.trend {
+  min-height: 0;
+}
+
+.trend-chart-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trend-chart-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trend-chart-key i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+.trend-chart-key i.is-income { background: var(--green); }
+.trend-chart-key i.is-expense { background: var(--red); }
+
+.trend-chart-scroll {
+  overflow: visible;
+}
+
+.trend-chart-scroll .chart-svg {
+  min-width: 0;
+}
 
 .pay-period-schedule-heading {
   margin: 0 0 6px;
@@ -2431,7 +2529,7 @@ td.amount { font-weight: 700; color: var(--ink); }
 
 .qa-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
 }
@@ -2439,6 +2537,7 @@ td.amount { font-weight: 700; color: var(--ink); }
 .qa-fields label {
   display: grid;
   gap: 4px;
+  min-width: 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
@@ -2460,11 +2559,19 @@ td.amount { font-weight: 700; color: var(--ink); }
   min-height: 44px;
   border-radius: 12px;
   width: 100%;
+  min-width: 0;
 }
 
 .sheet-card .primary-button {
   margin-top: 12px;
   width: 100%;
+}
+
+@media (max-width: 30rem) {
+  .qa-fields label:nth-child(3),
+  .qa-fields label:nth-child(4) {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Transactions table empty states */
@@ -3200,10 +3307,10 @@ td.amount { font-weight: 700; color: var(--ink); }
   background: var(--soft-blue);
 }
 
-.category-dot.group-needs { background: var(--soft-blue); }
-.category-dot.group-wants { background: var(--soft-purple); }
-.category-dot.group-savings { background: var(--soft-green); }
-.category-dot.group-other { background: var(--soft-amber); }
+.category-dot.group-needs { background: var(--color-accent); }
+.category-dot.group-wants { background: var(--color-gold); }
+.category-dot.group-savings { background: var(--color-olive); }
+.category-dot.group-other { background: var(--ink); }
 
 .category-row-name {
   flex: 1;
@@ -3226,7 +3333,7 @@ td.amount { font-weight: 700; color: var(--ink); }
 .category-chevron {
   color: var(--muted);
   font-size: 11px;
-  transition: transform 200ms ease;
+  transition: transform var(--duration-base) var(--ease-standard);
 }
 
 .category-row.is-expanded .category-chevron {
@@ -3234,10 +3341,10 @@ td.amount { font-weight: 700; color: var(--ink); }
 }
 
 .category-row-bar {
-  height: 4px;
+  height: 7px;
   margin-left: 21px;
   border-radius: 999px;
-  background: var(--input);
+  background: color-mix(in oklch, var(--ink) 14%, var(--panel));
   overflow: hidden;
 }
 
@@ -3248,9 +3355,9 @@ td.amount { font-weight: 700; color: var(--ink); }
   background: var(--ink);
 }
 
-.category-row-bar > span.tint-needs { background: var(--soft-blue); }
-.category-row-bar > span.tint-wants { background: var(--soft-purple); }
-.category-row-bar > span.tint-savings { background: var(--soft-green); }
+.category-row-bar > span.tint-needs { background: var(--color-accent); }
+.category-row-bar > span.tint-wants { background: var(--color-gold); }
+.category-row-bar > span.tint-savings { background: var(--color-olive); }
 .category-row-bar > span.is-over { background: var(--red); }
 
 .category-row-meta {
@@ -3419,6 +3526,13 @@ td.amount { font-weight: 700; color: var(--ink); }
   gap: 12px;
 }
 
+.activity-load-more {
+  display: block;
+  min-height: 44px;
+  margin: 16px auto 0;
+  padding-inline: 18px;
+}
+
 .tx-day-group {
   display: grid;
   gap: 0;
@@ -3516,10 +3630,10 @@ td.amount { font-weight: 700; color: var(--ink); }
 .tx-row-amount.is-expense { color: var(--ink); }
 
 .tx-delete-btn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: inline-grid;
   place-items: center;
   padding: 0;
@@ -3927,11 +4041,9 @@ body {
 }
 
 .public-gate {
-  position: fixed;
-  inset: 0;
+  position: relative;
   z-index: 40;
   display: block;
-  overflow-y: auto;
   overflow-x: clip;
   background:
     linear-gradient(125deg, var(--color-paper) 0%, var(--color-paper) 66%, var(--color-paper-deep) 100%);
@@ -4782,11 +4894,9 @@ body {
 }
 
 .public-gate .auth-legal a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  display: inline;
+  min-width: 0;
+  min-height: 0;
   color: var(--color-ink);
   text-underline-offset: 0.18em;
   white-space: nowrap;
@@ -4940,7 +5050,7 @@ body {
   }
 
   .public-brand span {
-    font-size: var(--text-lg);
+    display: none;
   }
 
   .public-actions > button {
@@ -4985,5 +5095,79 @@ body {
   .public-gate *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Keep the category editor usable after the generic edit-card rules later in the cascade. */
+.edit-overlay.budgets-overlay {
+  place-items: stretch;
+  align-items: stretch;
+  padding: 0;
+}
+
+.budgets-overlay .budgets-card {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  overflow: hidden;
+  border-radius: 0;
+  padding: 0;
+}
+
+.category-builder-disclosure {
+  width: 100%;
+}
+
+.category-builder-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+  list-style: none;
+}
+
+.category-builder-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.category-builder-disclosure > summary::after {
+  content: "+";
+  color: var(--muted);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.category-builder-disclosure[open] {
+  max-height: min(60svh, 34rem);
+  overflow: auto;
+}
+
+.category-builder-disclosure[open] > summary::after {
+  content: "−";
+}
+
+.category-builder-disclosure .category-builder {
+  margin-top: 8px;
+}
+
+@media (min-width: 45rem) {
+  .edit-overlay.budgets-overlay {
+    place-items: center;
+    padding: max(20px, env(safe-area-inset-top, 0px)) 24px
+      max(20px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .budgets-overlay .budgets-card {
+    width: min(560px, 100%);
+    height: auto;
+    max-height: min(90svh, 720px);
+    border-radius: var(--radius);
+    padding: 0;
   }
 }

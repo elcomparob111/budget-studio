@@ -1,7 +1,7 @@
 // Cloud sync layer: Supabase Auth (email/password, OAuth, passkeys) + Postgres.
 // Each user's budget lives in the budgets table, readable/writable only by them (row level security).
 // Password hashing, session cookies, and Auth rate limits are handled by Supabase Auth — not this file.
-import { syncConfig } from "./sync-config.js?v=95";
+import { syncConfig } from "./sync-config.js?v=99";
 import {
   assertOwnUserId,
   clearAuthFailures,
@@ -13,7 +13,7 @@ import {
   sanitizeCloudPayload,
   validateEmail,
   validatePassword,
-} from "./security.js?v=95";
+} from "./security.js?v=99";
 
 let supabase = null;
 let lastUid = null;
