@@ -12,7 +12,8 @@ Read [`AGENTS.md`](../AGENTS.md) first, then this file. Do not re-litigate shipp
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Activity spend calendar (web + iOS) | Done | Month grid under Activity hero: per-day spent + income, select day → strip + filter list. Tap again / Clear to reset. SW **v71**. |
+| Dogs protecting money logo | Done | New icon: golden + dachshund guarding bills/coins. Web `icons/*`, iOS AppLogo + AppIcon. SW **v72**. |
+| Activity spend calendar (web + iOS) | Done | Month grid under Activity hero: per-day spent + income, select day → strip + filter list. Tap again / Clear to reset. |
 | Home richness (web + iOS) | Done | Payday countdown, over-plan watch, Recent, Goals peek. SW v70. |
 | Web Check-left Home parity | Done | Check left hero matching iOS. |
 
