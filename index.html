@@ -3,8 +3,40 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#F9F9F9" />
-    <meta name="description" content="Personal budget command center with cloud sync" />
+    <meta name="theme-color" content="#F7F1EA" />
+    <meta
+      name="description"
+      content="Plan each paycheck, track spending, and see what is left with a clear budget you control."
+    />
+    <link rel="canonical" href="https://elcomparob111.github.io/budget-studio/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Budget Studio" />
+    <meta property="og:title" content="Budget Studio — Know what is left before payday" />
+    <meta
+      property="og:description"
+      content="Plan each paycheck, track spending, and see what is left with a clear budget you control."
+    />
+    <meta property="og:url" content="https://elcomparob111.github.io/budget-studio/" />
+    <meta
+      property="og:image"
+      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=80"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Budget Studio sample dashboard showing what is left from a paycheck"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Budget Studio — Know what is left before payday" />
+    <meta
+      name="twitter:description"
+      content="A clear, manual budget you can explore before creating an account."
+    />
+    <meta
+      name="twitter:image"
+      content="https://elcomparob111.github.io/budget-studio/icons/social-preview.png?v=80"
+    />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=()" />
@@ -13,22 +45,26 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; form-action 'self'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net; worker-src 'self'; manifest-src 'self'"
     />
-    <title>Budget Studio</title>
+    <title>Budget Studio — Know what is left before payday</title>
     <!-- External only: meta CSP script-src has no 'unsafe-inline'. -->
-    <script src="./boot.js?v=79"></script>
-    <link rel="icon" href="./icons/icon-192.png?v=79" type="image/png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=79" />
+    <script src="./boot.js?v=80"></script>
+    <link rel="icon" href="./icons/icon-192.png?v=80" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=80" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=79" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tokens.css?v=80" />
+    <link rel="stylesheet" href="./styles.css?v=80" />
   </head>
   <body>
     <main class="app-shell" data-tab="overview">
       <header class="app-header">
         <div class="brand-lockup">
-          <img class="brand-logo" src="./icons/icon-192.png?v=79" width="36" height="36" alt="" />
+          <img class="brand-logo" src="./icons/icon-192.png?v=80" width="36" height="36" alt="" />
           <div>
             <h1 id="appTitle">Budget Studio</h1>
             <p id="appSubtitle" class="header-subtitle" hidden></p>
@@ -52,6 +88,17 @@
           </button>
         </div>
       </header>
+
+      <section id="demoBanner" class="demo-banner" aria-label="Sample budget notice" hidden>
+        <div>
+          <strong>Sample budget</strong>
+          <span>Try anything. Changes reset when you leave.</span>
+        </div>
+        <div class="demo-banner-actions">
+          <button id="demoCreateAccountBtn" type="button">Create my own</button>
+          <button id="demoExitBtn" type="button">Exit sample</button>
+        </div>
+      </section>
 
       <section id="overviewTab" class="tab-panel" data-tab-panel="overview">
         <section id="homeHero" class="home-hero" aria-label="Check left">
@@ -538,56 +585,148 @@
 
     <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-    <section id="authGate" class="wizard-overlay" aria-label="Sign in to Budget Studio" aria-modal="true" role="dialog" hidden>
-      <div class="edit-card profile-card auth-card">
-        <img class="app-logo" src="./icons/icon-192.png?v=79" width="88" height="88" alt="" />
-        <p class="eyebrow">Budget Studio</p>
-        <h2 id="authTitle">Welcome back</h2>
-        <p id="authCopy" class="wizard-copy">
-          Sign in and your budget follows you on every device — private to your account only.
-        </p>
-        <form id="authForm" class="profile-form">
-          <div id="authProviders" class="auth-providers">
-            <button id="authPasskeyBtn" class="auth-provider-btn" type="button" hidden>
-              <span class="auth-provider-icon" aria-hidden="true">🔑</span>
-              Sign in with passkey
-            </button>
-            <button id="authAppleBtn" class="auth-provider-btn" type="button" hidden>
-              <span class="auth-provider-icon" aria-hidden="true"></span>
-              Continue with Apple
-            </button>
-            <button id="authGoogleBtn" class="auth-provider-btn" type="button">
-              <span class="auth-provider-icon" aria-hidden="true">G</span>
-              Continue with Google
-            </button>
-            <p class="auth-divider" id="authDivider"><span>or use email</span></p>
-          </div>
-          <label id="authNameLabel" hidden>
-            <span>Your name</span>
-            <input id="authNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="name" />
-          </label>
-          <label id="authEmailLabel">
-            <span>Email</span>
-            <input id="authEmailInput" type="email" placeholder="you@example.com" autocomplete="email" required />
-          </label>
-          <label id="authPasswordLabel">
-            <span id="authPasswordLabelText">Password</span>
-            <input id="authPasswordInput" type="password" minlength="1" placeholder="Your password" autocomplete="current-password" required />
-            <small id="authPasswordHelp" class="auth-password-help" hidden></small>
-          </label>
-          <div id="authCaptcha" class="auth-captcha" hidden></div>
-          <button id="authSubmitBtn" class="primary-button" type="submit">Sign in</button>
-          <button id="authConfirmedBtn" class="primary-button" type="button" hidden>I clicked the link — sign me in</button>
-          <button id="authResendBtn" class="ghost-button" type="button" hidden>Resend confirmation email</button>
-          <button id="authForgotBtn" class="ghost-button" type="button">Forgot password?</button>
-          <button id="authModeToggleBtn" class="ghost-button" type="button">New here? Create an account</button>
-          <p id="authMessage" class="form-message" role="status"></p>
-          <p id="authLegal" class="auth-legal">
+    <section id="authGate" class="public-gate" aria-label="Welcome to Budget Studio" hidden>
+      <div class="public-gate-shell">
+        <header class="public-nav">
+          <a class="public-brand" href="./" aria-label="Budget Studio home">
+            <img src="./icons/icon-192.png?v=80" width="52" height="52" alt="" />
+            <span>Budget Studio</span>
+          </a>
+          <nav aria-label="Legal">
             <a href="./privacy.html">Privacy</a>
-            ·
             <a href="./terms.html">Terms</a>
-          </p>
-        </form>
+          </nav>
+        </header>
+
+        <div class="public-workbench">
+          <div class="public-product">
+            <section class="public-story" aria-labelledby="publicHeadline">
+              <p class="public-kicker">A clearer way to budget each paycheck</p>
+              <h1 id="publicHeadline">Know what is left before payday.</h1>
+              <p class="public-lede">
+                Plan each paycheck, log spending, and see what is safe to use. You stay in control of every number.
+              </p>
+              <div class="public-actions">
+                <button id="publicDemoBtn" class="public-primary" type="button">
+                  Explore a sample budget
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+                <button id="publicCreateAccountBtn" class="public-secondary" type="button">
+                  Create an account
+                </button>
+              </div>
+              <ul class="public-trust" aria-label="Product highlights">
+                <li>Paycheck planning</li>
+                <li>Web + iPhone sync</li>
+                <li>CSV + JSON export</li>
+              </ul>
+            </section>
+
+            <figure class="public-preview">
+              <figcaption>
+                <span>Sample data</span>
+                <strong>Sample paycheck</strong>
+              </figcaption>
+              <div class="preview-summary">
+                <div>
+                  <span>Check left</span>
+                  <strong>$1,284</strong>
+                  <small>this pay period</small>
+                </div>
+                <div class="preview-ring" aria-label="39 percent spent" role="img">
+                  <span>39%</span>
+                  <small>spent</small>
+                </div>
+              </div>
+              <div class="preview-totals" aria-label="Paycheck totals">
+                <span><small>In</small><strong>$2,100</strong></span>
+                <span><small>Out</small><strong>$816</strong></span>
+              </div>
+              <div class="preview-ledger">
+                <div class="preview-ledger-head">
+                  <strong>Where it went</strong>
+                  <span>Budget</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-dot preview-dot-coral" aria-hidden="true"></span>
+                  <div><strong>Groceries</strong><small>$286 spent</small></div>
+                  <span>$234 left</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-dot preview-dot-olive" aria-hidden="true"></span>
+                  <div><strong>Transportation</strong><small>$92 spent</small></div>
+                  <span>$108 left</span>
+                </div>
+                <div class="preview-row">
+                  <span class="preview-dot preview-dot-gold" aria-hidden="true"></span>
+                  <div><strong>Dining out</strong><small>$64 spent</small></div>
+                  <span>$86 left</span>
+                </div>
+              </div>
+            </figure>
+          </div>
+
+          <aside id="publicAuthPanel" class="edit-card profile-card auth-card" aria-labelledby="authTitle">
+            <p class="auth-kicker">Your account</p>
+            <h2 id="authTitle">Welcome back</h2>
+            <p id="authCopy" class="wizard-copy">
+              Sign in and your budget follows you on every device — private to your account only.
+            </p>
+            <form id="authForm" class="profile-form">
+              <div id="authProviders" class="auth-providers">
+                <button id="authPasskeyBtn" class="auth-provider-btn" type="button" hidden>
+                  <span class="auth-provider-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="8" cy="15" r="3"></circle>
+                      <path d="M10.6 13.5 20 4m-3 3 2 2m-5-5 2 2"></path>
+                    </svg>
+                  </span>
+                  Sign in with passkey
+                </button>
+                <button id="authAppleBtn" class="auth-provider-btn" type="button" hidden>
+                  <span class="auth-provider-icon" aria-hidden="true"></span>
+                  Continue with Apple
+                </button>
+                <button id="authGoogleBtn" class="auth-provider-btn" type="button">
+                  <span class="auth-provider-icon" aria-hidden="true">G</span>
+                  Continue with Google
+                </button>
+                <p class="auth-divider" id="authDivider"><span>or use email</span></p>
+              </div>
+              <label id="authNameLabel" hidden>
+                <span>Your name</span>
+                <input id="authNameInput" type="text" maxlength="20" placeholder="Rob, Mom, Alex..." autocomplete="name" />
+              </label>
+              <label id="authEmailLabel">
+                <span>Email</span>
+                <input id="authEmailInput" type="email" placeholder="you@example.com" autocomplete="email" required />
+              </label>
+              <label id="authPasswordLabel">
+                <span id="authPasswordLabelText">Password</span>
+                <input id="authPasswordInput" type="password" minlength="1" placeholder="Your password" autocomplete="current-password" required />
+                <small id="authPasswordHelp" class="auth-password-help" hidden></small>
+              </label>
+              <div id="authCaptcha" class="auth-captcha" hidden></div>
+              <button id="authSubmitBtn" class="primary-button" type="submit">Sign in</button>
+              <button id="authConfirmedBtn" class="primary-button" type="button" hidden>I clicked the link — sign me in</button>
+              <button id="authResendBtn" class="ghost-button" type="button" hidden>Resend confirmation email</button>
+              <button id="authForgotBtn" class="ghost-button" type="button">Forgot password?</button>
+              <button id="authModeToggleBtn" class="ghost-button" type="button">New here? Create an account</button>
+              <p id="authMessage" class="form-message" role="status"></p>
+              <p id="authLegal" class="auth-legal">
+                By continuing, you agree to the <a href="./terms.html">Terms</a> and acknowledge the
+                <a href="./privacy.html">Privacy Policy</a>.
+              </p>
+            </form>
+          </aside>
+        </div>
+
+        <footer class="public-footer">
+          <span>Private by default. Your budget stays yours.</span>
+          <span>Made for a calmer payday.</span>
+        </footer>
       </div>
     </section>
 
@@ -852,6 +991,6 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=79"></script>
+    <script type="module" src="./app.js?v=80"></script>
   </body>
 </html>

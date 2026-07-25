@@ -1,6 +1,6 @@
 # Budget Studio — Copyright & License Compliance Sweep
 
-**Date:** July 9, 2026  
+**Date:** July 25, 2026
 **Workspace:** `/Users/rob/Documents/Budget`  
 **Scope:** Web PWA + iOS (SwiftUI) + CDN/SPM dependencies + brand assets  
 **Method:** Inventory of `package.json`, CDN imports, `ios/project.yml` / `Package.resolved`, asset metadata, git history, UI/marketing copy. **No assets or code were deleted.**
@@ -21,6 +21,8 @@
 |-------|--------|-------------|----------------------------|------------|
 | `@supabase/supabase-js` | `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm` | Major `@2` (floating) | **MIT** (Supabase) | `sync.js` dynamic `import()` |
 | **Inter** font | Google Fonts CSS + `fonts.gstatic.com` files | weights 400–800 | **SIL Open Font License 1.1 (OFL)** for Inter; delivery also subject to **Google Fonts Terms of Service** | `index.html` `<link>`; `styles.css` `font-family: Inter, …` |
+| **Geist** font | Google Fonts CSS + `fonts.gstatic.com` files | weights 400–700 | **SIL Open Font License 1.1 (OFL)**; delivery also subject to **Google Fonts Terms of Service** | Public landing-page body/display face |
+| **Fraunces** font | Google Fonts CSS + `fonts.gstatic.com` files | optical-size variable, weight 600 | **SIL Open Font License 1.1 (OFL)**; delivery also subject to **Google Fonts Terms of Service** | Public landing-page wordmark |
 
 CSP / host configs explicitly allow these CDNs: `index.html` meta CSP, `netlify.toml`, `vercel.json`.
 
@@ -70,7 +72,7 @@ Transitive pins from `ios/BudgetStudio.xcodeproj/project.xcworkspace/xcshareddat
 | Unknown npm licenses | **N/A** | No declared npm dependencies. |
 | **CDN floating major** (`@supabase/supabase-js@2`) | Low–Medium ops | Not a “risky license,” but version is not fully pinned; license remains MIT across v2, yet supply-chain/reproducibility is weaker than a lockfile. |
 | **AI dog logo provenance** | **Medium** (see §3) | Not a software license issue; commercial/IP clarity for the brand mark is incomplete. |
-| Google Fonts CDN | Low–Medium compliance hygiene | Inter itself is OFL; using Google’s CDN also implicates Google Fonts ToS (and historically raised privacy discussions). Self-hosting OFL files is the cleaner launch pattern. |
+| Google Fonts CDN | Low–Medium compliance hygiene | Inter, Geist, and Fraunces are OFL; using Google’s CDN also implicates Google Fonts ToS (and historically raised privacy discussions). Self-hosting OFL files is the cleaner launch pattern. |
 
 **No GPL/AGPL/LGPL infection risk identified in current dependency trees.**
 
@@ -83,6 +85,9 @@ Transitive pins from `ios/BudgetStudio.xcodeproj/project.xcworkspace/xcshareddat
 | **Dog app icon (AI-stylized)** | `icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-1024.png`; iOS `AppLogo.imageset/logo.png` (= same bytes as `icon-192.png`); iOS `AppIcon.appiconset/icon-1024.png` (related export, different hash) | **AI-generated / unknown commercial provenance** | Git commit `d7b4b79` message: *“Add AI-stylized dog logo as the Budget Studio app icon”* — *“Uses the family dogs as a friendly illustrated icon”*; Co-authored-by Cursor. No artist signature, stock receipt, or generator license file in repo. PNG metadata: no useful creator tEXt; some EXIF dimension tags only. Visual style is polished illustration consistent with generative tools. **Flag: treat as unknown provenance for App Store / commercial branding until rights are documented.** |
 | **Favicon (geometric)** | `favicon.svg` | **Appears original / project-authored** | Simple dark rounded square + blue dashed ring. No third-party marks. Currently **not** the primary favicon in `index.html` (PWA uses dog PNGs). |
 | **Inter** | Loaded from Google Fonts in `index.html` | **rsms Inter — SIL OFL 1.1**; served via **Google Fonts** | OFL allows embedding/bundling with attribution norms; Google Fonts ToS governs CDN use. Prefer self-host `woff2` under OFL for launch. |
+| **Geist** | Loaded from Google Fonts in `index.html` | **Vercel / basement.studio — SIL OFL 1.1**; served via **Google Fonts** | Used for the public landing page; upstream license is recorded in `legal/THIRD_PARTY_LICENSES.md`. |
+| **Fraunces** | Loaded from Google Fonts in `index.html` | **Undercase Type / contributors — SIL OFL 1.1**; served via **Google Fonts** | Used for the public wordmark; upstream license is recorded in `legal/THIRD_PARTY_LICENSES.md`. |
+| **Social preview artwork** | `assets/social-preview.html`, `icons/social-preview.png` | Project-authored HTML/CSS using the existing Budget Studio dog icon | Deterministic product preview; no new stock or generated imagery. |
 | **iOS system fonts / SF Symbols** | SwiftUI throughout | Apple platform | Not project-owned font files. |
 | **`outputs/` screenshots & xlsx** | `outputs/interactive-budget-sheet-20260708/*` | App UI captures / personal workbook | **Gitignored** (`outputs/` in `.gitignore`) — not shipped in git; listed for completeness. |
 | **`public/`** | `public/_headers` only | N/A | No image assets. |
@@ -127,7 +132,7 @@ Transitive pins from `ios/BudgetStudio.xcodeproj/project.xcworkspace/xcshareddat
 
 1. ~~**Add a root `LICENSE`**~~ **Done** — proprietary All Rights Reserved ([`LICENSE`](LICENSE), [`legal/COPYRIGHT.md`](legal/COPYRIGHT.md)).  
 2. **Dog logo / App Icon** — replace **or** finish documenting AI tool + commercial rights + photo ownership ([`legal/AI_ASSETS.md`](legal/AI_ASSETS.md)); keep current files until replacement is ready. Highest remaining brand/IP uncertainty.  
-3. **Self-host Inter (OFL)** or switch to a fully owned/system stack; stop relying solely on Google Fonts CDN if you want cleaner ToS/privacy posture. Keep OFL attribution if bundling ([`legal/THIRD_PARTY_LICENSES.md`](legal/THIRD_PARTY_LICENSES.md)).  
+3. **Self-host the web fonts (OFL)** or switch to a fully owned/system stack; stop relying solely on Google Fonts CDN if you want cleaner ToS/privacy posture. Keep OFL attribution if bundling ([`legal/THIRD_PARTY_LICENSES.md`](legal/THIRD_PARTY_LICENSES.md)).
 4. **Pin `@supabase/supabase-js`** to an exact version (or vendor the ESM file); MIT attribution is in `legal/THIRD_PARTY_LICENSES.md` — still add Settings → Licenses in-app.  
 5. **iOS OSS attribution** — list supabase-swift + transitive MIT/Apache packages in App Store privacy/credits or an in-app Licenses screen (Apple often expects this for included OSS).  
 6. **Counsel review** of `privacy.html` / `terms.html` before any paid/commercial positioning (already flagged in `docs/SECURITY.md`).  
@@ -146,7 +151,7 @@ Transitive pins from `ios/BudgetStudio.xcodeproj/project.xcworkspace/xcshareddat
 
 **Why not High:** Proprietary LICENSE + third-party notices now present; no GPL/AGPL/LGPL dependencies; SPM and Supabase JS are permissive (MIT/Apache-2.0); no clear evidence of copied proprietary app code or competitor trademarks in UI; favicon geometry looks original; privacy/terms read as original drafts.
 
-**Launch blocker priority:** (1) clear or replace the dog logo, (2) counsel-reviewed Privacy/Terms + trademark search, (3) prefer self-hosted Inter + in-app OSS credits.
+**Launch blocker priority:** (1) clear or replace the dog logo, (2) counsel-reviewed Privacy/Terms + trademark search, (3) prefer self-hosted web fonts + in-app OSS credits.
 
 **Follow-up pack:** [`legal/`](legal/) · [`docs/PRODUCTION_AUDIT.md`](docs/PRODUCTION_AUDIT.md)
 

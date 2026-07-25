@@ -1,6 +1,6 @@
 # Third-Party Licenses — Budget Studio
 
-**Last updated:** July 9, 2026  
+**Last updated:** July 25, 2026
 **Project license:** Proprietary All Rights Reserved — see [`../LICENSE`](../LICENSE) and [`COPYRIGHT.md`](COPYRIGHT.md).
 
 This NOTICE-style file attributes open-source and font components used by Budget Studio. It does **not** re-license the Owner’s proprietary code.
@@ -34,6 +34,26 @@ MIT permission notice (summary): free use, modification, and distribution with c
 | **Recommended** | Self-host OFL `woff2` files under `fonts/` with OFL attribution to reduce Google Fonts ToS/privacy surface |
 
 OFL allows use, study, modification, and redistribution of the font software under OFL terms. Do not sell the font by itself. Reserved font names rules apply if modified. Full OFL text: https://openfontlicense.org/
+
+### Geist font
+
+| | |
+|--|--|
+| **License** | SIL Open Font License 1.1 (OFL-1.1) |
+| **Copyright** | Copyright (c) 2023 Vercel, in collaboration with basement.studio |
+| **How used** | Public landing-page body/display face, loaded through Google Fonts CSS in `index.html` |
+| **Upstream** | https://github.com/vercel/geist-font |
+| **Delivery ToS** | Google Fonts Terms of Service also apply to CDN delivery |
+
+### Fraunces font
+
+| | |
+|--|--|
+| **License** | SIL Open Font License 1.1 (OFL-1.1) |
+| **Author** | Undercase Type / contributors |
+| **How used** | Public landing-page wordmark face, loaded through Google Fonts CSS in `index.html` |
+| **Upstream** | https://github.com/undercasetype/Fraunces |
+| **Delivery ToS** | Google Fonts Terms of Service also apply to CDN delivery |
 
 ---
 

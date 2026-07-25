@@ -27,6 +27,16 @@ const CDN_DEPS = [
     how: "Google Fonts CSS + fonts.gstatic.com in index.html",
     license: "OFL-1.1 (font) + Google Fonts ToS (CDN delivery)",
   },
+  {
+    name: "Geist (font)",
+    how: "Google Fonts CSS + fonts.gstatic.com in index.html",
+    license: "OFL-1.1 (font) + Google Fonts ToS (CDN delivery)",
+  },
+  {
+    name: "Fraunces (font)",
+    how: "Google Fonts CSS + fonts.gstatic.com in index.html",
+    license: "OFL-1.1 (font) + Google Fonts ToS (CDN delivery)",
+  },
 ];
 
 const SPM_DEPS = [

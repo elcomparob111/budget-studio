@@ -1,0 +1,51 @@
+/* Hallmark tokens — Modern Minimal / Coral */
+:root {
+  --font-body: "Geist", "Inter", system-ui, sans-serif;
+  --font-display: "Geist", "Inter", system-ui, sans-serif;
+  --font-wordmark: "Fraunces", Georgia, serif;
+
+  --color-paper: oklch(96.5% 0.014 65);
+  --color-paper-deep: oklch(93.2% 0.024 63);
+  --color-panel: oklch(99% 0.006 65);
+  --color-panel-muted: oklch(94.8% 0.018 65);
+  --color-ink: oklch(24% 0.018 55);
+  --color-muted: oklch(49% 0.02 55);
+  --color-line: oklch(82% 0.026 58);
+  --color-line-strong: oklch(65% 0.035 55);
+  --color-accent: oklch(67% 0.17 38);
+  --color-accent-strong: oklch(55% 0.19 34);
+  --color-accent-soft: oklch(89% 0.07 42);
+  --color-accent-ink: oklch(28% 0.07 30);
+  --color-olive: oklch(62% 0.1 125);
+  --color-gold: oklch(73% 0.13 82);
+  --color-white: oklch(100% 0 0);
+  --color-focus: oklch(55% 0.19 34);
+  --color-shadow: oklch(24% 0.018 55 / 0.12);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.35rem;
+  --text-display: clamp(2.65rem, 7vw, 4.8rem);
+
+  --radius-xs: 0.4rem;
+  --radius-sm: 0.75rem;
+  --radius-md: 1.25rem;
+  --radius-lg: 1.75rem;
+
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+}

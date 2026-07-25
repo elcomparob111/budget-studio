@@ -26,7 +26,7 @@ import {
   subscribeSharedBudget,
   getCaptchaSiteKey,
   getAuthProviders,
-} from "./sync.js?v=79";
+} from "./sync.js?v=80";
 import {
   AUTH_PASSWORD_HINT,
   assertImportFileSize,
@@ -43,7 +43,7 @@ import {
   validateEmail,
   validatePassword,
   validateTransactionType,
-} from "./security.js?v=79";
+} from "./security.js?v=80";
 
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
@@ -158,20 +158,6 @@ const MONEY_COMPACT_FORMAT = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 const PERCENT_FORMAT = new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 0 });
-
-const defaultTransactions = [
-  transaction("2026-07-01", "Income", "Salary", "Paycheck", "Checking", 4200),
-  transaction("2026-07-01", "Expense", "Housing", "Rent", "Checking", 1800),
-  transaction("2026-07-02", "Expense", "Groceries", "Weekly groceries", "Credit Card", 128.47),
-  transaction("2026-07-03", "Expense", "Utilities", "Electric bill", "Checking", 210),
-  transaction("2026-07-04", "Expense", "Dining Out", "Dinner", "Credit Card", 64.2),
-  transaction("2026-07-05", "Expense", "Cell Phone", "Mobile phone bill", "Checking", 92.45),
-  transaction("2026-07-05", "Expense", "Transportation", "Gas", "Credit Card", 45.5),
-  transaction("2026-07-06", "Expense", "Subscriptions", "Streaming", "Credit Card", 39.99),
-  transaction("2026-07-07", "Income", "Side Income", "Freelance project", "Checking", 350),
-  transaction("2026-07-07", "Expense", "Shopping", "Household items", "Credit Card", 120.25),
-  transaction("2026-07-08", "Expense", "Emergency Fund", "Savings transfer", "Savings", 300),
-];
 
 const budgetPresets = {
   single: {
@@ -610,7 +596,13 @@ const elements = {
   editAmountInput: document.querySelector("#editAmountInput"),
   appTitle: document.querySelector("#appTitle"),
   appSubtitle: document.querySelector("#appSubtitle"),
+  demoBanner: document.querySelector("#demoBanner"),
+  demoCreateAccountBtn: document.querySelector("#demoCreateAccountBtn"),
+  demoExitBtn: document.querySelector("#demoExitBtn"),
   authGate: document.querySelector("#authGate"),
+  publicDemoBtn: document.querySelector("#publicDemoBtn"),
+  publicCreateAccountBtn: document.querySelector("#publicCreateAccountBtn"),
+  publicAuthPanel: document.querySelector("#publicAuthPanel"),
   authTitle: document.querySelector("#authTitle"),
   authCopy: document.querySelector("#authCopy"),
   authForm: document.querySelector("#authForm"),
@@ -649,6 +641,7 @@ let activityDayFilter = null;
 
 let currentUser = null;
 let localOnlyMode = false;
+let isPublicDemo = false;
 let authMode = "signin"; // signin | signup | recovery
 let cloudSaveTimer = null;
 /** Avoid toast spam while typing category budgets or during rapid edits. */
@@ -725,6 +718,8 @@ async function handleUserChanged(user, info) {
     openAuthGate();
     return;
   }
+
+  isPublicDemo = false;
 
   // Password-recovery links sign the user in temporarily so they can set a new password.
   // Do NOT load or sync budget data until the password is updated (limits session abuse window).
@@ -1493,6 +1488,14 @@ function attachEvents() {
     render();
     setMessage("Demo mode loaded. Use Setup when you are ready to make it yours.");
   });
+  elements.publicDemoBtn?.addEventListener("click", startPublicDemo);
+  elements.publicCreateAccountBtn?.addEventListener("click", () => {
+    setAuthMode("signup");
+    elements.publicAuthPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => elements.authNameInput?.focus(), 240);
+  });
+  elements.demoCreateAccountBtn?.addEventListener("click", () => exitPublicDemo("signup"));
+  elements.demoExitBtn?.addEventListener("click", () => exitPublicDemo("signin"));
   elements.wizardBackBtn?.addEventListener("click", () => {
     wizard.step = Math.max(0, wizard.step - 1);
     renderWizard();
@@ -1558,7 +1561,11 @@ function attachEvents() {
 
   elements.authForm?.addEventListener("submit", handleAuthSubmit);
   elements.authModeToggleBtn?.addEventListener("click", () => {
-    setAuthMode(authMode === "signin" ? "signup" : "signin");
+    const nextMode = authMode === "signin" ? "signup" : "signin";
+    setAuthMode(nextMode);
+    window.requestAnimationFrame(() => {
+      (nextMode === "signup" ? elements.authNameInput : elements.authEmailInput)?.focus();
+    });
   });
   elements.authForgotBtn?.addEventListener("click", handleForgotPassword);
   elements.authResendBtn?.addEventListener("click", handleResendConfirmation);
@@ -3727,9 +3734,20 @@ function createEmptyState() {
 }
 
 function createDemoState() {
+  const today = parseLocalDate(todayString());
+  const demoDate = (offset) => toDateString(addDays(today, offset));
   return {
     categories: structuredClone(defaultCategories),
-    transactions: structuredClone(defaultTransactions),
+    transactions: [
+      transaction(demoDate(-6), "Income", "Salary", "Paycheck", "Checking", 2100),
+      transaction(demoDate(-5), "Expense", "Housing", "Rent set-aside", "Checking", 450),
+      transaction(demoDate(-4), "Expense", "Groceries", "Weekly groceries", "Credit Card", 128.47),
+      transaction(demoDate(-3), "Expense", "Utilities", "Internet bill", "Checking", 60),
+      transaction(demoDate(-2), "Expense", "Dining Out", "Dinner", "Credit Card", 64.2),
+      transaction(demoDate(-1), "Expense", "Transportation", "Gas", "Credit Card", 45.5),
+      transaction(demoDate(0), "Expense", "Subscriptions", "Streaming", "Credit Card", 39.99),
+      transaction(demoDate(0), "Expense", "Shopping", "Household items", "Credit Card", 27.84),
+    ],
     // lastPostedMonth = current month so demo data doesn't auto-post on load.
     recurring: [
       {
@@ -3767,7 +3785,7 @@ function createDemoState() {
       income: 4550,
       payAmount: 2100,
       payFrequency: "biweekly",
-      nextPayDate: "2026-07-10",
+      nextPayDate: demoDate(-6),
       completedAt: new Date().toISOString(),
       demo: true,
     },
@@ -3860,19 +3878,66 @@ function normalizeState(raw) {
   };
 }
 
-function openAuthGate() {
-  setAuthMode("signin");
+function startPublicDemo() {
+  teardownShared();
+  isPublicDemo = true;
+  currentUser = null;
+  localOnlyMode = false;
+  state = createDemoState();
+  activeTab = "overview";
+  expandedCategoryName = null;
+  activityCategoryFilter = null;
+  activityDayFilter = null;
+  populateCategorySelect();
+  closeAuthGate();
+  renderIdentityUI();
+  render();
+}
+
+function exitPublicDemo(mode = "signin") {
+  isPublicDemo = false;
+  state = createEmptyState();
+  activeTab = "overview";
+  expandedCategoryName = null;
+  activityCategoryFilter = null;
+  activityDayFilter = null;
+  populateCategorySelect();
+  renderIdentityUI();
+  render();
+  openAuthGate(mode);
+  if (mode === "signup") {
+    window.requestAnimationFrame(() => {
+      elements.publicAuthPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => elements.authNameInput?.focus(), 240);
+    });
+  }
+}
+
+function openAuthGate(mode = "signin") {
+  setAuthMode(mode);
   if (sessionStorage.getItem(PENDING_JOIN_KEY)) {
     setAuthMessage("Sign in — or create an account — to join the shared budget.");
   }
   elements.authGate.hidden = false;
+  elements.authGate.scrollTop = 0;
   document.body.classList.add("wizard-open");
+  document.body.classList.add("public-gate-open");
+  if (elements.appShell) {
+    elements.appShell.hidden = true;
+    elements.appShell.inert = true;
+    elements.appShell.setAttribute("aria-hidden", "true");
+  }
   if (elements.tabBar) elements.tabBar.hidden = true;
-  elements.authEmailInput.focus();
 }
 
 function closeAuthGate() {
   elements.authGate.hidden = true;
+  document.body.classList.remove("public-gate-open");
+  if (elements.appShell) {
+    elements.appShell.hidden = false;
+    elements.appShell.inert = false;
+    elements.appShell.removeAttribute("aria-hidden");
+  }
   if (elements.tabBar) elements.tabBar.hidden = false;
   if (elements.setupWizard.hidden && elements.editDialog.hidden) {
     document.body.classList.remove("wizard-open");
@@ -3885,6 +3950,7 @@ function setAuthMode(mode) {
   const recovery = mode === "recovery";
   const confirm = mode === "confirm";
   const showProviders = !recovery && !confirm;
+  if (elements.authGate) elements.authGate.dataset.authMode = mode;
 
   elements.authTitle.textContent = confirm
     ? "Check your email"
@@ -3897,7 +3963,9 @@ function setAuthMode(mode) {
     ? `We sent a confirmation link to ${pendingConfirmEmail}. Open it on this device, then come back and sign in. Nothing there? Check spam, or make sure the address above is right.`
     : recovery
       ? `Enter a new password for your Budget Studio account. ${AUTH_PASSWORD_HINT}.`
-      : "Sign in and your budget follows you on every device — private to your account only.";
+      : signup
+        ? "Start with a simple setup, then sync your budget privately across your devices."
+        : "Sign in and your budget follows you on every device — private to your account only.";
 
   applyAuthProviderVisibility(showProviders, signup);
   elements.authNameLabel.hidden = !signup;
@@ -4345,6 +4413,7 @@ async function handleSignOut() {
     safeLog("warn", "Sign-out failed", { code: error?.code || "signout" });
   }
   clearLocalUserCaches(uid);
+  isPublicDemo = false;
   currentUser = null;
   state = createEmptyState();
   renderIdentityUI();
@@ -4391,10 +4460,12 @@ async function handleDeleteAccount() {
 function renderSettingsHero() {
   const name =
     firstName(currentUser?.displayName) ||
-    (localOnlyMode ? "Local budget" : "Budget Studio");
+    (isPublicDemo ? "Sample budget" : localOnlyMode ? "Local budget" : "Budget Studio");
   if (elements.settingsHeroName) elements.settingsHeroName.textContent = name;
   if (elements.settingsHeroSub) {
-    elements.settingsHeroSub.textContent = localOnlyMode
+    elements.settingsHeroSub.textContent = isPublicDemo
+      ? "Sample only · changes reset when you leave"
+      : localOnlyMode
       ? "Saved on this device"
       : sharedBudget
         ? "Shared budget · synced"
@@ -4415,7 +4486,7 @@ function renderIdentityUI() {
     elements.appSubtitle.hidden = true;
     elements.appSubtitle.textContent = "";
   }
-  elements.signOutBtn.hidden = localOnlyMode || !currentUser;
+  elements.signOutBtn.hidden = isPublicDemo || localOnlyMode || !currentUser;
   const passkeyOn = getAuthProviders().passkey;
   if (elements.addPasskeyBtn) {
     elements.addPasskeyBtn.hidden = !passkeyOn || localOnlyMode || !currentUser;
@@ -4424,8 +4495,9 @@ function renderIdentityUI() {
     elements.passkeyHint.hidden = !passkeyOn || localOnlyMode || !currentUser;
   }
   if (elements.deleteAccountBtn) {
-    elements.deleteAccountBtn.hidden = localOnlyMode || !currentUser;
+    elements.deleteAccountBtn.hidden = isPublicDemo || localOnlyMode || !currentUser;
   }
+  if (elements.demoBanner) elements.demoBanner.hidden = !isPublicDemo;
   if (elements.tabBar) elements.tabBar.hidden = Boolean(elements.authGate && !elements.authGate.hidden);
   if (activeTab === "settings") renderSettingsHero();
 }
@@ -4469,6 +4541,7 @@ function loadState() {
 }
 
 function saveState() {
+  if (isPublicDemo) return;
   if (!currentUser) return;
   if (localOnlyMode || currentUser.uid === "local") {
     try {
