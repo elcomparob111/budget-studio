@@ -26,7 +26,7 @@ import {
   subscribeSharedBudget,
   getCaptchaSiteKey,
   getAuthProviders,
-} from "./sync.js?v=77";
+} from "./sync.js?v=78";
 import {
   AUTH_PASSWORD_HINT,
   assertImportFileSize,
@@ -43,7 +43,7 @@ import {
   validateEmail,
   validatePassword,
   validateTransactionType,
-} from "./security.js?v=77";
+} from "./security.js?v=78";
 
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
@@ -660,27 +660,44 @@ let editingTransactionId = null;
 init();
 
 function init() {
-  initTheme();
-  capturePendingJoinToken();
-  setSelectedMonth(localStorage.getItem(SELECTED_MONTH_KEY) || currentMonthKey());
-  if (elements.editAccountInput) {
-    elements.editAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
+  try {
+    initTheme();
+    capturePendingJoinToken();
+    setSelectedMonth(localStorage.getItem(SELECTED_MONTH_KEY) || currentMonthKey());
+    if (elements.editAccountInput) {
+      elements.editAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
+    }
+    if (elements.recAccountInput) {
+      elements.recAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
+    }
+    populateRecurringDaySelect();
+    populateRecurringCategorySelect();
+    initBillRemindersToggle();
+    // Paint chrome before wiring events so a listener bug can't freeze a dead shell.
+    if (elements.tabBar) elements.tabBar.hidden = false;
+    render();
+    try {
+      attachEvents();
+      installGlobalKeyboard();
+    } catch (error) {
+      safeLog("error", "Event wiring failed", { message: String(error?.message || error) });
+      showToast("Some controls failed to start. Refresh the page.", "error");
+    }
+    initSync(handleUserChanged).catch(() => handleUserChanged(null, { unavailable: true }));
+    window.addEventListener("online", () => {
+      flushDirtyCloudSave();
+      refreshFromCloudIfNeeded();
+    });
+    window.addEventListener("focus", () => refreshFromCloudIfNeeded());
+  } catch (error) {
+    safeLog("error", "App boot failed", { message: String(error?.message || error) });
+    if (elements.tabBar) elements.tabBar.hidden = false;
+    const banner = document.createElement("p");
+    banner.className = "boot-error";
+    banner.setAttribute("role", "alert");
+    banner.textContent = "Budget Studio hit a startup error. Refresh, or open the URL with a trailing slash.";
+    document.querySelector("main")?.prepend(banner);
   }
-  if (elements.recAccountInput) {
-    elements.recAccountInput.innerHTML = accounts.map((account) => `<option>${escapeHtml(account)}</option>`).join("");
-  }
-  populateRecurringDaySelect();
-  populateRecurringCategorySelect();
-  initBillRemindersToggle();
-  attachEvents();
-  installGlobalKeyboard();
-  render();
-  initSync(handleUserChanged).catch(() => handleUserChanged(null, { unavailable: true }));
-  window.addEventListener("online", () => {
-    flushDirtyCloudSave();
-    refreshFromCloudIfNeeded();
-  });
-  window.addEventListener("focus", () => refreshFromCloudIfNeeded());
 }
 
 async function handleUserChanged(user, info) {
@@ -1135,7 +1152,7 @@ async function leaveSharedFlow() {
 }
 
 function attachEvents() {
-  elements.monthInput.addEventListener("change", () => {
+  elements.monthInput?.addEventListener("change", () => {
     setSelectedMonth(elements.monthInput.value);
     expandedCategoryName = null;
     activityCategoryFilter = null;
@@ -1186,8 +1203,8 @@ function attachEvents() {
   elements.monthLabel?.addEventListener("click", openMonthPicker);
   elements.homeMonthLabel?.addEventListener("click", openMonthPicker);
 
-  elements.searchInput.addEventListener("input", renderTransactions);
-  elements.typeFilter.addEventListener("change", () => {
+  elements.searchInput?.addEventListener("input", renderTransactions);
+  elements.typeFilter?.addEventListener("change", () => {
     syncTypeFilterChips();
     renderTransactions();
   });
@@ -1282,11 +1299,11 @@ function attachEvents() {
     if (!button) return;
     deleteCategoryFromBudgets(button.dataset.deleteCategory);
   });
-  elements.categoryBuilderForm.addEventListener("submit", (event) => {
+  elements.categoryBuilderForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     addCategoryFromBudgetPanel();
   });
-  elements.categoryBuilderAddBtn.addEventListener("click", (event) => {
+  elements.categoryBuilderAddBtn?.addEventListener("click", (event) => {
     event.preventDefault();
     addCategoryFromBudgetPanel();
   });
@@ -1391,9 +1408,9 @@ function attachEvents() {
   });
   elements.leaveSharedBtn?.addEventListener("click", leaveSharedFlow);
 
-  elements.resetBtn.addEventListener("click", () => openWizard(true));
-  elements.openSetupBtn.addEventListener("click", () => switchTab("settings"));
-  elements.closeSettingsBtn.addEventListener("click", () => switchTab("overview"));
+  elements.resetBtn?.addEventListener("click", () => openWizard(true));
+  elements.openSetupBtn?.addEventListener("click", () => switchTab("settings"));
+  elements.closeSettingsBtn?.addEventListener("click", () => switchTab("overview"));
   elements.payScheduleForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     savePayScheduleFromSettings();
@@ -1463,12 +1480,12 @@ function attachEvents() {
       submitQuickAdd();
     }
   });
-  elements.closeWizardBtn.addEventListener("click", closeWizard);
-  elements.startWizardBtn.addEventListener("click", () => {
+  elements.closeWizardBtn?.addEventListener("click", closeWizard);
+  elements.startWizardBtn?.addEventListener("click", () => {
     wizard.step = 1;
     renderWizard();
   });
-  elements.demoModeBtn.addEventListener("click", () => {
+  elements.demoModeBtn?.addEventListener("click", () => {
     state = createDemoState();
     saveState();
     populateCategorySelect();
@@ -1476,12 +1493,12 @@ function attachEvents() {
     render();
     setMessage("Demo mode loaded. Use Setup when you are ready to make it yours.");
   });
-  elements.wizardBackBtn.addEventListener("click", () => {
+  elements.wizardBackBtn?.addEventListener("click", () => {
     wizard.step = Math.max(0, wizard.step - 1);
     renderWizard();
   });
-  elements.wizardNextBtn.addEventListener("click", advanceWizard);
-  elements.presetGrid.addEventListener("click", (event) => {
+  elements.wizardNextBtn?.addEventListener("click", advanceWizard);
+  elements.presetGrid?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-preset-id]");
     if (!button) return;
     wizard.presetId = button.dataset.presetId;
@@ -1492,24 +1509,24 @@ function attachEvents() {
     wizard.customBudgets = {};
     renderWizard();
   });
-  elements.payFrequencyGrid.addEventListener("click", (event) => {
+  elements.payFrequencyGrid?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-frequency-id]");
     if (!button) return;
     wizard.payFrequency = button.dataset.frequencyId;
     wizard.customBudgets = {};
     renderWizard();
   });
-  elements.wizardPayAmountInput.addEventListener("input", () => {
+  elements.wizardPayAmountInput?.addEventListener("input", () => {
     wizard.payAmount = Math.max(0, Number(elements.wizardPayAmountInput.value) || 0);
     wizard.income = monthlyIncomeFromPay(wizard.payAmount, wizard.payFrequency);
     wizard.customBudgets = {};
     renderWizardSummary();
   });
-  elements.wizardNextPayDateInput.addEventListener("change", () => {
+  elements.wizardNextPayDateInput?.addEventListener("change", () => {
     wizard.nextPayDate = elements.wizardNextPayDateInput.value || todayString();
     renderWizardSummary();
   });
-  elements.categoryChecklist.addEventListener("change", (event) => {
+  elements.categoryChecklist?.addEventListener("change", (event) => {
     const input = event.target.closest("[data-category-choice]");
     if (!input) return;
     if (input.checked) {
@@ -1520,32 +1537,32 @@ function attachEvents() {
     wizard.customBudgets = {};
     renderCategoryChecklist();
   });
-  elements.addCustomCategoryBtn.addEventListener("click", addCustomWizardCategory);
-  elements.customCategoryNameInput.addEventListener("keydown", (event) => {
+  elements.addCustomCategoryBtn?.addEventListener("click", addCustomWizardCategory);
+  elements.customCategoryNameInput?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
     addCustomWizardCategory();
   });
-  elements.wizardBudgetReview.addEventListener("input", (event) => {
+  elements.wizardBudgetReview?.addEventListener("input", (event) => {
     const input = event.target.closest("[data-review-budget]");
     if (!input) return;
     wizard.customBudgets[input.dataset.reviewBudget] = Math.max(0, Number(input.value) || 0);
     renderWizardSummary();
   });
 
-  elements.exportCsvBtn.addEventListener("click", exportCsv);
+  elements.exportCsvBtn?.addEventListener("click", exportCsv);
   elements.importCsvInput?.addEventListener("change", importCsv);
-  elements.exportJsonBtn.addEventListener("click", exportJson);
-  elements.importJsonInput.addEventListener("change", importJson);
+  elements.exportJsonBtn?.addEventListener("click", exportJson);
+  elements.importJsonInput?.addEventListener("change", importJson);
   elements.deleteAccountBtn?.addEventListener("click", handleDeleteAccount);
 
-  elements.authForm.addEventListener("submit", handleAuthSubmit);
-  elements.authModeToggleBtn.addEventListener("click", () => {
+  elements.authForm?.addEventListener("submit", handleAuthSubmit);
+  elements.authModeToggleBtn?.addEventListener("click", () => {
     setAuthMode(authMode === "signin" ? "signup" : "signin");
   });
-  elements.authForgotBtn.addEventListener("click", handleForgotPassword);
-  elements.authResendBtn.addEventListener("click", handleResendConfirmation);
-  elements.authConfirmedBtn.addEventListener("click", () => attemptConfirmedSignIn(false));
+  elements.authForgotBtn?.addEventListener("click", handleForgotPassword);
+  elements.authResendBtn?.addEventListener("click", handleResendConfirmation);
+  elements.authConfirmedBtn?.addEventListener("click", () => attemptConfirmedSignIn(false));
   elements.authPasskeyBtn?.addEventListener("click", handlePasskeySignIn);
   elements.authAppleBtn?.addEventListener("click", () => handleOAuthSignIn("apple"));
   elements.authGoogleBtn?.addEventListener("click", () => handleOAuthSignIn("google"));
@@ -1555,16 +1572,16 @@ function attachEvents() {
     if (authMode === "confirm") attemptConfirmedSignIn(true);
     refreshFromCloudIfNeeded();
   });
-  elements.signOutBtn.addEventListener("click", async () => {
+  elements.signOutBtn?.addEventListener("click", async () => {
     await handleSignOut();
   });
   initAuthCaptcha();
 
-  elements.themeToggleBtn.addEventListener("click", toggleTheme);
-  elements.closeEditBtn.addEventListener("click", closeEditDialog);
-  elements.editForm.addEventListener("submit", saveEditTransaction);
-  elements.editTypeInput.addEventListener("change", () => populateEditCategorySelect(elements.editTypeInput.value));
-  elements.editDialog.addEventListener("click", (event) => {
+  elements.themeToggleBtn?.addEventListener("click", toggleTheme);
+  elements.closeEditBtn?.addEventListener("click", closeEditDialog);
+  elements.editForm?.addEventListener("submit", saveEditTransaction);
+  elements.editTypeInput?.addEventListener("change", () => populateEditCategorySelect(elements.editTypeInput.value));
+  elements.editDialog?.addEventListener("click", (event) => {
     if (event.target === elements.editDialog) closeEditDialog();
   });
 }

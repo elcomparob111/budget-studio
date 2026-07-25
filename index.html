@@ -14,13 +14,25 @@
       content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; form-action 'self'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net; worker-src 'self'; manifest-src 'self'"
     />
     <title>Budget Studio</title>
-    <link rel="icon" href="./icons/icon-192.png?v=77" type="image/png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=77" />
+    <!--
+      GitHub project Pages: without a trailing slash, "./app.js" resolves to
+      https://…github.io/app.js (404) and the UI freezes on the empty HTML shell.
+    -->
+    <script>
+      (function () {
+        var path = location.pathname || "";
+        if (/\/budget-studio$/i.test(path)) {
+          location.replace(path + "/" + location.search + location.hash);
+        }
+      })();
+    </script>
+    <link rel="icon" href="./icons/icon-192.png?v=78" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=78" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=77" />
+    <link rel="stylesheet" href="./styles.css?v=78" />
   </head>
   <body>
     <main class="app-shell" data-tab="overview">
@@ -397,7 +409,7 @@
       </section>
     </main>
 
-    <nav id="tabBar" class="tab-bar" aria-label="Main" hidden>
+    <nav id="tabBar" class="tab-bar" aria-label="Main">
       <button class="tab-button is-active" type="button" data-tab="overview" aria-current="page">
         <span class="tab-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></svg>
@@ -851,7 +863,9 @@
     </section>
 
     <script type="module">
-      import("./app.js?v=77").catch((error) => {
+      // Resolve against this document so a missing trailing slash can't 404 modules.
+      const appUrl = new URL("app.js?v=78", window.location.href.replace(/\/budget-studio$/i, "/budget-studio/"));
+      import(appUrl.href).catch((error) => {
         console.error("Budget Studio failed to start", error);
         const gate = document.querySelector("#authGate");
         const tabs = document.querySelector("#tabBar");
@@ -861,20 +875,21 @@
         banner.className = "boot-error";
         banner.setAttribute("role", "alert");
         banner.textContent =
-          "Budget Studio couldn't load (often a stale offline cache). Hard-refresh, or clear site data for this page, then reopen.";
+          "Budget Studio couldn't load. Open https://elcomparob111.github.io/budget-studio/ (with the slash), or clear site data and retry.";
         document.querySelector("main")?.prepend(banner);
       });
     </script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js?v=77").then((reg) => {
+        const swUrl = new URL("sw.js?v=78", window.location.href.replace(/\/budget-studio$/i, "/budget-studio/"));
+        navigator.serviceWorker.register(swUrl.href).then((reg) => {
           reg.update().catch(() => {});
         }).catch(() => {});
         let refreshing = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refreshing || sessionStorage.getItem("bs-sw-reloaded-v77")) return;
+          if (refreshing || sessionStorage.getItem("bs-sw-reloaded-v78")) return;
           refreshing = true;
-          sessionStorage.setItem("bs-sw-reloaded-v77", "1");
+          sessionStorage.setItem("bs-sw-reloaded-v78", "1");
           window.location.reload();
         });
       }
