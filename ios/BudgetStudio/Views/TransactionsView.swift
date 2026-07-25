@@ -8,6 +8,7 @@ struct TransactionsView: View {
     @State private var search = ""
     @State private var typeFilter = "All"
     @State private var categoryFilter: String?
+    @State private var dayFilter: String?
     @State private var editingTransaction: BudgetTransaction?
 
     private var monthTransactions: [BudgetTransaction] {
@@ -18,8 +19,23 @@ struct TransactionsView: View {
         Array(Set(monthTransactions.map(\.category))).sorted()
     }
 
+    private var dayTotals: [String: (income: Double, spent: Double)] {
+        var map: [String: (income: Double, spent: Double)] = [:]
+        for item in monthTransactions {
+            var bucket = map[item.date] ?? (0, 0)
+            if item.type == "Income" {
+                bucket.income += item.amount
+            } else if item.type == "Expense" {
+                bucket.spent += item.amount
+            }
+            map[item.date] = bucket
+        }
+        return map
+    }
+
     private var rows: [BudgetTransaction] {
         monthTransactions
+            .filter { dayFilter == nil || $0.date == dayFilter }
             .filter { typeFilter == "All" || $0.type == typeFilter }
             .filter { categoryFilter == nil || $0.category == categoryFilter }
             .filter {
@@ -39,7 +55,7 @@ struct TransactionsView: View {
     }
 
     private var hasActiveFilters: Bool {
-        !search.isEmpty || typeFilter != "All" || categoryFilter != nil
+        !search.isEmpty || typeFilter != "All" || categoryFilter != nil || dayFilter != nil
     }
 
     private var breakdownRows: [(category: BudgetCategory, spent: Double)] {
@@ -62,6 +78,7 @@ struct TransactionsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.xxl) {
                     heroComposition
+                    calendarSection
                     filtersBlock
 
                     if rows.isEmpty {
@@ -84,6 +101,9 @@ struct TransactionsView: View {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .scrollDismissesKeyboard(.interactively)
+            .onChange(of: store.monthKey) { _, _ in
+                dayFilter = nil
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Text("Activity")
@@ -199,6 +219,186 @@ struct TransactionsView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
+    }
+
+    // MARK: - Calendar
+
+    private var calendarDays: [String?] {
+        let parts = store.monthKey.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 2 else { return [] }
+        var components = DateComponents()
+        components.year = parts[0]
+        components.month = parts[1]
+        components.day = 1
+        guard let first = Calendar.current.date(from: components),
+              let range = Calendar.current.range(of: .day, in: .month, for: first) else { return [] }
+        let weekday = Calendar.current.component(.weekday, from: first) // 1 = Sunday
+        let pad = weekday - 1
+        var days: [String?] = Array(repeating: nil, count: pad)
+        for day in range {
+            days.append(String(format: "%@-%02d", store.monthKey, day))
+        }
+        return days
+    }
+
+    private var calendarSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.md) {
+            HStack {
+                Text("Calendar")
+                    .font(.app(13, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryText)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                Spacer()
+                Text(shortMonthLabel)
+                    .font(.app(13, weight: .bold))
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+
+            VStack(spacing: AppTheme.sm) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
+                    ForEach(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"], id: \.self) { label in
+                        Text(label)
+                            .font(.app(11, weight: .bold))
+                            .foregroundStyle(AppTheme.secondaryText)
+                            .frame(maxWidth: .infinity)
+                    }
+                    ForEach(Array(calendarDays.enumerated()), id: \.offset) { _, iso in
+                        if let iso {
+                            calendarDayCell(iso)
+                        } else {
+                            Color.clear.frame(minHeight: 52)
+                        }
+                    }
+                }
+
+                if let dayFilter {
+                    let totals = dayTotals[dayFilter] ?? (0, 0)
+                    let net = totals.income - totals.spent
+                    VStack(alignment: .leading, spacing: AppTheme.sm) {
+                        HStack {
+                            Text("Selected · \(selectedDayLabel(dayFilter))")
+                                .font(.app(13, weight: .bold))
+                                .foregroundStyle(AppTheme.primaryText)
+                            Spacer()
+                            Button("Clear") {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                    self.dayFilter = nil
+                                }
+                            }
+                            .font(.app(13, weight: .bold))
+                            .foregroundStyle(AppTheme.secondaryText)
+                        }
+                        HStack(spacing: AppTheme.xl) {
+                            heroInlineStat(label: "In", value: currency(totals.income), color: AppTheme.income)
+                            heroInlineStat(label: "Out", value: currency(totals.spent), color: AppTheme.expense)
+                            heroInlineStat(
+                                label: "Net",
+                                value: currency(net),
+                                color: net < 0 ? AppTheme.expense : AppTheme.income
+                            )
+                        }
+                    }
+                    .padding(.top, AppTheme.sm)
+                }
+            }
+            .padding(AppTheme.md)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: AppTheme.cardShadow, radius: 8, x: 0, y: 4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppTheme.cardStroke, lineWidth: 1)
+            )
+        }
+    }
+
+    private var shortMonthLabel: String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("MMM yyyy")
+        return formatter.string(from: store.selectedMonth)
+    }
+
+    private func selectedDayLabel(_ iso: String) -> String {
+        guard let date = BudgetCalculator.parseDate(iso) else { return iso }
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
+        return formatter.string(from: date)
+    }
+
+    private func calendarDayCell(_ iso: String) -> some View {
+        let dayNum = Int(iso.suffix(2)) ?? 0
+        let totals = dayTotals[iso] ?? (0, 0)
+        let selected = dayFilter == iso
+        let isToday = iso == BudgetCalculator.todayString()
+
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                dayFilter = selected ? nil : iso
+            }
+        } label: {
+            VStack(spacing: 2) {
+                Text("\(dayNum)")
+                    .font(.app(12, weight: .bold))
+                    .foregroundStyle(AppTheme.primaryText)
+                if totals.spent > 0 {
+                    Text(compactCalendarAmount(totals.spent))
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(selected ? AppTheme.primaryText : AppTheme.secondaryText)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                } else {
+                    Text("·")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(AppTheme.secondaryText.opacity(0.45))
+                }
+                if totals.income > 0 {
+                    Text("+\(compactCalendarAmount(totals.income))")
+                        .font(.system(size: 9, weight: .heavy))
+                        .foregroundStyle(AppTheme.income)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(selected ? AppTheme.inputFill : (isToday ? AppTheme.pastelBlue.opacity(0.55) : Color.clear))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(selected ? AppTheme.primaryText : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(calendarAccessibilityLabel(iso: iso, totals: totals))
+    }
+
+    private func calendarAccessibilityLabel(iso: String, totals: (income: Double, spent: Double)) -> String {
+        var parts = [selectedDayLabel(iso)]
+        if totals.spent > 0 { parts.append("spent \(currency(totals.spent))") }
+        if totals.income > 0 { parts.append("income \(currency(totals.income))") }
+        return parts.joined(separator: ", ")
+    }
+
+    private func compactCalendarAmount(_ value: Double) -> String {
+        let absValue = abs(value)
+        if absValue >= 1000 {
+            let k = absValue / 1000
+            if k >= 10 {
+                return "$\(Int(k.rounded()))k"
+            }
+            let tenths = (k * 10).rounded() / 10
+            let text = tenths.truncatingRemainder(dividingBy: 1) == 0
+                ? String(Int(tenths))
+                : String(format: "%.1f", tenths)
+            return "$\(text)k"
+        }
+        return currency(absValue.rounded())
     }
 
     // MARK: - Filters

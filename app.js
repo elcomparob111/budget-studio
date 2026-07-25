@@ -454,6 +454,14 @@ const elements = {
   transactionsList: document.querySelector("#transactionsList"),
   typeFilterChips: document.querySelector("#typeFilterChips"),
   categoryFilterChips: document.querySelector("#categoryFilterChips"),
+  activityCalendarGrid: document.querySelector("#activityCalendarGrid"),
+  activityCalendarMonth: document.querySelector("#activityCalendarMonth"),
+  activityDayStrip: document.querySelector("#activityDayStrip"),
+  activityDayStripLabel: document.querySelector("#activityDayStripLabel"),
+  activityDayClearBtn: document.querySelector("#activityDayClearBtn"),
+  activityDayIncome: document.querySelector("#activityDayIncome"),
+  activityDaySpent: document.querySelector("#activityDaySpent"),
+  activityDayNet: document.querySelector("#activityDayNet"),
   goalsHeroCaption: document.querySelector("#goalsHeroCaption"),
   goalsTargetTotal: document.querySelector("#goalsTargetTotal"),
   goalsRing: document.querySelector("#goalsRing"),
@@ -634,6 +642,8 @@ let activeTab = "overview";
 let expandedCategoryName = null;
 /** Activity category chip filter; null = all. */
 let activityCategoryFilter = null;
+/** Activity calendar day filter; ISO date `yyyy-MM-dd` or null. */
+let activityDayFilter = null;
 
 let currentUser = null;
 let localOnlyMode = false;
@@ -1127,6 +1137,7 @@ function attachEvents() {
     setSelectedMonth(elements.monthInput.value);
     expandedCategoryName = null;
     activityCategoryFilter = null;
+    activityDayFilter = null;
     render();
   });
 
@@ -1136,6 +1147,19 @@ function attachEvents() {
   elements.homeNextMonthBtn?.addEventListener("click", () => shiftMonth(1));
   elements.recentSeeAllBtn?.addEventListener("click", () => switchTab("activity"));
   elements.goalsSeeAllBtn?.addEventListener("click", () => switchTab("goals"));
+  elements.activityCalendarGrid?.addEventListener("click", (event) => {
+    const cell = event.target.closest("[data-calendar-day]");
+    if (!cell) return;
+    const day = cell.dataset.calendarDay;
+    activityDayFilter = activityDayFilter === day ? null : day;
+    renderActivityCalendar();
+    renderTransactions();
+  });
+  elements.activityDayClearBtn?.addEventListener("click", () => {
+    activityDayFilter = null;
+    renderActivityCalendar();
+    renderTransactions();
+  });
   elements.recentList?.addEventListener("click", (event) => {
     const addBtn = event.target.closest("[data-recent-add]");
     if (addBtn) {
@@ -1201,8 +1225,10 @@ function attachEvents() {
         elements.searchInput.value = "";
         elements.typeFilter.value = "All";
         activityCategoryFilter = null;
+        activityDayFilter = null;
         syncTypeFilterChips();
         renderCategoryFilterChips();
+        renderActivityCalendar();
         renderTransactions();
       } else {
         openQuickAdd();
@@ -2042,6 +2068,7 @@ function render() {
   // Only the visible tab is rendered; switchTab() re-renders on switch.
   if (activeTab === "activity") {
     renderActivityCashflow();
+    renderActivityCalendar();
     renderActivityCharts();
     renderTransactions();
   } else if (activeTab === "goals") renderGoals();
@@ -2505,6 +2532,102 @@ function renderCategoryFilterChips() {
   elements.categoryFilterChips.innerHTML = chips.join("");
 }
 
+function dayTotalsForMonth(month) {
+  const map = new Map();
+  for (const item of state.transactions) {
+    if (monthKeyFromDate(item.date) !== month) continue;
+    if (!map.has(item.date)) map.set(item.date, { income: 0, spent: 0 });
+    const bucket = map.get(item.date);
+    if (item.type === "Income") bucket.income += item.amount;
+    else if (item.type === "Expense") bucket.spent += item.amount;
+  }
+  return map;
+}
+
+function compactCalendarAmount(value) {
+  const abs = Math.abs(value || 0);
+  if (abs >= 1000) {
+    const k = abs / 1000;
+    const text = k >= 10 ? String(Math.round(k)) : String(Math.round(k * 10) / 10).replace(/\.0$/, "");
+    return `$${text}k`;
+  }
+  return money(Math.round(abs));
+}
+
+function renderActivityCalendar() {
+  if (!elements.activityCalendarGrid) return;
+  const month = elements.monthInput.value;
+  if (activityDayFilter && monthKeyFromDate(activityDayFilter) !== month) {
+    activityDayFilter = null;
+  }
+  if (elements.activityCalendarMonth) {
+    elements.activityCalendarMonth.textContent = shortMonthLabel(month);
+  }
+
+  const [year, monthNum] = month.split("-").map(Number);
+  const daysInMonth = new Date(year, monthNum, 0).getDate();
+  const startPad = new Date(year, monthNum - 1, 1).getDay();
+  const totals = dayTotalsForMonth(month);
+  const today = todayString();
+  const cells = [];
+
+  for (let i = 0; i < startPad; i += 1) {
+    cells.push(`<div class="activity-cal-cell is-pad" aria-hidden="true"></div>`);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const iso = `${month}-${String(day).padStart(2, "0")}`;
+    const bucket = totals.get(iso) || { income: 0, spent: 0 };
+    const selected = activityDayFilter === iso;
+    const isToday = iso === today;
+    const spentLine =
+      bucket.spent > 0
+        ? `<span class="activity-cal-spent">${escapeHtml(compactCalendarAmount(bucket.spent))}</span>`
+        : `<span class="activity-cal-empty">·</span>`;
+    const incomeLine =
+      bucket.income > 0
+        ? `<span class="activity-cal-income">+${escapeHtml(compactCalendarAmount(bucket.income))}</span>`
+        : "";
+    cells.push(`
+      <button
+        type="button"
+        class="activity-cal-cell ${selected ? "is-selected" : ""} ${isToday ? "is-today" : ""}"
+        data-calendar-day="${iso}"
+        aria-pressed="${selected ? "true" : "false"}"
+        aria-label="${escapeHtml(formatShortDate(iso))}${bucket.spent ? `, spent ${money(bucket.spent)}` : ""}${bucket.income ? `, income ${money(bucket.income)}` : ""}"
+      >
+        <span class="activity-cal-daynum">${day}</span>
+        ${spentLine}
+        ${incomeLine}
+      </button>
+    `);
+  }
+
+  elements.activityCalendarGrid.innerHTML = cells.join("");
+
+  if (!elements.activityDayStrip) return;
+  if (!activityDayFilter) {
+    elements.activityDayStrip.hidden = true;
+    return;
+  }
+  const selected = totals.get(activityDayFilter) || { income: 0, spent: 0 };
+  const net = selected.income - selected.spent;
+  elements.activityDayStrip.hidden = false;
+  if (elements.activityDayStripLabel) {
+    const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
+      parseLocalDate(activityDayFilter),
+    );
+    elements.activityDayStripLabel.textContent = `Selected · ${weekday} ${formatShortDate(activityDayFilter)}`;
+  }
+  if (elements.activityDayIncome) elements.activityDayIncome.textContent = money(selected.income);
+  if (elements.activityDaySpent) elements.activityDaySpent.textContent = money(selected.spent);
+  if (elements.activityDayNet) {
+    elements.activityDayNet.textContent = money(net);
+    elements.activityDayNet.classList.toggle("is-negative", net < 0);
+    elements.activityDayNet.classList.toggle("is-income", net > 0);
+  }
+}
+
 function renderTransactions() {
   syncTypeFilterChips();
   renderCategoryFilterChips();
@@ -2513,6 +2636,7 @@ function renderTransactions() {
   const selectedMonth = elements.monthInput.value;
   const rows = state.transactions
     .filter((item) => monthKeyFromDate(item.date) === selectedMonth)
+    .filter((item) => activityDayFilter == null || item.date === activityDayFilter)
     .filter((item) => type === "All" || item.type === type)
     .filter((item) => activityCategoryFilter == null || item.category === activityCategoryFilter)
     .filter((item) => {
@@ -2524,7 +2648,8 @@ function renderTransactions() {
     })
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const filtersActive = Boolean(query) || type !== "All" || activityCategoryFilter != null;
+  const filtersActive =
+    Boolean(query) || type !== "All" || activityCategoryFilter != null || activityDayFilter != null;
   const monthLabel = formatMonthLabel(selectedMonth);
 
   if (!rows.length) {
@@ -4917,6 +5042,7 @@ function shiftMonth(delta) {
   const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
   setSelectedMonth(nextKey);
   expandedCategoryName = null;
+  activityDayFilter = null;
   render();
 }
 

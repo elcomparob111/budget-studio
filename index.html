@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=70" />
+    <link rel="stylesheet" href="./styles.css?v=71" />
   </head>
   <body>
     <main class="app-shell" data-tab="overview">
@@ -138,6 +138,39 @@
             <div class="home-hero-stat">
               <span>Out</span>
               <strong id="activitySpentMetric" class="is-expense">$0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="activity-calendar-section" aria-label="Spending calendar">
+          <div class="section-label-row">
+            <p class="section-label">Calendar</p>
+            <span id="activityCalendarMonth" class="activity-calendar-month">Jul 2026</span>
+          </div>
+          <div class="activity-calendar-card">
+            <div class="activity-calendar-weekdays" aria-hidden="true">
+              <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+            </div>
+            <div id="activityCalendarGrid" class="activity-calendar-grid" role="grid" aria-label="Days of the month"></div>
+            <div id="activityDayStrip" class="activity-day-strip" hidden>
+              <div class="activity-day-strip-top">
+                <p id="activityDayStripLabel" class="activity-day-strip-label">Selected</p>
+                <button id="activityDayClearBtn" class="section-link" type="button">Clear</button>
+              </div>
+              <div class="activity-day-strip-stats">
+                <div class="home-hero-stat">
+                  <span>In</span>
+                  <strong id="activityDayIncome" class="is-income">$0</strong>
+                </div>
+                <div class="home-hero-stat">
+                  <span>Out</span>
+                  <strong id="activityDaySpent" class="is-expense">$0</strong>
+                </div>
+                <div class="home-hero-stat">
+                  <span>Net</span>
+                  <strong id="activityDayNet">$0</strong>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -817,7 +850,7 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=70"></script>
+    <script type="module" src="./app.js?v=71"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js?v=68").then((reg) => {
