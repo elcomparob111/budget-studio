@@ -14,7 +14,7 @@ export const syncConfig = {
   // UI toggles — keep scaffolding in sync.js; flip these when the provider
   // is enabled in Supabase (and Apple Developer for Sign in with Apple).
   authProviders: {
-    google: false,
+    google: true,
     apple: false,
     passkey: false,
   },
