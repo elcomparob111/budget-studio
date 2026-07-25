@@ -14,31 +14,21 @@
       content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; form-action 'self'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net; worker-src 'self'; manifest-src 'self'"
     />
     <title>Budget Studio</title>
-    <!--
-      GitHub project Pages: without a trailing slash, "./app.js" resolves to
-      https://…github.io/app.js (404) and the UI freezes on the empty HTML shell.
-    -->
-    <script>
-      (function () {
-        var path = location.pathname || "";
-        if (/\/budget-studio$/i.test(path)) {
-          location.replace(path + "/" + location.search + location.hash);
-        }
-      })();
-    </script>
-    <link rel="icon" href="./icons/icon-192.png?v=78" type="image/png" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=78" />
+    <!-- External only: meta CSP script-src has no 'unsafe-inline'. -->
+    <script src="./boot.js?v=79"></script>
+    <link rel="icon" href="./icons/icon-192.png?v=79" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png?v=79" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=78" />
+    <link rel="stylesheet" href="./styles.css?v=79" />
   </head>
   <body>
     <main class="app-shell" data-tab="overview">
       <header class="app-header">
         <div class="brand-lockup">
-          <img class="brand-logo" src="./icons/icon-192.png?v=78" width="36" height="36" alt="" />
+          <img class="brand-logo" src="./icons/icon-192.png?v=79" width="36" height="36" alt="" />
           <div>
             <h1 id="appTitle">Budget Studio</h1>
             <p id="appSubtitle" class="header-subtitle" hidden></p>
@@ -550,7 +540,7 @@
 
     <section id="authGate" class="wizard-overlay" aria-label="Sign in to Budget Studio" aria-modal="true" role="dialog" hidden>
       <div class="edit-card profile-card auth-card">
-        <img class="app-logo" src="./icons/icon-192.png?v=78" width="88" height="88" alt="" />
+        <img class="app-logo" src="./icons/icon-192.png?v=79" width="88" height="88" alt="" />
         <p class="eyebrow">Budget Studio</p>
         <h2 id="authTitle">Welcome back</h2>
         <p id="authCopy" class="wizard-copy">
@@ -862,37 +852,6 @@
       </div>
     </section>
 
-    <script type="module">
-      // Resolve against this document so a missing trailing slash can't 404 modules.
-      const appUrl = new URL("app.js?v=78", window.location.href.replace(/\/budget-studio$/i, "/budget-studio/"));
-      import(appUrl.href).catch((error) => {
-        console.error("Budget Studio failed to start", error);
-        const gate = document.querySelector("#authGate");
-        const tabs = document.querySelector("#tabBar");
-        if (gate) gate.hidden = true;
-        if (tabs) tabs.hidden = false;
-        const banner = document.createElement("p");
-        banner.className = "boot-error";
-        banner.setAttribute("role", "alert");
-        banner.textContent =
-          "Budget Studio couldn't load. Open https://elcomparob111.github.io/budget-studio/ (with the slash), or clear site data and retry.";
-        document.querySelector("main")?.prepend(banner);
-      });
-    </script>
-    <script>
-      if ("serviceWorker" in navigator) {
-        const swUrl = new URL("sw.js?v=78", window.location.href.replace(/\/budget-studio$/i, "/budget-studio/"));
-        navigator.serviceWorker.register(swUrl.href).then((reg) => {
-          reg.update().catch(() => {});
-        }).catch(() => {});
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refreshing || sessionStorage.getItem("bs-sw-reloaded-v78")) return;
-          refreshing = true;
-          sessionStorage.setItem("bs-sw-reloaded-v78", "1");
-          window.location.reload();
-        });
-      }
-    </script>
+    <script type="module" src="./app.js?v=79"></script>
   </body>
 </html>

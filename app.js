@@ -26,7 +26,7 @@ import {
   subscribeSharedBudget,
   getCaptchaSiteKey,
   getAuthProviders,
-} from "./sync.js?v=78";
+} from "./sync.js?v=79";
 import {
   AUTH_PASSWORD_HINT,
   assertImportFileSize,
@@ -43,7 +43,7 @@ import {
   validateEmail,
   validatePassword,
   validateTransactionType,
-} from "./security.js?v=78";
+} from "./security.js?v=79";
 
 const STORAGE_KEY = "budget-studio-state-v7";
 const SELECTED_MONTH_KEY = "budget-studio-selected-month";
