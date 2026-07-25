@@ -20,16 +20,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=67" />
+    <link rel="stylesheet" href="./styles.css?v=69" />
   </head>
   <body>
-    <main class="app-shell">
+    <main class="app-shell" data-tab="overview">
       <header class="app-header">
         <div class="brand-lockup">
           <img class="brand-logo" src="./icons/icon-192.png" width="36" height="36" alt="" />
           <div>
-            <h1 id="appTitle">Welcome!</h1>
-            <p id="appSubtitle" class="header-subtitle">Today</p>
+            <h1 id="appTitle">Budget Studio</h1>
+            <p id="appSubtitle" class="header-subtitle" hidden></p>
           </div>
         </div>
         <div class="header-actions">
@@ -52,96 +52,75 @@
       </header>
 
       <section id="overviewTab" class="tab-panel" data-tab-panel="overview">
-        <section class="stat-row" aria-label="Budget summary">
-          <article class="stat-chip">
-            <span class="stat-label">Income</span>
-            <strong id="incomeMetric">$0</strong>
-          </article>
-          <article class="stat-chip">
-            <span class="stat-label">Spent</span>
-            <strong id="spentMetric">$0</strong>
-          </article>
-          <article class="stat-chip stat-chip-ring">
-            <div id="budgetRing" class="budget-ring" role="img" aria-label="Budget used">
-              <span id="budgetUsedMetric">0%</span>
+        <section id="homeHero" class="home-hero" aria-label="Check left">
+          <div class="home-hero-top">
+            <div class="home-hero-main">
+              <p class="home-hero-label">Check left</p>
+              <p id="checkLeftMetric" class="home-hero-amount">$0</p>
+              <p id="checkLeftCaption" class="home-hero-caption">This month</p>
+              <p id="checkLeftNextHint" class="home-hero-hint" hidden></p>
             </div>
-            <div>
-              <span class="stat-label">Budget used</span>
-              <small id="ringSubtext">Healthy pace</small>
-            </div>
-          </article>
-        </section>
-
-        <section id="upcomingPanel" class="panel upcoming-panel" hidden>
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Coming up</p>
-              <h2>Upcoming bills</h2>
+            <div id="checkRing" class="check-ring" role="img" aria-label="Percent of check spent">
+              <span id="checkRingPercent">0%</span>
+              <small>spent</small>
             </div>
           </div>
+          <div class="home-hero-stats">
+            <div class="home-hero-stat">
+              <span>In</span>
+              <strong id="heroIncomeMetric" class="is-income">$0</strong>
+            </div>
+            <div class="home-hero-stat">
+              <span>Out</span>
+              <strong id="heroSpentMetric" class="is-expense">$0</strong>
+            </div>
+            <div class="home-month-stepper" role="group" aria-label="Selected month">
+              <button id="homePrevMonthBtn" class="home-month-btn" type="button" aria-label="Previous month">‹</button>
+              <button id="homeMonthLabel" class="home-month-label" type="button" title="Choose month" aria-label="Choose month">Jul 2026</button>
+              <button id="homeNextMonthBtn" class="home-month-btn" type="button" aria-label="Next month">›</button>
+            </div>
+          </div>
+          <div class="home-month-plan">
+            <div class="home-month-plan-head">
+              <span>Month plan</span>
+              <span id="monthPlanLabel">0% used</span>
+            </div>
+            <div class="home-month-plan-track" aria-hidden="true">
+              <div id="monthPlanFill" class="home-month-plan-fill"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="upcomingPanel" class="upcoming-section" hidden>
+          <p class="section-label">Coming up</p>
           <div id="upcomingList" class="upcoming-list"></div>
         </section>
 
-        <section id="paycheckPanel" class="panel paycheck-panel" hidden>
-          <div class="paycheck-card-header">
-            <div>
-              <p class="eyebrow">This pay period</p>
-              <h2 id="payPeriodRange">Not set</h2>
-              <small id="payPeriodNextHint" class="paycheck-next-hint" hidden></small>
-            </div>
-            <span class="paycheck-calendar-icon" aria-hidden="true">📅</span>
-          </div>
-          <div class="paycheck-metrics">
-            <article>
-              <span>Income</span>
-              <strong id="paycheckIncomeMetric">$0</strong>
-            </article>
-            <article>
-              <span>Spent</span>
-              <strong id="paycheckSpentMetric">$0</strong>
-            </article>
-            <article>
-              <span>Check left</span>
-              <strong id="paycheckLeftMetric">$0</strong>
-              <small id="paycheckLeftRange">This paycheck</small>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel progress-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Control</p>
-              <h2>Category progress</h2>
-            </div>
-            <span id="netMetric" class="money-chip">$0 net</span>
-          </div>
+        <section class="where-section" aria-label="Category progress">
+          <p class="section-label">Where it went</p>
           <div id="categoryProgress" class="category-progress"></div>
         </section>
       </section>
 
       <section id="activityTab" class="tab-panel" data-tab-panel="activity" hidden>
-        <section class="panel activity-cashflow-panel" aria-label="Income versus spending">
-          <div class="panel-heading">
+        <section class="activity-hero" aria-label="Income versus spending">
+          <div class="activity-hero-top">
             <div>
-              <p class="eyebrow">This month</p>
-              <h2>Income vs spent</h2>
+              <p class="home-hero-label">This month</p>
+              <p id="activityNetMetric" class="home-hero-amount">$0</p>
+              <p class="home-hero-caption">Net after income and spending</p>
             </div>
             <span id="activityNetChip" class="money-chip">$0 net</span>
           </div>
-          <div class="activity-cashflow-metrics">
-            <article>
-              <span>Income</span>
-              <strong id="activityIncomeMetric">$0</strong>
-            </article>
-            <article>
-              <span>Spent</span>
-              <strong id="activitySpentMetric">$0</strong>
-            </article>
-            <article>
-              <span>Net</span>
-              <strong id="activityNetMetric">$0</strong>
-            </article>
+          <div class="home-hero-stats activity-hero-stats">
+            <div class="home-hero-stat">
+              <span>In</span>
+              <strong id="activityIncomeMetric" class="is-income">$0</strong>
+            </div>
+            <div class="home-hero-stat">
+              <span>Out</span>
+              <strong id="activitySpentMetric" class="is-expense">$0</strong>
+            </div>
           </div>
         </section>
 
@@ -151,16 +130,23 @@
               <p class="eyebrow">Review</p>
               <h2>Transactions</h2>
             </div>
-            <div class="table-tools">
-              <input id="searchInput" type="search" placeholder="Search transactions" />
-              <select id="typeFilter">
-                <option value="All">All types</option>
-                <option value="Expense">Expenses</option>
-                <option value="Income">Income</option>
-              </select>
-            </div>
           </div>
-          <div class="table-wrap">
+          <div class="activity-filters">
+            <input id="searchInput" type="search" placeholder="Search description, category, account" />
+            <div id="typeFilterChips" class="filter-chip-row" role="group" aria-label="Transaction type">
+              <button type="button" class="filter-chip selected" data-type-filter="All">All</button>
+              <button type="button" class="filter-chip" data-type-filter="Expense">Expense</button>
+              <button type="button" class="filter-chip" data-type-filter="Income">Income</button>
+            </div>
+            <div id="categoryFilterChips" class="filter-chip-row" role="group" aria-label="Category filter"></div>
+            <select id="typeFilter" class="visually-hidden" tabindex="-1" aria-hidden="true">
+              <option value="All">All types</option>
+              <option value="Expense">Expenses</option>
+              <option value="Income">Income</option>
+            </select>
+          </div>
+          <div id="transactionsList" class="transactions-list"></div>
+          <div class="table-wrap activity-table-fallback">
             <table>
               <thead>
                 <tr>
@@ -202,34 +188,43 @@
       </section>
 
       <section id="goalsTab" class="tab-panel" data-tab-panel="goals" hidden>
-        <section class="panel goals-hero-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Savings</p>
-              <h2>Your goals</h2>
+        <section class="goals-hero home-hero" aria-label="Savings summary">
+          <div class="home-hero-top">
+            <div class="home-hero-main">
+              <p class="home-hero-label">Saved so far</p>
+              <p id="goalsSavedTotal" class="home-hero-amount">$0</p>
+              <p id="goalsHeroCaption" class="home-hero-caption">No goals yet</p>
             </div>
-            <button id="openNewGoalBtn" class="primary-button" type="button">New goal</button>
+            <div id="goalsRing" class="check-ring goals-ring" role="img" aria-label="Goals progress" hidden>
+              <span id="goalsRingPercent">0%</span>
+              <small>done</small>
+            </div>
           </div>
-          <div class="goals-summary" aria-label="Savings summary">
-            <article>
-              <span>Saved</span>
-              <strong id="goalsSavedTotal">$0</strong>
-            </article>
-            <article>
-              <span>Left to go</span>
+          <div class="home-hero-stats goals-hero-stats">
+            <div class="home-hero-stat" id="goalsTargetStat">
+              <span>Target</span>
+              <strong id="goalsTargetTotal">$0</strong>
+            </div>
+            <div class="home-hero-stat" id="goalsLeftStat">
+              <span>Left</span>
               <strong id="goalsLeftTotal">$0</strong>
-            </article>
-            <article>
-              <span>Goals</span>
-              <strong id="goalsCountMetric">0</strong>
-            </article>
+            </div>
+            <button id="openNewGoalBtn" class="primary-button goals-new-btn" type="button">New goal</button>
           </div>
+          <span id="goalsCountMetric" class="visually-hidden">0</span>
         </section>
         <div id="goalsList" class="goals-list"></div>
       </section>
 
       <section id="settingsTab" class="tab-panel" data-tab-panel="settings" hidden>
-        <section class="panel settings-actions-panel">
+        <section id="settingsHero" class="settings-hero" aria-label="Account">
+          <p class="home-hero-label">Account</p>
+          <p id="settingsHeroName" class="settings-hero-name">Budget Studio</p>
+          <p id="settingsHeroSub" class="home-hero-caption">Local budget</p>
+        </section>
+
+        <p class="section-label">Money</p>
+        <section class="panel settings-group-panel">
           <button id="editPayScheduleBtn" class="settings-summary-row" type="button">
             <span class="settings-summary-emoji" aria-hidden="true">💵</span>
             <span class="settings-summary-copy">
@@ -252,10 +247,10 @@
           </button>
         </section>
 
+        <p id="settingsSharedLabel" class="section-label">Sharing</p>
         <section id="sharedPanel" class="panel shared-panel" hidden>
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Together</p>
               <h2>Shared budget</h2>
             </div>
           </div>
@@ -277,6 +272,7 @@
           <p id="sharedMessage" class="form-message" role="status"></p>
         </section>
 
+        <p class="section-label">Bills</p>
         <section class="panel recurring-panel">
           <div class="panel-heading recurring-panel-heading">
             <div>
@@ -304,10 +300,10 @@
           <p id="recurringEmpty" class="recurring-empty" hidden>Nothing recurring yet — add your rent, subscriptions, or paycheck.</p>
         </section>
 
+        <p class="section-label">Preferences</p>
         <section class="panel settings-actions-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Setup</p>
               <h2>Budget setup</h2>
             </div>
           </div>
@@ -316,11 +312,11 @@
           </div>
         </section>
 
+        <p class="section-label">Tools</p>
         <section class="panel settings-actions-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Account</p>
-              <h2>Backup & sign out</h2>
+              <h2>Backup &amp; sign out</h2>
             </div>
           </div>
           <div class="settings-actions">
@@ -803,7 +799,7 @@
       </div>
     </section>
 
-    <script type="module" src="./app.js?v=67"></script>
+    <script type="module" src="./app.js?v=69"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js?v=68").then((reg) => {

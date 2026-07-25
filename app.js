@@ -408,19 +408,20 @@ const elements = {
   monthLabel: document.querySelector("#monthLabel"),
   prevMonthBtn: document.querySelector("#prevMonthBtn"),
   nextMonthBtn: document.querySelector("#nextMonthBtn"),
-  incomeMetric: document.querySelector("#incomeMetric"),
-  spentMetric: document.querySelector("#spentMetric"),
-  budgetRing: document.querySelector("#budgetRing"),
-  budgetUsedMetric: document.querySelector("#budgetUsedMetric"),
-  ringSubtext: document.querySelector("#ringSubtext"),
-  paycheckPanel: document.querySelector("#paycheckPanel"),
-  payPeriodRange: document.querySelector("#payPeriodRange"),
-  payPeriodNextHint: document.querySelector("#payPeriodNextHint"),
+  homePrevMonthBtn: document.querySelector("#homePrevMonthBtn"),
+  homeNextMonthBtn: document.querySelector("#homeNextMonthBtn"),
+  homeMonthLabel: document.querySelector("#homeMonthLabel"),
+  homeHero: document.querySelector("#homeHero"),
+  checkLeftMetric: document.querySelector("#checkLeftMetric"),
+  checkLeftCaption: document.querySelector("#checkLeftCaption"),
+  checkLeftNextHint: document.querySelector("#checkLeftNextHint"),
+  checkRing: document.querySelector("#checkRing"),
+  checkRingPercent: document.querySelector("#checkRingPercent"),
+  heroIncomeMetric: document.querySelector("#heroIncomeMetric"),
+  heroSpentMetric: document.querySelector("#heroSpentMetric"),
+  monthPlanLabel: document.querySelector("#monthPlanLabel"),
+  monthPlanFill: document.querySelector("#monthPlanFill"),
   paySchedulePeriodPreview: document.querySelector("#paySchedulePeriodPreview"),
-  paycheckIncomeMetric: document.querySelector("#paycheckIncomeMetric"),
-  paycheckSpentMetric: document.querySelector("#paycheckSpentMetric"),
-  paycheckLeftMetric: document.querySelector("#paycheckLeftMetric"),
-  paycheckLeftRange: document.querySelector("#paycheckLeftRange"),
   payScheduleForm: document.querySelector("#payScheduleForm"),
   payScheduleDialog: document.querySelector("#payScheduleDialog"),
   editPayScheduleBtn: document.querySelector("#editPayScheduleBtn"),
@@ -429,17 +430,29 @@ const elements = {
   settingsPayAmountInput: document.querySelector("#settingsPayAmountInput"),
   settingsNextPayDateInput: document.querySelector("#settingsNextPayDateInput"),
   settingsPayScheduleSubtitle: document.querySelector("#settingsPayScheduleSubtitle"),
+  settingsHeroName: document.querySelector("#settingsHeroName"),
+  settingsHeroSub: document.querySelector("#settingsHeroSub"),
+  settingsSharedLabel: document.querySelector("#settingsSharedLabel"),
   savePayScheduleBtn: document.querySelector("#savePayScheduleBtn"),
   budgetsDialog: document.querySelector("#budgetsDialog"),
   editBudgetsBtn: document.querySelector("#editBudgetsBtn"),
   closeBudgetsBtn: document.querySelector("#closeBudgetsBtn"),
   settingsBudgetsSubtitle: document.querySelector("#settingsBudgetsSubtitle"),
-  netMetric: document.querySelector("#netMetric"),
   savingsMetric: document.querySelector("#savingsMetric"),
   topCategoryBadge: document.querySelector("#topCategoryBadge"),
   categoryChart: document.querySelector("#categoryChart"),
   trendChart: document.querySelector("#trendChart"),
   categoryProgress: document.querySelector("#categoryProgress"),
+  transactionsList: document.querySelector("#transactionsList"),
+  typeFilterChips: document.querySelector("#typeFilterChips"),
+  categoryFilterChips: document.querySelector("#categoryFilterChips"),
+  goalsHeroCaption: document.querySelector("#goalsHeroCaption"),
+  goalsTargetTotal: document.querySelector("#goalsTargetTotal"),
+  goalsRing: document.querySelector("#goalsRing"),
+  goalsRingPercent: document.querySelector("#goalsRingPercent"),
+  goalsTargetStat: document.querySelector("#goalsTargetStat"),
+  goalsLeftStat: document.querySelector("#goalsLeftStat"),
+  appShell: document.querySelector(".app-shell"),
   transactionForm: document.querySelector("#transactionForm"),
   dateInput: document.querySelector("#dateInput"),
   typeInput: document.querySelector("#typeInput"),
@@ -609,6 +622,10 @@ const elements = {
 };
 
 let activeTab = "overview";
+/** Home category expand — one open at a time (iOS parity). */
+let expandedCategoryName = null;
+/** Activity category chip filter; null = all. */
+let activityCategoryFilter = null;
 
 let currentUser = null;
 let localOnlyMode = false;
@@ -1000,6 +1017,7 @@ function renderSharedPanel() {
   if (!elements.sharedPanel) return;
   const eligible = !localOnlyMode && currentUser && currentUser.uid !== "local";
   elements.sharedPanel.hidden = !eligible;
+  if (elements.settingsSharedLabel) elements.settingsSharedLabel.hidden = !eligible;
   if (!eligible) return;
   elements.sharedSolo.hidden = Boolean(sharedBudget);
   elements.sharedActive.hidden = !sharedBudget;
@@ -1099,12 +1117,16 @@ async function leaveSharedFlow() {
 function attachEvents() {
   elements.monthInput.addEventListener("change", () => {
     setSelectedMonth(elements.monthInput.value);
+    expandedCategoryName = null;
+    activityCategoryFilter = null;
     render();
   });
 
   elements.prevMonthBtn?.addEventListener("click", () => shiftMonth(-1));
   elements.nextMonthBtn?.addEventListener("click", () => shiftMonth(1));
-  elements.monthLabel?.addEventListener("click", () => {
+  elements.homePrevMonthBtn?.addEventListener("click", () => shiftMonth(-1));
+  elements.homeNextMonthBtn?.addEventListener("click", () => shiftMonth(1));
+  const openMonthPicker = () => {
     try {
       elements.monthInput.showPicker();
     } catch {
@@ -1112,17 +1134,53 @@ function attachEvents() {
       elements.monthInput.focus();
       elements.monthInput.click();
     }
-  });
+  };
+  elements.monthLabel?.addEventListener("click", openMonthPicker);
+  elements.homeMonthLabel?.addEventListener("click", openMonthPicker);
 
   elements.searchInput.addEventListener("input", renderTransactions);
-  elements.typeFilter.addEventListener("change", renderTransactions);
+  elements.typeFilter.addEventListener("change", () => {
+    syncTypeFilterChips();
+    renderTransactions();
+  });
+  elements.typeFilterChips?.addEventListener("click", (event) => {
+    const chip = event.target.closest("[data-type-filter]");
+    if (!chip) return;
+    elements.typeFilter.value = chip.dataset.typeFilter || "All";
+    syncTypeFilterChips();
+    renderTransactions();
+  });
+  elements.categoryFilterChips?.addEventListener("click", (event) => {
+    const chip = event.target.closest("[data-category-filter]");
+    if (!chip) return;
+    const value = chip.dataset.categoryFilter;
+    activityCategoryFilter = value === "" ? null : value;
+    renderCategoryFilterChips();
+    renderTransactions();
+  });
 
-  elements.transactionsBody.addEventListener("click", (event) => {
+  elements.categoryProgress?.addEventListener("click", (event) => {
+    const expenseBtn = event.target.closest("[data-home-expense-id]");
+    if (expenseBtn) {
+      openEditDialog(expenseBtn.dataset.homeExpenseId);
+      return;
+    }
+    const rowBtn = event.target.closest("[data-expand-category]");
+    if (!rowBtn) return;
+    const name = rowBtn.dataset.expandCategory;
+    expandedCategoryName = expandedCategoryName === name ? null : name;
+    renderProgress(getMonthSummary(elements.monthInput.value).categoryRows);
+  });
+
+  const handleTransactionListClick = (event) => {
     const emptyAction = event.target.closest("[data-empty-action]");
     if (emptyAction) {
       if (emptyAction.dataset.emptyAction === "clear-filters") {
         elements.searchInput.value = "";
         elements.typeFilter.value = "All";
+        activityCategoryFilter = null;
+        syncTypeFilterChips();
+        renderCategoryFilterChips();
         renderTransactions();
       } else {
         openQuickAdd();
@@ -1155,7 +1213,9 @@ function attachEvents() {
     const row = event.target.closest("[data-transaction-id]");
     const id = editButton?.dataset.editId || row?.dataset.transactionId;
     if (id) openEditDialog(id);
-  });
+  };
+  elements.transactionsBody?.addEventListener("click", handleTransactionListClick);
+  elements.transactionsList?.addEventListener("click", handleTransactionListClick);
 
   elements.budgetEditor?.addEventListener("change", (event) => {
     const input = event.target.closest("[data-budget-category]");
@@ -1474,6 +1534,7 @@ function switchTab(tab) {
 
   const requested = String(tab || "").trim();
   activeTab = panels[requested] ? requested : "overview";
+  elements.appShell?.setAttribute("data-tab", activeTab);
 
   Object.entries(panels).forEach(([name, panel]) => {
     if (!panel) return;
@@ -1494,6 +1555,7 @@ function switchTab(tab) {
     populateRecurringCategorySelect();
     renderRecurringList();
     renderSharedPanel();
+    renderSettingsHero();
   } else {
     render();
   }
@@ -1969,20 +2031,61 @@ function renderDashboard() {
   const month = elements.monthInput.value;
   syncMonthLabel(month);
   const summary = getMonthSummary(month);
-  const usedPercent = summary.totalBudget ? summary.expenses / summary.totalBudget : 0;
-  const net = summary.income - summary.expenses;
+  const hasPay = Boolean(state.setupProfile);
+  const paySummary = hasPay ? getPayPeriodSummary(month) : null;
+  const heroAmount = paySummary ? paySummary.left : summary.income - summary.expenses;
+  const periodIncome = paySummary ? paySummary.income : summary.income;
+  const periodSpent = paySummary ? paySummary.expenses : summary.expenses;
+  const checkRatio = periodIncome > 0 ? periodSpent / periodIncome : 0;
+  const planRatio = summary.totalBudget ? summary.expenses / summary.totalBudget : 0;
 
-  elements.incomeMetric.textContent = money(summary.income);
-  elements.spentMetric.textContent = money(summary.expenses);
-  elements.budgetUsedMetric.textContent = percent(usedPercent);
-  elements.budgetRing.style.setProperty("--used", `${Math.min(100, Math.max(0, usedPercent * 100))}%`);
-  elements.budgetRing.classList.toggle("over", usedPercent > 1);
-  elements.ringSubtext.textContent = statusCopy(usedPercent);
-  elements.netMetric.textContent = `${money(net)} left from income`;
-  elements.netMetric.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
+  if (elements.checkLeftMetric) {
+    elements.checkLeftMetric.textContent = money(heroAmount);
+    elements.checkLeftMetric.classList.toggle("is-negative", heroAmount < 0);
+  }
+  if (elements.checkLeftCaption) {
+    elements.checkLeftCaption.textContent = paySummary
+      ? paySummary.rangeLabel
+      : formatMonthLabel(month);
+  }
+  if (elements.checkLeftNextHint) {
+    const nextHint = paySummary ? getNextPayPeriodHint(month, paySummary) : null;
+    if (nextHint) {
+      elements.checkLeftNextHint.textContent = nextHint;
+      elements.checkLeftNextHint.hidden = false;
+    } else {
+      elements.checkLeftNextHint.textContent = "";
+      elements.checkLeftNextHint.hidden = true;
+    }
+  }
+  if (elements.heroIncomeMetric) elements.heroIncomeMetric.textContent = money(periodIncome);
+  if (elements.heroSpentMetric) elements.heroSpentMetric.textContent = money(periodSpent);
 
+  if (elements.checkRing) {
+    const usedPct = Math.min(100, Math.max(0, checkRatio * 100));
+    elements.checkRing.style.setProperty("--used", `${usedPct}%`);
+    elements.checkRing.classList.toggle("over", checkRatio > 1);
+    elements.checkRing.setAttribute(
+      "aria-label",
+      `${Math.round(Math.min(checkRatio, 9.99) * 100)} percent of check spent`,
+    );
+  }
+  if (elements.checkRingPercent) {
+    elements.checkRingPercent.textContent = `${Math.round(Math.min(checkRatio, 9.99) * 100)}%`;
+  }
+
+  if (elements.monthPlanLabel) {
+    elements.monthPlanLabel.textContent =
+      planRatio > 1 ? `Over · ${Math.round(planRatio * 100)}%` : `${Math.round(planRatio * 100)}% used`;
+    elements.monthPlanLabel.classList.toggle("is-over", planRatio > 1);
+  }
+  if (elements.monthPlanFill) {
+    elements.monthPlanFill.style.width = `${Math.min(100, Math.max(0, planRatio * 100))}%`;
+    elements.monthPlanFill.classList.toggle("is-over", planRatio > 1);
+  }
+
+  updatePayScheduleSummary();
   renderProgress(summary.categoryRows);
-  renderPaycheckView(month);
   renderUpcoming();
   renderIdentityUI();
 }
@@ -2008,56 +2111,105 @@ function renderActivityCharts() {
   renderTrendChart(month);
 }
 
-function renderPaycheckView(month) {
-  if (!state.setupProfile) {
-    if (elements.paycheckPanel) elements.paycheckPanel.hidden = true;
-    return;
-  }
-  if (elements.paycheckPanel) elements.paycheckPanel.hidden = false;
+function groupEmoji(group) {
+  return { Needs: "🏠", Wants: "✨", Savings: "🌱", Income: "💵" }[group] || "•";
+}
 
-  const paySummary = getPayPeriodSummary(month);
-  elements.payPeriodRange.textContent = paySummary.rangeLabel;
-  elements.paycheckIncomeMetric.textContent = money(paySummary.income);
-  elements.paycheckSpentMetric.textContent = money(paySummary.expenses);
-  elements.paycheckLeftMetric.textContent = money(paySummary.left);
-  if (elements.paycheckLeftRange) {
-    elements.paycheckLeftRange.textContent = paySummary.rangeLabel;
-  }
-  if (elements.payPeriodNextHint) {
-    const nextHint = getNextPayPeriodHint(month, paySummary);
-    if (nextHint) {
-      elements.payPeriodNextHint.textContent = nextHint;
-      elements.payPeriodNextHint.hidden = false;
-    } else {
-      elements.payPeriodNextHint.textContent = "";
-      elements.payPeriodNextHint.hidden = true;
-    }
-  }
-  updatePayScheduleSummary();
+function groupTintClass(group) {
+  const key = String(group || "").toLowerCase();
+  if (key === "needs" || key === "wants" || key === "savings") return key;
+  return "other";
+}
+
+function expensesForCategory(categoryName, month) {
+  return state.transactions
+    .filter(
+      (item) =>
+        item.type === "Expense" &&
+        item.category === categoryName &&
+        monthKeyFromDate(item.date) === month,
+    )
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
 function renderProgress(rows) {
   // Dynamic: hide idle $0/$0; reappear when spent > 0 or budget > 0.
   const visible = rows.filter((row) => row.spent > 0 || row.budget > 0);
   if (!visible.length) {
-    elements.categoryProgress.innerHTML = `<div class="empty-state">No budgeted or spent categories this month.</div>`;
+    elements.categoryProgress.innerHTML = `<div class="empty-state">Set budgets or log spending to track progress.</div>`;
     return;
   }
-  elements.categoryProgress.innerHTML = visible
-    .map((row) => {
-      const used = row.budget ? row.spent / row.budget : 0;
-      const width = Math.min(100, used * 100);
-      const status = used > 1 ? "over" : used >= 0.85 ? "watch" : "good";
+
+  const order = ["Needs", "Wants", "Savings"];
+  const grouped = new Map();
+  for (const row of visible) {
+    const key = row.group || "Needs";
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(row);
+  }
+  const sections = [
+    ...order.filter((key) => grouped.has(key)).map((key) => [key, grouped.get(key)]),
+    ...[...grouped.entries()].filter(([key]) => !order.includes(key)),
+  ];
+  const month = elements.monthInput.value;
+
+  elements.categoryProgress.innerHTML = sections
+    .map(([group, groupRows]) => {
+      const tint = groupTintClass(group);
+      const rowsHtml = groupRows
+        .map((row) => {
+          const used = row.budget ? row.spent / row.budget : 0;
+          const width = Math.min(100, used * 100);
+          const over = row.budget > 0 && row.spent > row.budget;
+          const expanded = expandedCategoryName === row.name;
+          const expenses = expanded ? expensesForCategory(row.name, month) : [];
+          const expandHtml = expanded
+            ? `
+              <div class="category-expand">
+                ${
+                  expenses.length
+                    ? expenses
+                        .map(
+                          (item) => `
+                    <button class="category-expense" type="button" data-home-expense-id="${escapeHtml(item.id)}">
+                      <span class="category-expense-name">${escapeHtml(item.description || item.category)}</span>
+                      <span class="category-expense-date">${escapeHtml(formatShortDate(item.date))}</span>
+                      <span class="category-expense-amount">${money(item.amount)}</span>
+                    </button>
+                  `,
+                        )
+                        .join("")
+                    : `<p class="category-expand-empty">No expenses this month.</p>`
+                }
+              </div>
+            `
+            : "";
+          return `
+            <button
+              class="category-row ${expanded ? "is-expanded" : ""}"
+              type="button"
+              data-expand-category="${escapeHtml(row.name)}"
+              aria-expanded="${expanded ? "true" : "false"}"
+            >
+              <div class="category-row-top">
+                <span class="category-dot group-${tint}" aria-hidden="true"></span>
+                <span class="category-row-name">${escapeHtml(row.name)}</span>
+                <span class="category-row-spent ${over ? "is-over" : ""}">${money(row.spent)}</span>
+                <span class="category-chevron" aria-hidden="true">▾</span>
+              </div>
+              <div class="category-row-bar" aria-hidden="true">
+                <span class="tint-${tint} ${over ? "is-over" : ""}" style="width:${width}%"></span>
+              </div>
+              <div class="category-row-meta">of ${money(row.budget)}</div>
+            </button>
+            ${expandHtml}
+          `;
+        })
+        .join("");
       return `
-        <div class="progress-row">
-          <div class="progress-label">
-            <strong>${escapeHtml(row.name)}</strong>
-            <small>${escapeHtml(row.group)}</small>
-          </div>
-          <div class="progress-track" aria-label="${escapeHtml(row.name)} budget progress">
-            <div class="progress-fill ${status}" style="width:${width}%"></div>
-          </div>
-          <div class="progress-amount">${money(row.spent)} / ${money(row.budget)}</div>
+        <div class="category-group">
+          <p class="category-group-title"><span aria-hidden="true">${groupEmoji(group)}</span>${escapeHtml(group)}</p>
+          <div class="category-group-card">${rowsHtml}</div>
         </div>
       `;
     })
@@ -2163,82 +2315,155 @@ function renderTrendChart(selectedMonth) {
   `;
 }
 
+function syncTypeFilterChips() {
+  const type = elements.typeFilter?.value || "All";
+  elements.typeFilterChips?.querySelectorAll("[data-type-filter]").forEach((chip) => {
+    chip.classList.toggle("selected", chip.dataset.typeFilter === type);
+  });
+}
+
+function renderCategoryFilterChips() {
+  if (!elements.categoryFilterChips) return;
+  const selectedMonth = elements.monthInput.value;
+  const names = [
+    ...new Set(
+      state.transactions
+        .filter((item) => monthKeyFromDate(item.date) === selectedMonth)
+        .map((item) => item.category)
+        .filter(Boolean),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+
+  if (activityCategoryFilter && !names.includes(activityCategoryFilter)) {
+    activityCategoryFilter = null;
+  }
+
+  const chips = [
+    `<button type="button" class="filter-chip ${activityCategoryFilter == null ? "selected" : ""}" data-category-filter="">All categories</button>`,
+    ...names.map(
+      (name) => `
+        <button type="button" class="filter-chip ${activityCategoryFilter === name ? "selected" : ""}" data-category-filter="${escapeHtml(name)}">${escapeHtml(name)}</button>
+      `,
+    ),
+  ];
+  elements.categoryFilterChips.innerHTML = chips.join("");
+}
+
 function renderTransactions() {
+  syncTypeFilterChips();
+  renderCategoryFilterChips();
   const query = elements.searchInput.value.trim().toLowerCase();
   const type = elements.typeFilter.value;
   const selectedMonth = elements.monthInput.value;
   const rows = state.transactions
     .filter((item) => monthKeyFromDate(item.date) === selectedMonth)
     .filter((item) => type === "All" || item.type === type)
+    .filter((item) => activityCategoryFilter == null || item.category === activityCategoryFilter)
     .filter((item) => {
       if (!query) return true;
-      return [item.date, item.type, item.category, item.description, item.account]
+      return [item.description, item.category, item.account, item.type]
         .join(" ")
         .toLowerCase()
         .includes(query);
     })
     .sort((a, b) => b.date.localeCompare(a.date));
 
+  const filtersActive = Boolean(query) || type !== "All" || activityCategoryFilter != null;
+  const monthLabel = formatMonthLabel(selectedMonth);
+
   if (!rows.length) {
-    const filtersActive = Boolean(query) || type !== "All";
-    const monthLabel = formatMonthLabel(selectedMonth);
-    elements.transactionsBody.innerHTML = filtersActive
+    const empty = filtersActive
       ? `
-      <tr>
-        <td colspan="7" class="table-empty">
+        <div class="tx-empty">
           <p>No transactions match your search or filter.</p>
           <button class="ghost-button" data-empty-action="clear-filters" type="button">Clear filters</button>
-        </td>
-      </tr>
-    `
+        </div>
+      `
       : `
-      <tr>
-        <td colspan="7" class="table-empty">
+        <div class="tx-empty">
           <p>Nothing logged in ${escapeHtml(monthLabel)} yet.</p>
           <button class="primary-button" data-empty-action="quick-add" type="button">Add your first transaction</button>
-        </td>
-      </tr>
-    `;
+        </div>
+      `;
+    if (elements.transactionsList) elements.transactionsList.innerHTML = empty;
+    if (elements.transactionsBody) elements.transactionsBody.innerHTML = "";
     return;
   }
 
-  elements.transactionsBody.innerHTML = rows
-    .map(
-      (item) => `
-        <tr class="table-row-clickable" data-transaction-id="${escapeHtml(item.id)}">
-          <td>${formatDate(item.date)}</td>
-          <td><span class="type-pill ${item.type.toLowerCase()}">${escapeHtml(item.type)}</span></td>
-          <td>${escapeHtml(item.category)}</td>
-          <td>${escapeHtml(item.description)}${authorTag(item)}</td>
-          <td>${escapeHtml(item.account)}</td>
-          <td class="amount">${money(item.amount)}</td>
-          <td class="action-cell">
-            <button class="edit-button" data-edit-id="${escapeHtml(item.id)}" type="button">Edit</button>
-            <button class="delete-button" data-delete-id="${escapeHtml(item.id)}" type="button">Delete</button>
-          </td>
-        </tr>
-      `,
-    )
-    .join("");
+  const byDay = new Map();
+  for (const item of rows) {
+    if (!byDay.has(item.date)) byDay.set(item.date, []);
+    byDay.get(item.date).push(item);
+  }
+
+  if (elements.transactionsList) {
+    elements.transactionsList.innerHTML = [...byDay.entries()]
+      .map(([date, items]) => {
+        const dayRows = items
+          .map((item) => {
+            const title = item.description || item.category;
+            const meta = [item.category, item.account].filter(Boolean).join(" · ");
+            const income = item.type === "Income";
+            return `
+              <div class="tx-row" data-transaction-id="${escapeHtml(item.id)}" role="button" tabindex="0">
+                <div class="tx-row-main">
+                  <div class="tx-row-title">${escapeHtml(title)}${authorTag(item)}</div>
+                  <div class="tx-row-meta">${escapeHtml(meta)}</div>
+                </div>
+                <div class="tx-row-amount ${income ? "is-income" : "is-expense"}">${income ? "+" : ""}${money(item.amount)}</div>
+                <div class="tx-row-actions">
+                  <button class="edit-button" data-edit-id="${escapeHtml(item.id)}" type="button">Edit</button>
+                  <button class="delete-button" data-delete-id="${escapeHtml(item.id)}" type="button">Delete</button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+        return `
+          <section class="tx-day-group">
+            <p class="tx-day-label">${escapeHtml(formatShortDate(date))}</p>
+            ${dayRows}
+          </section>
+        `;
+      })
+      .join("");
+  }
+
+  if (elements.transactionsBody) {
+    elements.transactionsBody.innerHTML = rows
+      .map(
+        (item) => `
+          <tr class="table-row-clickable" data-transaction-id="${escapeHtml(item.id)}">
+            <td>${formatDate(item.date)}</td>
+            <td><span class="type-pill ${item.type.toLowerCase()}">${escapeHtml(item.type)}</span></td>
+            <td>${escapeHtml(item.category)}</td>
+            <td>${escapeHtml(item.description)}${authorTag(item)}</td>
+            <td>${escapeHtml(item.account)}</td>
+            <td class="amount">${money(item.amount)}</td>
+            <td class="action-cell">
+              <button class="edit-button" data-edit-id="${escapeHtml(item.id)}" type="button">Edit</button>
+              <button class="delete-button" data-delete-id="${escapeHtml(item.id)}" type="button">Delete</button>
+            </td>
+          </tr>
+        `,
+      )
+      .join("");
+  }
 }
 
 function renderActivityCashflow() {
   const month = elements.monthInput.value;
   const summary = getMonthSummary(month);
   const net = summary.income - summary.expenses;
-  const incomeEl = document.querySelector("#activityIncomeMetric");
-  const spentEl = document.querySelector("#activitySpentMetric");
-  const netEl = document.querySelector("#activityNetMetric");
-  const chipEl = document.querySelector("#activityNetChip");
-  if (incomeEl) incomeEl.textContent = money(summary.income);
-  if (spentEl) spentEl.textContent = money(summary.expenses);
-  if (netEl) {
-    netEl.textContent = money(net);
-    netEl.classList.toggle("is-negative", net < 0);
+  if (elements.activityIncomeMetric) elements.activityIncomeMetric.textContent = money(summary.income);
+  if (elements.activitySpentMetric) elements.activitySpentMetric.textContent = money(summary.expenses);
+  if (elements.activityNetMetric) {
+    elements.activityNetMetric.textContent = money(net);
+    elements.activityNetMetric.classList.toggle("is-negative", net < 0);
   }
-  if (chipEl) {
-    chipEl.textContent = `${money(net)} net`;
-    chipEl.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
+  if (elements.activityNetChip) {
+    elements.activityNetChip.textContent = `${money(net)} net`;
+    elements.activityNetChip.className = `money-chip ${net < 0 ? "is-negative" : "is-positive"}`;
   }
 }
 
@@ -2248,10 +2473,26 @@ function renderGoals() {
   const savedTotal = goals.reduce((sum, goal) => sum + Math.max(0, Number(goal.current) || 0), 0);
   const targetTotal = goals.reduce((sum, goal) => sum + Math.max(0, Number(goal.target) || 0), 0);
   const leftTotal = Math.max(0, targetTotal - savedTotal);
+  const overall = targetTotal > 0 ? Math.min(1, savedTotal / targetTotal) : 0;
 
   if (elements.goalsSavedTotal) elements.goalsSavedTotal.textContent = money(savedTotal);
   if (elements.goalsLeftTotal) elements.goalsLeftTotal.textContent = money(leftTotal);
+  if (elements.goalsTargetTotal) elements.goalsTargetTotal.textContent = money(targetTotal);
   if (elements.goalsCountMetric) elements.goalsCountMetric.textContent = String(goals.length);
+  if (elements.goalsHeroCaption) {
+    elements.goalsHeroCaption.textContent = goals.length
+      ? `${goals.length} goal${goals.length === 1 ? "" : "s"} · ${money(leftTotal)} to go`
+      : "No goals yet";
+  }
+  if (elements.goalsRing) {
+    elements.goalsRing.hidden = !goals.length;
+    elements.goalsRing.style.setProperty("--used", `${Math.round(overall * 100)}%`);
+  }
+  if (elements.goalsRingPercent) {
+    elements.goalsRingPercent.textContent = `${Math.round(overall * 100)}%`;
+  }
+  if (elements.goalsTargetStat) elements.goalsTargetStat.hidden = !goals.length;
+  if (elements.goalsLeftStat) elements.goalsLeftStat.hidden = !goals.length;
   if (!elements.goalsList) return;
 
   if (!goals.length) {
@@ -3797,29 +4038,32 @@ async function handleDeleteAccount() {
   }
 }
 
+function renderSettingsHero() {
+  const name =
+    firstName(currentUser?.displayName) ||
+    (localOnlyMode ? "Local budget" : "Budget Studio");
+  if (elements.settingsHeroName) elements.settingsHeroName.textContent = name;
+  if (elements.settingsHeroSub) {
+    elements.settingsHeroSub.textContent = localOnlyMode
+      ? "Saved on this device"
+      : sharedBudget
+        ? "Shared budget · synced"
+        : "Cloud sync on";
+  }
+}
+
 function renderIdentityUI() {
   const titles = {
-    overview: "",
+    overview: "Budget Studio",
     activity: "Activity",
     goals: "Savings",
     settings: "Settings",
   };
-  const onOverview = !titles[activeTab];
-  if (onOverview) {
-    // Safe-to-spend hero: what's left of the plan for the selected month.
-    const month = elements.monthInput.value;
-    const summary = getMonthSummary(month);
-    const left = summary.totalBudget - summary.expenses;
-    elements.appTitle.textContent = money(left);
-    elements.appTitle.classList.toggle("is-negative", left < 0);
-  } else {
-    elements.appTitle.textContent = titles[activeTab];
-    elements.appTitle.classList.remove("is-negative");
-  }
-  elements.appTitle.classList.toggle("hero-number", onOverview);
+  elements.appTitle.textContent = titles[activeTab] || "Budget Studio";
+  elements.appTitle.classList.remove("is-negative", "hero-number");
   if (elements.appSubtitle) {
-    elements.appSubtitle.hidden = !onOverview;
-    if (onOverview) elements.appSubtitle.textContent = `Safe to spend in ${formatMonthLabel(elements.monthInput.value)}`;
+    elements.appSubtitle.hidden = true;
+    elements.appSubtitle.textContent = "";
   }
   elements.signOutBtn.hidden = localOnlyMode || !currentUser;
   if (elements.addPasskeyBtn) {
@@ -3832,6 +4076,7 @@ function renderIdentityUI() {
     elements.deleteAccountBtn.hidden = localOnlyMode || !currentUser;
   }
   if (elements.tabBar) elements.tabBar.hidden = Boolean(elements.authGate && !elements.authGate.hidden);
+  if (activeTab === "settings") renderSettingsHero();
 }
 
 function flushDirtyCloudSave() {
@@ -4494,9 +4739,19 @@ function setSelectedMonth(monthKey) {
   syncMonthLabel(next);
 }
 
+function shortMonthLabel(monthKey) {
+  const [year, monthNumber] = monthKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(
+    new Date(year, monthNumber - 1, 1),
+  );
+}
+
 function syncMonthLabel(monthKey = elements.monthInput.value) {
   if (elements.monthLabel) {
     elements.monthLabel.textContent = formatMonthLabel(monthKey);
+  }
+  if (elements.homeMonthLabel) {
+    elements.homeMonthLabel.textContent = shortMonthLabel(monthKey);
   }
 }
 
@@ -4505,6 +4760,7 @@ function shiftMonth(delta) {
   const next = new Date(year, month - 1 + delta, 1);
   const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
   setSelectedMonth(nextKey);
+  expandedCategoryName = null;
   render();
 }
 
