@@ -10,7 +10,7 @@ enum SyncConfig {
     /// Deep-link callback for Google (and web-style) OAuth on iOS.
     static let oauthRedirectURL = URL(string: "budgetstudio://auth-callback")!
     /// Match web `sync-config.js` authProviders — flip when enabled in Supabase.
-    static let authGoogleEnabled = true
+    static let authGoogleEnabled = false
     static let authAppleEnabled = false
     static let authPasskeyEnabled = false
 }
