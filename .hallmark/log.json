@@ -1,6 +1,13 @@
 [
   {
     "date": "2026-07-25",
+    "macrostructure": "Long Document",
+    "theme": "Coral",
+    "enrichment": "none",
+    "brief": "Rewrite and format the privacy policy and terms for the public demo and early web and iOS beta."
+  },
+  {
+    "date": "2026-07-25",
     "macrostructure": "Workbench",
     "theme": "Coral",
     "enrichment": "Tier A live product sample",

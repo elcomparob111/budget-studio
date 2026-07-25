@@ -3,80 +3,289 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#F7F1EA" />
+    <meta
+      name="description"
+      content="How the Budget Studio beta handles account, budget, shared budget, and device data."
+    />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; base-uri 'self'; form-action 'self'" />
-    <title>Privacy — Budget Studio</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <style>
-      .legal-page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
-      .legal-page h1 { margin: 0 0 8px; font-size: 1.75rem; }
-      .legal-page h2 { margin: 28px 0 8px; font-size: 1.1rem; }
-      .legal-page p, .legal-page li { color: var(--muted); line-height: 1.55; }
-      .legal-page a { color: inherit; }
-      .legal-back { display: inline-block; margin-bottom: 20px; }
-    </style>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; form-action 'self'; img-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com"
+    />
+    <title>Privacy Policy — Budget Studio</title>
+    <link rel="canonical" href="https://elcomparob111.github.io/budget-studio/privacy.html" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&amp;family=Geist:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tokens.css?v=99" />
+    <link rel="stylesheet" href="./legal.css?v=100" />
   </head>
   <body>
-    <main class="legal-page">
-      <a class="legal-back" href="./index.html">← Back to Budget Studio</a>
-      <h1>Privacy Policy</h1>
-      <p>Last updated: July 9, 2026</p>
-      <p>
-        Budget Studio is a personal budgeting app operated by an individual (not a company).
-        This page explains what data is stored and how you can control it. It is not a substitute
-        for legal advice.
-      </p>
+    <a class="skip-link" href="#main-content">Skip to policy</a>
+    <header class="legal-shell">
+      <nav class="legal-nav" aria-label="Legal pages">
+        <a class="legal-wordmark" href="./index.html">Budget Studio</a>
+        <ul>
+          <li><a href="./privacy.html" aria-current="page">Privacy</a></li>
+          <li><a href="./terms.html">Terms</a></li>
+        </ul>
+      </nav>
+    </header>
 
-      <h2>What we store</h2>
-      <p>
-        If you create an account, we store your email, optional display name, and the budget data
-        you enter (categories, amounts, notes, schedules) in
-        <a href="https://supabase.com" rel="noopener">Supabase</a> (hosted Postgres + Auth).
-        On this device the browser may also keep a local cache so the app works offline.
-      </p>
+    <main id="main-content" class="legal-main legal-shell">
+      <article class="legal-document">
+        <a class="legal-back" href="./index.html">← Back to the app</a>
 
-      <h2>What we do not collect</h2>
-      <p>
-        We do not ask for bank logins, account numbers, Social Security numbers, or payment card
-        details. There is no bank aggregation or advertising tracker in this app.
-      </p>
+        <header class="legal-header">
+          <p class="legal-status">Early beta · Web and iOS</p>
+          <h1>Privacy policy</h1>
+          <p class="legal-lede">
+            Budget Studio is a small independent budgeting project. This page explains what the
+            current beta handles, where that information goes, and how you can remove it.
+          </p>
+          <p class="legal-updated">Last updated July 25, 2026</p>
+        </header>
 
-      <h2>How data is protected</h2>
-      <p>
-        Passwords are handled by Supabase Auth (hashed; we never see plaintext passwords). Budget
-        rows use Row Level Security so a signed-in user can only access their own data. Cloud data
-        is encrypted in transit (HTTPS) and at rest by the hosting providers.
-      </p>
+        <aside class="beta-notice" aria-labelledby="beta-title">
+          <h2 id="beta-title">The demo and account mode are different</h2>
+          <p>
+            The public demo uses fictional sample data, does not require an account, and resets
+            when you leave or reload it. If you create an account, the information you enter is
+            saved on your device and synced through Supabase as described below.
+          </p>
+        </aside>
 
-      <h2>Who can see your data</h2>
-      <p>
-        Only you (via your account) and the app operator with privileged Supabase access for
-        maintenance. We do not sell personal data.
-      </p>
+        <nav class="legal-toc" aria-label="Privacy policy sections">
+          <p>
+            <strong>On this page:</strong>
+            <a href="#scope">Scope</a>
+            <a href="#data">Data</a>
+            <a href="#use">Use</a>
+            <a href="#sharing">Sharing</a>
+            <a href="#providers">Providers</a>
+            <a href="#security">Security</a>
+            <a href="#choices">Your choices</a>
+            <a href="#contact">Contact</a>
+          </p>
+        </nav>
 
-      <h2>Your choices</h2>
-      <ul>
-        <li>Export CSV or JSON from Settings anytime.</li>
-        <li>Delete cloud budget data from Settings → Delete cloud data (then sign out).</li>
-        <li>
-          To remove your Auth login entirely, ask the operator (email below) or delete the user in
-          the Supabase dashboard (Authentication → Users) if you have project access.
-        </li>
-      </ul>
+        <section id="scope" class="legal-section">
+          <h2>What this policy covers</h2>
+          <p>
+            This policy covers the Budget Studio website, installable web app, and native iOS
+            beta. Budget Studio is operated by an individual developer. It is not a bank,
+            financial institution, or financial adviser.
+          </p>
+          <p>
+            Because this is a beta, features and service providers may change. If a change
+            materially affects how personal information is handled, this page will be updated
+            before or when that change reaches users.
+          </p>
+        </section>
 
-      <h2>Disclaimer</h2>
-      <p>
-        Budget Studio is for personal organization only. It is not financial, legal, tax, or
-        investment advice.
-      </p>
+        <section id="data" class="legal-section">
+          <h2>Information the app handles</h2>
 
-      <h2>Contact</h2>
-      <p>
-        Questions or deletion requests:
-        <a href="mailto:mcl.labss@gmail.com">mcl.labss@gmail.com</a>
-      </p>
+          <h3>Account information</h3>
+          <p>
+            If you create an account, Supabase Auth stores your email address, authentication
+            record, and optional display name. If you choose Google sign-in, Google and Supabase
+            also handle the identity information needed to complete that sign-in. Passwords are
+            handled by Supabase Auth; the Budget Studio operator does not receive your plaintext
+            password.
+          </p>
 
-      <p><a href="./terms.html">Terms of Use</a></p>
+          <h3>Budget information</h3>
+          <p>
+            The app stores what you choose to enter, including amounts, categories, transactions,
+            pay schedules, recurring items, savings goals, and notes. This information can reveal
+            details about your finances, so avoid putting unrelated sensitive information in
+            free-text fields.
+          </p>
+
+          <h3>Shared budgets</h3>
+          <p>
+            If you create or join a shared budget, the app stores the shared budget, membership
+            records, invite information, and transaction author identifiers. Other members of
+            that budget can view and edit its contents.
+          </p>
+
+          <h3>Information on your device</h3>
+          <p>
+            The web app keeps an offline cache in browser storage. The iOS app keeps local budget
+            data and session information on the device. After a password sign-in on a supported
+            iOS device, the current beta saves your email and password in Apple Keychain and enables
+            biometric re-entry. Biometric matching is performed by iOS; Budget Studio does not
+            receive your face or fingerprint data.
+          </p>
+          <p>
+            Receipt scanning in the iOS beta uses Apple Vision on the device. The selected image
+            is used to suggest transaction fields and is not uploaded or saved by Budget Studio.
+            Any transaction details you choose to save are handled like other budget data.
+          </p>
+
+          <h3>Technical and support information</h3>
+          <p>
+            Hosting and authentication providers may receive standard request information such as
+            an IP address, device or browser type, timestamps, and requested pages. If you email
+            for support, the operator receives your email address and whatever you include in the
+            message.
+          </p>
+        </section>
+
+        <section id="use" class="legal-section">
+          <h2>How information is used</h2>
+          <ul>
+            <li>To create and secure your account.</li>
+            <li>To save, sync, display, export, and restore your budget.</li>
+            <li>To let invited members use a shared budget.</li>
+            <li>To provide offline use and reconnect changes when service returns.</li>
+            <li>To investigate bugs, abuse, security issues, and support requests.</li>
+          </ul>
+          <p>
+            Budget Studio does not sell or rent personal information. As of this update, it does
+            not use advertising trackers or a separate product analytics service.
+          </p>
+        </section>
+
+        <section id="sharing" class="legal-section">
+          <h2>Who can see budget information</h2>
+          <p>
+            A personal budget is available through your signed-in account. The app operator has
+            administrative access to the Supabase project and may access stored data when
+            reasonably needed for support, maintenance, security, or legal obligations.
+          </p>
+          <p>
+            A shared budget is visible and editable by its members. An invite link should only be
+            sent to someone you trust. Members can copy or export information they can access;
+            Budget Studio cannot erase copies another member already made.
+          </p>
+        </section>
+
+        <section id="providers" class="legal-section">
+          <h2>Service providers</h2>
+          <p>
+            These services support the current beta. They process information under their own
+            terms and privacy notices and are expected to protect it consistently with their
+            obligations and applicable law.
+          </p>
+          <dl class="provider-list">
+            <div>
+              <dt>Supabase</dt>
+              <dd>
+                Authentication, database storage, and shared-budget updates.
+                <a href="https://supabase.com/privacy" rel="external noopener">Supabase privacy</a>
+              </dd>
+            </div>
+            <div>
+              <dt>GitHub Pages</dt>
+              <dd>
+                Static website hosting.
+                <a
+                  href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+                  rel="external noopener"
+                >GitHub privacy</a>
+              </dd>
+            </div>
+            <div>
+              <dt>Google</dt>
+              <dd>
+                Web fonts and, if you choose it, Google account sign-in.
+                <a href="https://policies.google.com/privacy" rel="external noopener">Google privacy</a>
+              </dd>
+            </div>
+            <div>
+              <dt>jsDelivr</dt>
+              <dd>
+                Delivery of the Supabase web library used by the website.
+                <a href="https://www.jsdelivr.com/terms/privacy-policy" rel="external noopener">jsDelivr privacy</a>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section id="security" class="legal-section">
+          <h2>Security</h2>
+          <p>
+            The beta uses HTTPS, Supabase Auth, database row-level access rules, and device storage
+            provided by the browser or iOS. These measures reduce risk, but no beta or online
+            service can guarantee absolute security or uninterrupted access.
+          </p>
+          <div class="legal-callout">
+            <p>
+              <strong>Use the beta with care.</strong> Keep your own export, use a unique password,
+              sign out of the web app on shared devices, avoid the iOS beta on a shared device,
+              and do not put passwords, government identifiers, or full payment-card details in
+              notes.
+            </p>
+          </div>
+        </section>
+
+        <section id="choices" class="legal-section">
+          <h2>Retention and your choices</h2>
+          <ul>
+            <li>Export your budget as CSV or JSON from Settings.</li>
+            <li>Update your display name and budget entries in the app.</li>
+            <li>
+              Use Settings → Delete cloud data to remove your personal budget. If you own a shared
+              budget, this also deletes it for its members; if you are a member, it removes your
+              membership.
+            </li>
+            <li>
+              Contact the operator to request deletion of the remaining Supabase Auth account or
+              to ask what account information is associated with your email.
+            </li>
+          </ul>
+          <p>
+            On iOS, turning off Face ID stops biometric unlock but the current beta keeps the saved
+            login in Apple Keychain so the feature can be turned back on. There is not yet a
+            separate in-app control to erase that Keychain item. Avoid the iOS beta on a shared
+            device until that control is added.
+          </p>
+          <p>
+            Signed-in data remains until you delete it, the account is deleted, or the service is
+            discontinued. Provider security logs and backups may remain for a limited period under
+            provider retention practices. The operator may ask you to verify a deletion request
+            from the email connected to the account.
+          </p>
+          <p>
+            Leaving a shared budget creates a personal copy that keeps your own and unassigned
+            entries while removing partner-attributed transactions. The owner and other members
+            may retain their own copies or exports.
+          </p>
+        </section>
+
+        <section id="children" class="legal-section">
+          <h2>Children</h2>
+          <p>
+            Budget Studio is not directed to children under 13, and the operator does not knowingly
+            collect personal information from children under 13. If you believe a child provided
+            account information, email the operator so it can be removed.
+          </p>
+        </section>
+
+        <section id="contact" class="legal-section">
+          <h2>Contact and policy changes</h2>
+          <p>
+            Questions, access requests, corrections, or deletion requests can be sent to
+            <a href="mailto:mcl.labss@gmail.com">mcl.labss@gmail.com</a>.
+          </p>
+          <p>
+            The “Last updated” date will change when this policy changes. Continued use after an
+            update means the revised policy applies going forward; material changes will not be
+            applied retroactively without a lawful basis.
+          </p>
+        </section>
+      </article>
     </main>
+
+    <footer class="legal-footer legal-shell">
+      <p>Budget Studio · Independent beta project</p>
+      <p><a href="./terms.html">Read the Terms of Use →</a></p>
+    </footer>
   </body>
 </html>

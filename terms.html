@@ -3,74 +3,260 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#F7F1EA" />
+    <meta
+      name="description"
+      content="Plain-language terms for the Budget Studio beta and public sample demo."
+    />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; base-uri 'self'; form-action 'self'" />
-    <title>Terms — Budget Studio</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <style>
-      .legal-page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
-      .legal-page h1 { margin: 0 0 8px; font-size: 1.75rem; }
-      .legal-page h2 { margin: 28px 0 8px; font-size: 1.1rem; }
-      .legal-page p, .legal-page li { color: var(--muted); line-height: 1.55; }
-      .legal-page a { color: inherit; }
-      .legal-back { display: inline-block; margin-bottom: 20px; }
-    </style>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; form-action 'self'; img-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com"
+    />
+    <title>Terms of Use — Budget Studio</title>
+    <link rel="canonical" href="https://elcomparob111.github.io/budget-studio/terms.html" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&amp;family=Geist:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tokens.css?v=99" />
+    <link rel="stylesheet" href="./legal.css?v=100" />
   </head>
   <body>
-    <main class="legal-page">
-      <a class="legal-back" href="./index.html">← Back to Budget Studio</a>
-      <h1>Terms of Use</h1>
-      <p>Last updated: July 9, 2026</p>
-      <p>
-        By using Budget Studio you agree to these terms. The app is a personal project for family
-        and individual budgeting — not a commercial financial product. These terms are plain-language
-        and are not a substitute for legal counsel.
-      </p>
+    <a class="skip-link" href="#main-content">Skip to terms</a>
+    <header class="legal-shell">
+      <nav class="legal-nav" aria-label="Legal pages">
+        <a class="legal-wordmark" href="./index.html">Budget Studio</a>
+        <ul>
+          <li><a href="./privacy.html">Privacy</a></li>
+          <li><a href="./terms.html" aria-current="page">Terms</a></li>
+        </ul>
+      </nav>
+    </header>
 
-      <h2>Service</h2>
-      <p>
-        Budget Studio provides personal budgeting tools on the web (and optionally a native iOS app).
-        The service is provided “as is,” without warranties of any kind, including fitness for a
-        particular purpose or uninterrupted availability.
-      </p>
+    <main id="main-content" class="legal-main legal-shell">
+      <article class="legal-document">
+        <a class="legal-back" href="./index.html">← Back to the app</a>
 
-      <h2>Accounts</h2>
-      <p>
-        You are responsible for keeping your password confidential and for activity under your
-        account. If you share a device, sign out when finished.
-      </p>
+        <header class="legal-header">
+          <p class="legal-status">Early beta · Free to test</p>
+          <h1>Terms of use</h1>
+          <p class="legal-lede">
+            These terms cover the Budget Studio website, sample demo, installable web app, and
+            native iOS beta. They are written plainly so you know what this early version can—and
+            cannot—promise.
+          </p>
+          <p class="legal-updated">Last updated July 25, 2026</p>
+        </header>
 
-      <h2>Acceptable use</h2>
-      <ul>
-        <li>Do not attempt to access another user’s data.</li>
-        <li>Do not abuse authentication endpoints (credential stuffing, automated attacks).</li>
-        <li>Do not put unlawful content in notes, category names, or other fields.</li>
-      </ul>
+        <aside class="beta-notice" aria-labelledby="beta-title">
+          <h2 id="beta-title">This is a beta, not a finished financial product</h2>
+          <p>
+            Features may change, calculations may contain bugs, and the service may be interrupted
+            or reset while it is being tested. The sample demo uses fictional data and does not
+            save your edits. If you use account mode, export a backup and verify important numbers
+            independently.
+          </p>
+        </aside>
 
-      <h2>Not advice</h2>
-      <p>
-        Nothing in Budget Studio is financial, legal, tax, accounting, or investment advice.
-        Decisions you make with this tool are yours alone.
-      </p>
+        <nav class="legal-toc" aria-label="Terms sections">
+          <p>
+            <strong>On this page:</strong>
+            <a href="#agreement">Agreement</a>
+            <a href="#beta">Beta service</a>
+            <a href="#accounts">Accounts</a>
+            <a href="#shared">Shared budgets</a>
+            <a href="#content">Your content</a>
+            <a href="#use">Acceptable use</a>
+            <a href="#limits">Limits</a>
+            <a href="#contact">Contact</a>
+          </p>
+        </nav>
 
-      <h2>Data &amp; backups</h2>
-      <p>
-        Cloud sync uses Supabase. Keep your own exports from Settings. We are not responsible for
-        data loss from device failure, account misuse, or provider outages.
-      </p>
+        <section id="agreement" class="legal-section">
+          <h2>Agreement and eligibility</h2>
+          <p>
+            By creating an account or using Budget Studio, you agree to these terms and acknowledge
+            the <a href="./privacy.html">Privacy Policy</a>. If you do not agree, do not create an
+            account or enter personal information. You can still view the public website.
+          </p>
+          <p>
+            Budget Studio is not directed to children under 13. If you are not legally able to
+            agree to these terms on your own, use the service only with permission from a parent or
+            legal guardian.
+          </p>
+        </section>
 
-      <h2>Limitation of liability</h2>
-      <p>
-        To the fullest extent permitted by law, the operator of Budget Studio is not liable for lost
-        data, inaccurate calculations, or decisions made using the app.
-      </p>
+        <section id="beta" class="legal-section">
+          <h2>The beta service</h2>
+          <p>
+            Budget Studio provides manual tools for planning paychecks, recording transactions,
+            setting category budgets, tracking goals, and optionally sharing a budget. The current
+            beta is offered without charge.
+          </p>
+          <p>
+            The operator may add, remove, redesign, pause, or discontinue beta features as testing
+            continues. Reasonable efforts will be made to avoid unnecessary data loss, but the beta
+            does not promise permanent storage, uninterrupted access, or compatibility with every
+            device.
+          </p>
+          <div class="legal-callout">
+            <p>
+              <strong>Sample demo:</strong> the public demo is a temporary preview populated with
+              fictional data. Changes reset when you leave or reload it, and demo entries are not
+              synced to an account.
+            </p>
+          </div>
+        </section>
 
-      <h2>Contact</h2>
-      <p>
-        <a href="mailto:mcl.labss@gmail.com">mcl.labss@gmail.com</a>
-      </p>
+        <section id="accounts" class="legal-section">
+          <h2>Accounts and security</h2>
+          <p>
+            You are responsible for providing accurate account information, protecting your
+            password and devices, and activity performed through your account. Use a unique
+            password and sign out of the web app on a device other people can access. Because the
+            current iOS beta can retain a password sign-in in Apple Keychain for biometric
+            re-entry, avoid using it on a shared device.
+          </p>
+          <p>
+            Notify the operator at <a href="mailto:mcl.labss@gmail.com">mcl.labss@gmail.com</a> if
+            you believe an account has been accessed without permission. The operator may suspend
+            access when reasonably necessary to investigate abuse, protect users, or maintain the
+            service.
+          </p>
+        </section>
 
-      <p><a href="./privacy.html">Privacy Policy</a></p>
+        <section id="shared" class="legal-section">
+          <h2>Shared budgets</h2>
+          <p>
+            Only invite someone you trust. A member can view, change, and export the shared budget.
+            Changes can sync to the other member’s devices, and the most recent save may replace an
+            earlier edit.
+          </p>
+          <p>
+            If a member leaves, the app creates a personal copy that keeps that member’s own and
+            unassigned entries while removing partner-attributed transactions. If the owner
+            deletes the shared budget, other members lose access. Members may still have copies or
+            exports made before they left or the budget was deleted.
+          </p>
+        </section>
+
+        <section id="content" class="legal-section">
+          <h2>Your content and privacy</h2>
+          <p>
+            You keep ownership of the information you enter. You give Budget Studio and its service
+            providers permission to host, process, copy, and transmit that information only as
+            needed to operate, secure, and support the service.
+          </p>
+          <p>
+            Do not enter information you do not have permission to use or share. The
+            <a href="./privacy.html">Privacy Policy</a> explains the current data flow, service
+            providers, retention, and deletion options.
+          </p>
+        </section>
+
+        <section id="use" class="legal-section">
+          <h2>Acceptable use</h2>
+          <p>You may not use Budget Studio to:</p>
+          <ul>
+            <li>Access, test, or interfere with another person’s account or data without permission.</li>
+            <li>Attack, overload, scrape, reverse engineer, or bypass security controls.</li>
+            <li>Run credential-stuffing, automated sign-up, spam, or other abusive activity.</li>
+            <li>Upload unlawful content or use the service in violation of applicable law.</li>
+            <li>Misrepresent Budget Studio as a bank, adviser, or guaranteed financial system.</li>
+          </ul>
+        </section>
+
+        <section id="advice" class="legal-section">
+          <h2>Not financial advice</h2>
+          <p>
+            Budget Studio is an organization tool, not a bank, accounting service, credit service,
+            fiduciary, or financial, tax, legal, or investment adviser. The app does not verify that
+            entries, schedules, projections, or calculations match your real accounts. You are
+            responsible for checking important numbers and for decisions you make using them.
+          </p>
+        </section>
+
+        <section id="backups" class="legal-section">
+          <h2>Data and backups</h2>
+          <p>
+            Keep an independent copy of information you cannot afford to lose. CSV and JSON export
+            are available in Settings. Sync, device storage, provider outages, conflicting shared
+            edits, software bugs, or account misuse can cause information to be delayed, changed,
+            or lost.
+          </p>
+          <p>
+            You can stop using Budget Studio at any time. Settings can remove the synced budget,
+            and the <a href="./privacy.html#choices">Privacy Policy</a> explains how to request
+            deletion of the remaining authentication account.
+          </p>
+        </section>
+
+        <section id="providers" class="legal-section">
+          <h2>Third-party services</h2>
+          <p>
+            Budget Studio depends on services such as Supabase, GitHub Pages, Google, jsDelivr, and
+            Apple platform features. Their availability and rules are outside the operator’s
+            control. Links to third-party sites are provided for convenience and do not make
+            Budget Studio responsible for their content.
+          </p>
+        </section>
+
+        <section id="ownership" class="legal-section">
+          <h2>Budget Studio materials</h2>
+          <p>
+            The Budget Studio name, logo, interface, and original software and content are owned by
+            the operator or used under their applicable licenses. These terms do not transfer those
+            rights to you. You may use the service for its intended personal budgeting purpose
+            while the beta is available.
+          </p>
+        </section>
+
+        <section id="limits" class="legal-section">
+          <h2>Disclaimers and limits</h2>
+          <p>
+            To the fullest extent permitted by law, Budget Studio is provided “as is” and “as
+            available,” without warranties that it will be accurate, secure, uninterrupted,
+            error-free, or fit for a particular purpose.
+          </p>
+          <p>
+            To the fullest extent permitted by law, the operator is not liable for indirect,
+            incidental, special, consequential, or punitive losses, or for lost data, missed
+            payments, inaccurate projections, provider outages, or decisions made using the app.
+            Nothing in these terms limits a right or liability that applicable law does not allow
+            to be limited.
+          </p>
+        </section>
+
+        <section id="changes" class="legal-section">
+          <h2>Changes, suspension, and ending use</h2>
+          <p>
+            These terms may change as the beta develops. The “Last updated” date will show when.
+            Material changes will be presented in the app or on the website when practical.
+            Continued use after an update means you accept the revised terms going forward.
+          </p>
+          <p>
+            The operator may suspend or end access for abuse, security risk, legal requirements, or
+            discontinuation of the beta. You may stop using the service at any time and request
+            deletion as explained in the Privacy Policy.
+          </p>
+        </section>
+
+        <section id="contact" class="legal-section">
+          <h2>Contact</h2>
+          <p>
+            Questions about these terms can be sent to
+            <a href="mailto:mcl.labss@gmail.com">mcl.labss@gmail.com</a>.
+          </p>
+        </section>
+      </article>
     </main>
+
+    <footer class="legal-footer legal-shell">
+      <p>Budget Studio · Independent beta project</p>
+      <p><a href="./privacy.html">Read the Privacy Policy →</a></p>
+    </footer>
   </body>
 </html>
